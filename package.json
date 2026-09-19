@@ -1,0 +1,21 @@
+{
+  "name": "luban",
+  "version": "0.0.0",
+  "private": true,
+  "description": "鲁班 Luban —— 面向个人开发者的开源 Agent 编程引擎（headless 核心 + 终端 CLI）",
+  "packageManager": "pnpm@11.17.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "eslint packages/*/src packages/*/test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "turbo": "^2.5.4"
+  }
+}
