@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -43,5 +43,18 @@ describe("write tool", () => {
 
   it("is registered as kind write so the permission engine gates it", () => {
     expect(writeTool.kind).toBe("write");
+  });
+
+  it("preview returns a unified diff against the current file content", async () => {
+    await writeFile(join(dir, "a.txt"), "old line\n", "utf8");
+    const preview = await writeTool.preview?.({ path: "a.txt", text: "new line\n" }, ctx);
+    expect(preview).toContain("-old line");
+    expect(preview).toContain("+new line");
+  });
+
+  it("preview shows all additions for a new file", async () => {
+    const preview = await writeTool.preview?.({ path: "new.txt", text: "a\nb\n" }, ctx);
+    expect(preview).toContain("+a");
+    expect(preview).toContain("+b");
   });
 });

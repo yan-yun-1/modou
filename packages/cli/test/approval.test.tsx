@@ -51,4 +51,19 @@ describe("ApprovalPrompt", () => {
     expect(onAnswer).toHaveBeenCalledWith({ granted: true, remembered: true });
     harness.unmount();
   });
+
+  it("renders the diff with add/remove lines when provided", async () => {
+    const withDiff: ApprovalRequest = {
+      ...request,
+      diff: "@@ -1,1 +1,1 @@\n-old line\n+new line",
+    };
+    const harness = renderInk(<ApprovalPrompt request={withDiff} onAnswer={() => {}} />);
+    await settle();
+    const text = harness.text;
+    expect(text).toContain("-old line");
+    expect(text).toContain("+new line");
+    // 有 diff 时不再重复显示原始参数 JSON
+    expect(text).not.toContain('"command"');
+    harness.unmount();
+  });
 });

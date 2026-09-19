@@ -39,6 +39,8 @@ export const lubanEventSchema = z.discriminatedUnion("type", [
     name: z.string().min(1),
     args,
     reason: z.string(),
+    // write/edit 的审批附带 unified diff（契约增补：plan-m1 I3）
+    diff: z.string().optional(),
     at: timestamp,
   }),
   z.object({

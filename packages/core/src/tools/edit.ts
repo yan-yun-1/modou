@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { z } from "zod";
+import { unifiedDiff } from "../diff.js";
 import { resolveWithin, toDisplayPath } from "./paths.js";
 import type { Tool } from "./types.js";
 
@@ -10,6 +11,8 @@ const editSchema = z.object({
   new_text: z.string(),
   replace_all: z.boolean().optional(),
 });
+
+type EditArgs = z.infer<typeof editSchema>;
 
 function countOccurrences(haystack: string, needle: string): number {
   let count = 0;
@@ -76,7 +79,39 @@ function suggestCandidate(content: string, oldText: string): string | null {
   return `最接近的内容在第 ${best.line} 行（相似度 ${Math.round(best.score * 100)}%）：\n${snippet}`;
 }
 
-export const editTool: Tool<z.infer<typeof editSchema>> = {
+/**
+ * 在内容上应用替换（纯函数）：不可执行（零命中/歧义）时抛出带指引的错误。
+ * run 与 preview 共用，保证"预览即结果"。
+ */
+function applyEdit(content: string, args: EditArgs): { updated: string; count: number } {
+  const occurrences = countOccurrences(content, args.old_text);
+
+  if (occurrences === 0) {
+    const hint = suggestCandidate(content, args.old_text);
+    throw new Error(
+      `old_text 在文件中未找到（0 处命中）。请用 read 核对精确内容后再试。${hint ? `\n${hint}` : ""}`,
+    );
+  }
+
+  if (occurrences > 1 && !args.replace_all) {
+    const lines: number[] = [];
+    let pos = 0;
+    while ((pos = content.indexOf(args.old_text, pos)) !== -1) {
+      lines.push(lineOfIndex(content, pos));
+      pos += args.old_text.length;
+    }
+    throw new Error(
+      `old_text 命中 ${occurrences} 处（第 ${lines.join("、")} 行），需要补充上下文唯一定位，或设置 replace_all: true。`,
+    );
+  }
+
+  const updated = args.replace_all
+    ? content.split(args.old_text).join(args.new_text)
+    : content.replace(args.old_text, args.new_text);
+  return { updated, count: occurrences };
+}
+
+export const editTool: Tool<EditArgs> = {
   name: "edit",
   description:
     "精确替换文件内容：old_text 必须与文件原文完全一致且唯一命中（多处命中会被拒绝并列出行号；零命中会给出最接近的候选位置）。replace_all: true 可替换全部命中。",
@@ -88,45 +123,40 @@ export const editTool: Tool<z.infer<typeof editSchema>> = {
       throw new Error(`文件不存在：${args.path}`);
     });
 
-    let occurrences = countOccurrences(content, args.old_text);
     let normalizedEol = false;
-    if (occurrences === 0 && content.includes("\r\n")) {
+    if (!content.includes(args.old_text) && content.includes("\r\n")) {
       // CRLF 文件：模型通常发 LF，统一行尾后重试（整文件行尾随之归一为 LF）
       const normalized = content.replace(/\r\n/g, "\n");
       if (countOccurrences(normalized, args.old_text) > 0) {
         content = normalized;
-        occurrences = countOccurrences(content, args.old_text);
         normalizedEol = true;
       }
     }
 
-    if (occurrences === 0) {
-      const hint = suggestCandidate(content, args.old_text);
-      throw new Error(
-        `old_text 在文件中未找到（0 处命中）。请用 read 核对精确内容后再试。${hint ? `\n${hint}` : ""}`,
-      );
-    }
-
-    if (occurrences > 1 && !args.replace_all) {
-      const lines: number[] = [];
-      let pos = 0;
-      while ((pos = content.indexOf(args.old_text, pos)) !== -1) {
-        lines.push(lineOfIndex(content, pos));
-        pos += args.old_text.length;
-      }
-      throw new Error(
-        `old_text 命中 ${occurrences} 处（第 ${lines.join("、")} 行），需要补充上下文唯一定位，或设置 replace_all: true。`,
-      );
-    }
-
-    const updated = args.replace_all
-      ? content.split(args.old_text).join(args.new_text)
-      : content.replace(args.old_text, args.new_text);
+    const { updated, count } = applyEdit(content, args);
     await writeFile(filePath, updated, "utf8");
 
     const suffix = normalizedEol ? "（文件行尾已统一为 LF）" : "";
     return {
-      output: `已修改 ${toDisplayPath(ctx.cwd, filePath)}：替换 ${args.replace_all ? occurrences : 1} 处${suffix}`,
+      output: `已修改 ${toDisplayPath(ctx.cwd, filePath)}：替换 ${args.replace_all ? count : 1} 处${suffix}`,
     };
+  },
+  async preview(args, ctx) {
+    const filePath = resolveWithin(ctx.cwd, args.path);
+    let content = await readFile(filePath, "utf8").catch(() => null);
+    if (content === null) {
+      return null;
+    }
+    if (!content.includes(args.old_text) && content.includes("\r\n")) {
+      content = content.replace(/\r\n/g, "\n");
+    }
+    let updated: string;
+    try {
+      updated = applyEdit(content, args).updated;
+    } catch {
+      // 与 run 行为一致：会被拒绝的编辑不产生预览
+      return null;
+    }
+    return unifiedDiff(content, updated) || null;
   },
 };

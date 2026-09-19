@@ -13,6 +13,8 @@ export interface ApprovalRequest {
   name: string;
   args: unknown;
   reason: string;
+  /** write/edit 审批时附带的 unified diff（可选） */
+  diff?: string;
 }
 
 export interface ApprovalAnswer {
@@ -234,12 +236,22 @@ export class AgentLoop {
 
     if (decision === "ask") {
       const reason = tool.kind === "execute" ? "执行命令需要审批" : "写入文件需要审批";
+      // write/edit 实现了 preview 时，把 unified diff 附到审批请求上供人工审阅
+      const diff = tool.preview
+        ? await tool
+            .preview(event.args, {
+              cwd,
+              signal: signal ?? new AbortController().signal,
+            })
+            .catch(() => null)
+        : null;
       yield await persist({
         type: "approval_request",
         id: event.id,
         name: event.name,
         args: event.args,
         reason,
+        diff: diff ?? undefined,
         at: at(),
       });
       const answer = await approve({
@@ -247,6 +259,7 @@ export class AgentLoop {
         name: event.name,
         args: event.args,
         reason,
+        diff: diff ?? undefined,
       });
       yield await persist({
         type: "approval_result",

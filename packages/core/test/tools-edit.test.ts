@@ -91,4 +91,23 @@ describe("edit tool", () => {
   it("is registered as kind write so the permission engine gates it", () => {
     expect(editTool.kind).toBe("write");
   });
+
+  it("preview returns the applied diff for a valid unique match", async () => {
+    const name = await seedFile("p.ts", "function one() {}\nfunction two() {}\n");
+    const preview = await editTool.preview?.(
+      { path: name, old_text: "function two() {}", new_text: "function twoV2() {}" },
+      ctx,
+    );
+    expect(preview).toContain("-function two() {}");
+    expect(preview).toContain("+function twoV2() {}");
+  });
+
+  it("preview returns null when the edit would be rejected (ambiguous match)", async () => {
+    const name = await seedFile("amb.ts", "let x = 1;\nlet x = 1;\n");
+    const preview = await editTool.preview?.(
+      { path: name, old_text: "let x = 1;", new_text: "let y = 1;" },
+      ctx,
+    );
+    expect(preview).toBeNull();
+  });
 });

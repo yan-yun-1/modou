@@ -14,39 +14,43 @@ const CONTEXT_LINES = 3;
 function diffOps(a: string[], b: string[]): Op[] {
   const n = a.length;
   const m = b.length;
-  // LCS 长度表（滚动数组省内存；n*m ≤ 5000² 时仍可接受一次性分配）
+  // LCS 长度表（n*m ≤ 5000² 时一次性分配可接受）
   const width = m + 1;
   const dp = new Uint32Array((n + 1) * width);
   for (let i = n - 1; i >= 0; i--) {
+    const ai = a[i]!;
     for (let j = m - 1; j >= 0; j--) {
+      const bj = b[j]!;
       dp[i * width + j] =
-        a[i] === b[j]
-          ? dp[(i + 1) * width + (j + 1)] + 1
-          : Math.max(dp[(i + 1) * width + j], dp[i * width + (j + 1)]);
+        ai === bj
+          ? dp[(i + 1) * width + (j + 1)]! + 1
+          : Math.max(dp[(i + 1) * width + j]!, dp[i * width + (j + 1)]!);
     }
   }
   const ops: Op[] = [];
   let i = 0;
   let j = 0;
   while (i < n && j < m) {
-    if (a[i] === b[j]) {
-      ops.push({ type: "same", line: a[i] });
+    const ai = a[i]!;
+    const bj = b[j]!;
+    if (ai === bj) {
+      ops.push({ type: "same", line: ai });
       i++;
       j++;
-    } else if (dp[(i + 1) * width + j] >= dp[i * width + (j + 1)]) {
-      ops.push({ type: "del", line: a[i] });
+    } else if (dp[(i + 1) * width + j]! >= dp[i * width + (j + 1)]!) {
+      ops.push({ type: "del", line: ai });
       i++;
     } else {
-      ops.push({ type: "add", line: b[j] });
+      ops.push({ type: "add", line: bj });
       j++;
     }
   }
   while (i < n) {
-    ops.push({ type: "del", line: a[i] });
+    ops.push({ type: "del", line: a[i]! });
     i++;
   }
   while (j < m) {
-    ops.push({ type: "add", line: b[j] });
+    ops.push({ type: "add", line: b[j]! });
     j++;
   }
   return ops;
@@ -55,9 +59,7 @@ function diffOps(a: string[], b: string[]): Op[] {
 function toHunks(ops: Op[]): Hunk[] {
   // 两遍法：先定位全部变更 op，把间隔 ≤ 2×context 的变更归并为一个区域，
   // 再按区域回填/续填上下文行——保证 hunk 前导上下文正确、远距离变更拆分。
-  const changedIdx = ops
-    .map((op, i) => (op.type === "same" ? -1 : i))
-    .filter((i) => i >= 0);
+  const changedIdx = ops.map((op, i) => (op.type === "same" ? -1 : i)).filter((i) => i >= 0);
   if (changedIdx.length === 0) {
     return [];
   }
@@ -132,7 +134,10 @@ export function unifiedDiff(before: string, after: string): string {
       if (k < hunk.aLines.length && hunk.aLines[k] !== hunk.bLines[k]) {
         out.push(`-${hunk.aLines[k]}`);
       }
-      if (k < hunk.bLines.length && (k >= hunk.aLines.length || hunk.aLines[k] !== hunk.bLines[k])) {
+      if (
+        k < hunk.bLines.length &&
+        (k >= hunk.aLines.length || hunk.aLines[k] !== hunk.bLines[k])
+      ) {
         out.push(`+${hunk.bLines[k]}`);
       }
     }

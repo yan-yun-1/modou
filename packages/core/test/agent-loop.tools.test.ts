@@ -96,6 +96,7 @@ const fakeWrite: Tool<{ path: string; text: string }> = {
   kind: "write",
   schema: z.object({ path: z.string(), text: z.string() }),
   run: async (args) => ({ output: `wrote-${args.path}` }),
+  preview: async (args) => `-旧内容\n+${args.text}`,
 };
 
 function makeRegistry(): ToolRegistry {
@@ -218,6 +219,16 @@ describe("AgentLoop tools", () => {
     expect((result as { output: string }).output).toContain("拒绝");
     const approvalResult = events.find((e) => e.type === "approval_result");
     expect(approvalResult).toMatchObject({ granted: false, remembered: false });
+  });
+
+  it("attaches a preview diff to approval requests for tools that implement preview", async () => {
+    const { events } = await runFixture(
+      [toolCallStream("t3b", "fakeWrite", { path: "a.ts", text: "新内容" }), textStream("完成")],
+      "写文件",
+      { approve: async () => ({ granted: true, remembered: false }) },
+    );
+    const request = events.find((e) => e.type === "approval_request");
+    expect(request).toMatchObject({ diff: "-旧内容\n+新内容" });
   });
 
   it("denies execute tools in plan mode without prompting", async () => {

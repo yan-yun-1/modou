@@ -24,4 +24,9 @@ export interface Tool<T = unknown> {
   kind: ToolKind;
   schema: z.ZodType<T>;
   run(args: T, ctx: ToolContext): Promise<ToolResult>;
+  /**
+   * 审批预览：write/edit 实现它，在执行前返回 unified diff 供人工审阅。
+   * 返回 null 表示本次调用会被拒绝或无法预览（此时审批卡片只显示参数）。
+   */
+  preview?(args: T, ctx: ToolContext): Promise<string | null>;
 }

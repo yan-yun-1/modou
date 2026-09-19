@@ -6,7 +6,43 @@ export interface ApprovalPromptProps {
   onAnswer: (answer: ApprovalAnswer) => void;
 }
 
-/** 审批卡片：y=允许本次，a=总是允许（写入 always-allow 规则），n=拒绝。 */
+const MAX_DIFF_LINES = 40;
+
+function DiffView({ diff }: { diff: string }) {
+  const lines = diff.split("\n");
+  const truncated = lines.length > MAX_DIFF_LINES;
+  const visible = truncated ? lines.slice(0, MAX_DIFF_LINES) : lines;
+  return (
+    <Box flexDirection="column">
+      {visible.map((line, i) => {
+        if (line.startsWith("+")) {
+          return (
+            <Text key={i} color="green">
+              {line}
+            </Text>
+          );
+        }
+        if (line.startsWith("-")) {
+          return (
+            <Text key={i} color="red">
+              {line}
+            </Text>
+          );
+        }
+        return (
+          <Text key={i} dimColor>
+            {line}
+          </Text>
+        );
+      })}
+      {truncated ? (
+        <Text dimColor>…（diff 过长，已截断 {lines.length - MAX_DIFF_LINES} 行）</Text>
+      ) : null}
+    </Box>
+  );
+}
+
+/** 审批卡片：y=允许本次，a=总是允许（写入 always-allow 规则），n=拒绝。write/edit 附带 unified diff。 */
 export function ApprovalPrompt({ request, onAnswer }: ApprovalPromptProps) {
   useInput((input) => {
     const key = input.toLowerCase();
@@ -26,7 +62,8 @@ export function ApprovalPrompt({ request, onAnswer }: ApprovalPromptProps) {
     <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1}>
       <Text color="yellow">⚠ 审批请求：{request.name}</Text>
       <Text>{request.reason}</Text>
-      {args !== "{}" ? <Text dimColor>{args}</Text> : null}
+      {request.diff ? <DiffView diff={request.diff} /> : null}
+      {args !== "{}" && !request.diff ? <Text dimColor>{args}</Text> : null}
       <Text>
         [<Text color="green">y</Text>=允许本次] [<Text color="green">a</Text>=总是允许] [
         <Text color="red">n</Text>=拒绝]

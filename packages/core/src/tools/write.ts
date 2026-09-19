@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
+import { unifiedDiff } from "../diff.js";
 import { resolveWithin, toDisplayPath } from "./paths.js";
 import type { Tool } from "./types.js";
 
@@ -27,5 +28,10 @@ export const writeTool: Tool<z.infer<typeof writeSchema>> = {
     await writeFile(filePath, args.text, "utf8");
     const bytes = Buffer.byteLength(args.text, "utf8");
     return { output: `已写入 ${toDisplayPath(ctx.cwd, filePath)}（${bytes} 字节）` };
+  },
+  async preview(args, ctx) {
+    const filePath = resolveWithin(ctx.cwd, args.path);
+    const before = await readFile(filePath, "utf8").catch(() => "");
+    return unifiedDiff(before, args.text) || null;
   },
 };
