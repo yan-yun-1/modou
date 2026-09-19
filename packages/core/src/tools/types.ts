@@ -22,6 +22,8 @@ export interface Tool<T = unknown> {
   name: string;
   description: string;
   kind: ToolKind;
+  /** 工具来源：内置实现或 MCP server 桥接（契约增补：plan-m2 N2） */
+  source?: "builtin" | "mcp";
   schema: z.ZodType<T>;
   run(args: T, ctx: ToolContext): Promise<ToolResult>;
   /**
