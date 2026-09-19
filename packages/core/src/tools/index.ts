@@ -1,15 +1,18 @@
 import { bashTool } from "./bash.js";
+import { editTool } from "./edit.js";
 import { globTool } from "./glob.js";
 import { grepTool } from "./grep.js";
 import { ToolRegistry } from "./registry.js";
 import { readTool } from "./read.js";
+import { writeTool } from "./write.js";
 
 /**
- * M0 内置工具集（只读 + 执行）。write/edit 工具与 diff 审批在 M1 加入（plan.md M1）。
+ * 内置工具集：只读（read/grep/glob）+ 执行（bash）+ 写入（write/edit）。
+ * write/edit 为 kind "write"，由权限引擎在执行前强制审批。
  */
 export function createBuiltinTools(): ToolRegistry {
   const registry = new ToolRegistry();
-  for (const tool of [readTool, grepTool, globTool, bashTool]) {
+  for (const tool of [readTool, grepTool, globTool, writeTool, editTool, bashTool]) {
     registry.register(tool);
   }
   return registry;
