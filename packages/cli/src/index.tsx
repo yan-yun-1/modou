@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
 import { Box } from "ink";
+import { GitCheckpointer } from "@luban/core";
 import { LubanApp } from "./app.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 import { Onboarding } from "./onboarding.js";
@@ -58,11 +59,13 @@ async function runInteractive(): Promise<void> {
   }
 
   const approvals = new ApprovalBridge();
+  const checkpointer = new GitCheckpointer(process.cwd());
   const bundle = await createLoopFromSettings({
     settings,
     cwd: process.cwd(),
     modelOverrides: await loadModelOverrides(home),
     approvals,
+    checkpointer,
   });
 
   const instance = render(
@@ -70,6 +73,7 @@ async function runInteractive(): Promise<void> {
       loop={bundle.loop}
       sessionId={bundle.sessionId}
       approvals={bundle.approvals}
+      checkpointer={bundle.checkpointer}
       budgetUsd={settings.budgetUsd}
       onUsageChange={(usage) => bundle.updateSpent(usage.costUsd)}
     />,

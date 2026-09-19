@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useApp } from "ink";
-import type { LubanEvent, UsageTotals, ApprovalRequest } from "@luban/core";
+import type { Checkpointer, LubanEvent, UsageTotals, ApprovalRequest } from "@luban/core";
 import { ApprovalBridge } from "./approval-bridge.js";
 import { parseCommand } from "./commands.js";
 import { CostBar } from "./components/CostBar.js";
@@ -17,6 +17,8 @@ export interface LubanAppProps {
   sessionId: string;
   /** 审批桥：由入口层创建并接到 AgentLoop 的 approve 上 */
   approvals?: ApprovalBridge;
+  /** 回滚点：由入口层创建（非 git 目录自动降级） */
+  checkpointer?: Checkpointer;
   budgetUsd?: number;
   onExit?: () => void;
   /** 用量变化回调（入口层用于预算钩子） */
@@ -44,6 +46,7 @@ export function LubanApp({
   loop,
   sessionId,
   approvals,
+  checkpointer,
   budgetUsd,
   onExit,
   onUsageChange,
@@ -146,7 +149,7 @@ export function LubanApp({
   );
 
   const handleSubmit = useCallback(
-    (value: string) => {
+    async (value: string) => {
       const trimmed = value.trim();
       if (!trimmed) {
         return;
@@ -161,9 +164,45 @@ export function LubanApp({
         setItems((prev) => [...prev, { kind: "assistant", text: command.text }]);
         return;
       }
+      if (command.action === "checkpoints") {
+        if (!checkpointer?.available) {
+          setItems((prev) => [
+            ...prev,
+            { kind: "error", text: "当前目录不是 git 仓库，回滚点不可用" },
+          ]);
+          return;
+        }
+        const list = await checkpointer.list(sessionId);
+        setItems((prev) => [
+          ...prev,
+          {
+            kind: "assistant",
+            text:
+              list.length === 0
+                ? "暂无回滚点（agent 每次写文件前会自动创建）"
+                : `可用回滚点：\n${list.map((c) => `  #${c.n}  ${c.time}`).join("\n")}\n用 /rollback <编号> 恢复`,
+          },
+        ]);
+        return;
+      }
+      if (command.action === "rollback") {
+        if (!checkpointer?.available) {
+          setItems((prev) => [
+            ...prev,
+            { kind: "error", text: "当前目录不是 git 仓库，回滚点不可用" },
+          ]);
+          return;
+        }
+        const result = await checkpointer.restore(sessionId, command.n);
+        setItems((prev) => [
+          ...prev,
+          { kind: result.ok ? "assistant" : "error", text: result.message },
+        ]);
+        return;
+      }
       void runTask(trimmed);
     },
-    [exit, onExit, runTask, usage],
+    [checkpointer, exit, onExit, runTask, sessionId, usage],
   );
 
   return (

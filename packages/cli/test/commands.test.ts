@@ -37,4 +37,19 @@ describe("parseCommand", () => {
   it("is case-insensitive and tolerates whitespace", () => {
     expect(parseCommand("  /EXIT  ", usage)).toEqual({ action: "exit" });
   });
+
+  it("parses /checkpoints", () => {
+    expect(parseCommand("/checkpoints", usage)).toEqual({ action: "checkpoints" });
+  });
+
+  it("parses /rollback with a number", () => {
+    expect(parseCommand("/rollback 2", usage)).toEqual({ action: "rollback", n: 2 });
+  });
+
+  it("rejects /rollback without a valid number", () => {
+    const result = parseCommand("/rollback", usage);
+    expect(result).toMatchObject({ action: "message" });
+    expect((result as { text: string }).text).toContain("用法");
+    expect(parseCommand("/rollback abc", usage)).toMatchObject({ action: "message" });
+  });
 });

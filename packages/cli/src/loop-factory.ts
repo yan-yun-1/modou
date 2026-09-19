@@ -6,6 +6,7 @@ import {
   createLanguageModel,
   buildSystemPrompt,
   resolveCapabilities,
+  type Checkpointer,
   type LanguageModel,
   type ModelCapabilities,
   type ToolRegistry,
@@ -23,6 +24,8 @@ export interface CreateLoopOptions {
   store?: SessionStore;
   /** 交互模式提供审批桥；缺省时审批自动拒绝（无头语义） */
   approvals?: ApprovalBridge;
+  /** 回滚点（git 影子引用）；非 git 目录下 GitCheckpointer 自动降级 */
+  checkpointer?: Checkpointer;
   /** 指定会话 id（测试/resume 用）；默认生成 */
   sessionId?: string;
   /** 测试注入口：绕过真实 provider */
@@ -39,6 +42,7 @@ export interface LoopBundle {
   store: SessionStore;
   /** 仅交互模式存在 */
   approvals?: ApprovalBridge;
+  checkpointer?: Checkpointer;
   /** 预算钩子的写入口：把本会话累计成本喂给 isOverBudget */
   updateSpent: (costUsd: number) => void;
   isOverBudget: () => boolean;
@@ -84,6 +88,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     }),
     cwd,
     isOverBudget: () => settings.budgetUsd !== undefined && spent > settings.budgetUsd,
+    checkpointer: options.checkpointer,
   });
 
   return {
@@ -91,6 +96,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     sessionId,
     store,
     approvals: options.approvals,
+    checkpointer: options.checkpointer,
     updateSpent: (costUsd: number) => {
       spent = costUsd;
       onCostUpdate?.(costUsd);
