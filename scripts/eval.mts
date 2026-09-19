@@ -97,7 +97,8 @@ const cases: EvalCase[] = [
   {
     name: "edit-append-function",
     mode: "yolo",
-    prompt: "使用 edit 或 write 工具直接修改 math.js 文件：在文件末尾新增函数 sub(a, b)，返回 a - b。不要只在回复中给出代码。",
+    prompt:
+      "使用 edit 或 write 工具直接修改 math.js 文件：在文件末尾新增函数 sub(a, b)，返回 a - b。不要只在回复中给出代码。",
     check: async ({ sandbox, toolCalls }) => {
       if (!toolCalls.includes("edit") && !toolCalls.includes("write")) {
         return "没有调用 edit/write 工具";
@@ -109,7 +110,8 @@ const cases: EvalCase[] = [
   {
     name: "edit-fix-typo",
     mode: "yolo",
-    prompt: "使用 edit 工具直接修改 math.js 文件：把拼写错误的函数名 mull 改成 mul，函数体保持不变。不要只在回复中给出代码。",
+    prompt:
+      "使用 edit 工具直接修改 math.js 文件：把拼写错误的函数名 mull 改成 mul，函数体保持不变。不要只在回复中给出代码。",
     check: async ({ sandbox }) => {
       const content = await readFile(join(sandbox, "math.js"), "utf8");
       return content.includes("function mul(") && !content.includes("function mull(")
