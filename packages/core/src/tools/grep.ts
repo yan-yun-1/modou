@@ -1,6 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
-import { relative, resolve, sep } from "node:path";
+import { resolve } from "node:path";
 import { z } from "zod";
+import { toDisplayPath } from "./paths.js";
 import type { Tool } from "./types.js";
 import { walk } from "./walk.js";
 
@@ -19,10 +20,6 @@ function globToRegex(glob: string): RegExp {
   return new RegExp(
     `^${escaped.replace(/\*\*/g, "\0").replace(/\*/g, "[^/]*").replace(/\0/g, ".*")}$`,
   );
-}
-
-function toRel(cwd: string, abs: string): string {
-  return relative(cwd, abs).split(sep).join("/");
 }
 
 export const grepTool: Tool<z.infer<typeof grepSchema>> = {
@@ -63,14 +60,15 @@ export const grepTool: Tool<z.infer<typeof grepSchema>> = {
     };
 
     if (targetStat.isFile()) {
-      truncated = !(await collect(abs, toRel(ctx.cwd, abs)));
+      truncated = !(await collect(abs, toDisplayPath(ctx.cwd, abs)));
     } else {
       for await (const rel of walk(abs)) {
         if (includeRegex && !includeRegex.test(rel.split("/").pop() ?? rel)) {
           continue;
         }
         const full =
-          truncated || (await collect(resolve(abs, rel), toRel(ctx.cwd, resolve(abs, rel))));
+          truncated ||
+          (await collect(resolve(abs, rel), toDisplayPath(ctx.cwd, resolve(abs, rel))));
         if (!full) {
           truncated = true;
           break;

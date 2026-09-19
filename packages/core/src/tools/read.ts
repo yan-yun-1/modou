@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { resolve, sep } from "node:path";
 import { z } from "zod";
+import { resolveWithin } from "./paths.js";
 import type { Tool } from "./types.js";
 
 const DEFAULT_WINDOW = 2000;
@@ -13,15 +13,6 @@ const readSchema = z.object({
   limit: z.number().int().positive().max(DEFAULT_WINDOW).optional(),
 });
 
-function resolveInCwd(cwd: string, p: string): string {
-  const resolved = resolve(cwd, p);
-  const root = resolve(cwd) + sep;
-  if (!resolved.startsWith(root) && resolved !== resolve(cwd)) {
-    throw new Error(`路径越界：${p} 超出工作目录 ${cwd}`);
-  }
-  return resolved;
-}
-
 export const readTool: Tool<z.infer<typeof readSchema>> = {
   name: "read",
   description:
@@ -29,7 +20,7 @@ export const readTool: Tool<z.infer<typeof readSchema>> = {
   kind: "read",
   schema: readSchema,
   async run(args, ctx) {
-    const filePath = resolveInCwd(ctx.cwd, args.path);
+    const filePath = resolveWithin(ctx.cwd, args.path);
     const buffer = await readFile(filePath);
     if (buffer.subarray(0, 8192).includes(0)) {
       throw new Error(`"${args.path}" 是二进制文件，read 工具无法显示`);

@@ -1,6 +1,7 @@
 import { glob as fsGlob } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { resolve } from "node:path";
 import { z } from "zod";
+import { toDisplayPath } from "./paths.js";
 import type { Tool } from "./types.js";
 import { isSkippedDir } from "./walk.js";
 
@@ -11,13 +12,6 @@ const globSchema = z.object({
   /** 基准目录，相对 cwd，默认项目根 */
   path: z.string().optional(),
 });
-
-function toRel(cwd: string, abs: string): string {
-  if (isAbsolute(abs)) {
-    return relative(cwd, abs).split(sep).join("/");
-  }
-  return abs.replace(/\\/g, "/");
-}
 
 export const globTool: Tool<z.infer<typeof globSchema>> = {
   name: "glob",
@@ -32,7 +26,7 @@ export const globTool: Tool<z.infer<typeof globSchema>> = {
 
     for await (const entry of fsGlob(args.pattern, { cwd: base })) {
       const abs = resolve(base, entry);
-      const rel = toRel(ctx.cwd, abs);
+      const rel = toDisplayPath(ctx.cwd, abs);
       // fs.glob 不感知我们的跳过规则，结果侧过滤
       if (rel.split("/").some((segment) => isSkippedDir(segment))) {
         continue;
