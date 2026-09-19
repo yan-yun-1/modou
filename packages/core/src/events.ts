@@ -60,6 +60,13 @@ export const lubanEventSchema = z.discriminatedUnion("type", [
     at: timestamp,
   }),
   z.object({ type: z.literal("error"), message: z.string(), fatal: z.boolean(), at: timestamp }),
+  // 上下文压缩记录（契约增补：plan-m1 K2）
+  z.object({
+    type: z.literal("compaction"),
+    summary: z.string(),
+    originalMessageCount: z.number().int().nonnegative(),
+    at: timestamp,
+  }),
 ]);
 
 export type LubanEvent = z.infer<typeof lubanEventSchema>;

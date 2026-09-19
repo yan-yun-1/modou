@@ -1,5 +1,6 @@
 import { tool as aiTool, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import type { Checkpointer } from "./checkpoints.js";
+import { compactMessages, needsCompaction } from "./context/compaction.js";
 import type { LubanEvent } from "./events.js";
 import type { ModelCapabilities } from "./models/catalog.js";
 import { streamTurn } from "./models/stream.js";
@@ -88,7 +89,7 @@ export class AgentLoop {
     };
 
     const existing = await store.read(sessionId);
-    const messages: ModelMessage[] = rebuildState(existing).messages;
+    let messages: ModelMessage[] = rebuildState(existing).messages;
 
     if (!existing.some((event) => event.type === "session_started")) {
       yield await persist({
@@ -128,6 +129,26 @@ export class AgentLoop {
           at: at(),
         });
         break;
+      }
+      // 上下文压缩（plan-m1 K2）：接近窗口上限时摘要重建历史；失败降级为继续
+      if (needsCompaction(messages, capabilities.contextWindow)) {
+        try {
+          const result = await compactMessages({ messages, model });
+          messages = result.messages;
+          yield await persist({
+            type: "compaction",
+            summary: result.summary,
+            originalMessageCount: result.originalCount,
+            at: at(),
+          });
+        } catch (error) {
+          yield await persist({
+            type: "error",
+            message: `上下文压缩失败（跳过压缩继续）：${(error as Error).message}`,
+            fatal: false,
+            at: at(),
+          });
+        }
       }
       step++;
       let madeToolCall = false;
