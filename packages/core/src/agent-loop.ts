@@ -1,4 +1,5 @@
 import { tool as aiTool, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
+import type { Checkpointer } from "./checkpoints.js";
 import type { LubanEvent } from "./events.js";
 import type { ModelCapabilities } from "./models/catalog.js";
 import { streamTurn } from "./models/stream.js";
@@ -34,6 +35,8 @@ export interface AgentLoopDeps {
   signal?: AbortSignal;
   maxSteps?: number;
   isOverBudget?: () => boolean;
+  /** 可选回滚点：write 类工具执行前自动快照（git 影子引用实现见 checkpoints.ts） */
+  checkpointer?: Checkpointer;
 }
 
 type ToolCallEvent = Extract<LubanEvent, { type: "tool_call" }>;
@@ -287,6 +290,15 @@ export class AgentLoop {
       }
     }
 
+    // 写入类工具执行前自动创建回滚点（plan-m1 J2）
+    let checkpointNote = "";
+    if (tool.kind === "write" && this.#deps.checkpointer?.available) {
+      const snap = await this.#deps.checkpointer.snapshot(sessionId).catch(() => null);
+      if (snap) {
+        checkpointNote = `\n[已创建回滚点 #${snap}（/rollback ${snap} 可恢复）]`;
+      }
+    }
+
     let output: string;
     let truncated = false;
     try {
@@ -300,6 +312,7 @@ export class AgentLoop {
       output = `工具执行失败：${(error as Error).message}`;
       yield await persist({ type: "error", message: output, fatal: false, at: at() });
     }
+    output += checkpointNote;
     yield await persist({
       type: "tool_result",
       id: event.id,

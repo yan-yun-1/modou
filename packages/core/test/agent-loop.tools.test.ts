@@ -7,6 +7,7 @@ import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
 import type { LubanEvent } from "../src/events.js";
 import type { ModelCapabilities } from "../src/models/catalog.js";
 import { AgentLoop } from "../src/agent-loop.js";
+import type { Checkpointer } from "../src/checkpoints.js";
 import { PermissionEngine } from "../src/permissions.js";
 import { SessionStore } from "../src/session-store.js";
 import { ToolRegistry } from "../src/tools/registry.js";
@@ -114,6 +115,7 @@ interface FixtureOptions {
     remembered: boolean;
   }>;
   rules?: Parameters<PermissionEngine["remember"]>[0][];
+  checkpointer?: Checkpointer;
 }
 
 async function runFixture(
@@ -144,6 +146,7 @@ async function runFixture(
     approve: approveSpy,
     systemPrompt: "test",
     cwd: dir,
+    checkpointer: options.checkpointer,
   });
   const events: LubanEvent[] = [];
   for await (const event of loop.run(input, sessionId)) {
@@ -229,6 +232,43 @@ describe("AgentLoop tools", () => {
     );
     const request = events.find((e) => e.type === "approval_request");
     expect(request).toMatchObject({ diff: "-旧内容\n+新内容" });
+  });
+
+  it("snapshots before write tools and notes the rollback point in the result", async () => {
+    const snapshot = vi.fn(async () => "1");
+    const checkpointer: Checkpointer = {
+      available: true,
+      snapshot,
+      list: async () => [],
+      restore: async () => ({ ok: true, message: "" }),
+    };
+    const { events } = await runFixture(
+      [toolCallStream("t3c", "fakeWrite", { path: "a.ts", text: "新内容" }), textStream("完成")],
+      "写文件",
+      { approve: async () => ({ granted: true, remembered: false }), checkpointer },
+    );
+    const result = events.find((e) => e.type === "tool_result");
+    expect((result as { output: string }).output).toContain("回滚点 #1");
+    expect(snapshot).toHaveBeenCalledTimes(1);
+    // 只读工具不触发快照
+  });
+
+  it("does not snapshot for read tools", async () => {
+    const snapshot = vi.fn(async () => "1");
+    const checkpointer: Checkpointer = {
+      available: true,
+      snapshot,
+      list: async () => [],
+      restore: async () => ({ ok: true, message: "" }),
+    };
+    const { events } = await runFixture(
+      [toolCallStream("t3d", "fakeRead", { path: "a.ts" }), textStream("完成")],
+      "读文件",
+      { checkpointer },
+    );
+    expect(snapshot).not.toHaveBeenCalled();
+    const result = events.find((e) => e.type === "tool_result");
+    expect((result as { output: string }).output).not.toContain("回滚点");
   });
 
   it("denies execute tools in plan mode without prompting", async () => {

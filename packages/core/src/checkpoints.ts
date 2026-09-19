@@ -19,6 +19,14 @@ export interface RestoreResult {
   message: string;
 }
 
+/** 回滚点抽象：GitCheckpointer 为默认实现；测试可注入内存桩 */
+export interface Checkpointer {
+  readonly available: boolean;
+  snapshot(sessionId: string): Promise<string | null>;
+  list(sessionId: string): Promise<CheckpointInfo[]>;
+  restore(sessionId: string, n: number): Promise<RestoreResult>;
+}
+
 /**
  * git 影子引用回滚点（backlog #4 / plan-m1 J1）：
  * - 快照用「临时 index + write-tree + commit-tree + update-ref refs/luban/<session>/<n>」，
@@ -26,7 +34,7 @@ export interface RestoreResult {
  * - 恢复 = 先给当前状态自动留档，再按快照重建工作区（含删除快照后新增的文件）。
  * - 非 git 目录自动降级为 no-op。
  */
-export class GitCheckpointer {
+export class GitCheckpointer implements Checkpointer {
   readonly root: string;
   readonly available: boolean;
 
