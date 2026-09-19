@@ -38,7 +38,7 @@ describe("LubanEvent schema", () => {
 
   it("exposes a discriminated union type usable in switch", () => {
     const event = parseEvent(validEvents[1]);
-    let text = "";
+    let text: string;
     switch (event.type) {
       case "user_message":
         text = event.text;
