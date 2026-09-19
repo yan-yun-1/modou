@@ -103,7 +103,28 @@ export class AgentLoop {
     }
 
     // 多步循环：每步一次模型调用；模型不再调用工具即任务完成
+    const maxSteps = this.#deps.maxSteps ?? 30;
+    let step = 0;
     for (;;) {
+      if (this.#deps.isOverBudget?.()) {
+        yield await persist({
+          type: "error",
+          message: "预算已用尽，本任务暂停。可提高预算后继续。",
+          fatal: false,
+          at: at(),
+        });
+        break;
+      }
+      if (step >= maxSteps) {
+        yield await persist({
+          type: "error",
+          message: `已达单任务最大步数（${maxSteps} 步），任务暂停。可让模型继续。`,
+          fatal: false,
+          at: at(),
+        });
+        break;
+      }
+      step++;
       let madeToolCall = false;
 
       for await (const event of streamTurn({
