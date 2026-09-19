@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -91,5 +91,16 @@ describe("createLoopFromSettings", () => {
     // 通过内部 deps 不可达，行为在 print-mode 集成中验证；此处断言 bundle 无桥
     expect(bundle.approvals).toBeUndefined();
     void bundle;
+  });
+
+  it("composes AGENTS.md agreements and repo map into the system prompt", async () => {
+    await writeFile(join(dir, "AGENTS.md"), "项目约定：使用 pnpm", "utf8");
+    await mkdir(join(dir, "src"), { recursive: true });
+    await writeFile(join(dir, "src", "demo.ts"), "export function demoFunction() {}\n", "utf8");
+
+    const bundle = await createLoopFromSettings({ settings, cwd: dir, home: dir });
+    expect(bundle.systemPrompt).toContain("使用 pnpm");
+    expect(bundle.systemPrompt).toContain("demoFunction");
+    expect(bundle.systemPrompt).toContain("不可信");
   });
 });

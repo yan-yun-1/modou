@@ -5,6 +5,9 @@ import {
   createBuiltinTools,
   createLanguageModel,
   buildSystemPrompt,
+  formatAgreements,
+  loadAgreements,
+  buildRepoMap,
   resolveCapabilities,
   type Checkpointer,
   type LanguageModel,
@@ -34,12 +37,16 @@ export interface CreateLoopOptions {
   tools?: ToolRegistry;
   /** 会话累计成本回调（App 的 onUsageChange / 无头模式的事件消费都会调用） */
   onCostUpdate?: (costUsd: number) => void;
+  /** 全局 AGENTS.md 的查找目录；默认用户主目录。测试可注入临时目录 */
+  home?: string;
 }
 
 export interface LoopBundle {
   loop: AgentLoop;
   sessionId: string;
   store: SessionStore;
+  /** 组装完成的系统提示词（基础 + AGENTS.md 约定 + repo map） */
+  systemPrompt: string;
   /** 仅交互模式存在 */
   approvals?: ApprovalBridge;
   checkpointer?: Checkpointer;
@@ -71,6 +78,19 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     options.sessionId ?? `session-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
   await store.create(sessionId);
 
+  // 上下文装配（plan-m1 K1/K3）：基础提示词 + AGENTS.md 约定 + repo map
+  const [agreementSections, repoMap] = await Promise.all([
+    loadAgreements({ cwd, home: options.home }).catch(() => []),
+    buildRepoMap({ cwd }).catch(() => ""),
+  ]);
+  const systemPrompt = [
+    buildSystemPrompt({ cwd, platform: process.platform, tools: tools.names() }),
+    formatAgreements(agreementSections),
+    repoMap,
+  ]
+    .filter((part) => part !== "")
+    .join("\n\n");
+
   const loop = new AgentLoop({
     model,
     capabilities,
@@ -81,11 +101,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       options.approvals
         ? options.approvals.request(req)
         : Promise.resolve({ granted: false, remembered: false }),
-    systemPrompt: buildSystemPrompt({
-      cwd,
-      platform: process.platform,
-      tools: tools.names(),
-    }),
+    systemPrompt,
     cwd,
     isOverBudget: () => settings.budgetUsd !== undefined && spent > settings.budgetUsd,
     checkpointer: options.checkpointer,
@@ -95,6 +111,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     loop,
     sessionId,
     store,
+    systemPrompt,
     approvals: options.approvals,
     checkpointer: options.checkpointer,
     updateSpent: (costUsd: number) => {
