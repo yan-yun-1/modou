@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  loadModelOverrides,
   loadSettings,
+  modelOverridesFile,
   resolveApiKey,
   saveSettings,
   settingsFile,
@@ -70,5 +72,67 @@ describe("settings", () => {
     await saveSettings({ ...valid, permissionMode: undefined as never }, home);
     const loaded = await loadSettings(home);
     expect(loaded?.permissionMode).toBe("default");
+  });
+});
+
+describe("loadModelOverrides", () => {
+  it("returns an empty array when no models.json exists", async () => {
+    expect(await loadModelOverrides(home)).toEqual([]);
+  });
+
+  it("loads a valid models.json array", async () => {
+    await mkdir(join(home, ".luban"), { recursive: true });
+    const entry = {
+      id: "glm-4.5-air",
+      provider: "glm",
+      displayName: "GLM-4.5-Air",
+      contextWindow: 128_000,
+      maxOutputTokens: 96_000,
+      supportsTools: true,
+      supportsReasoning: true,
+      pricing: {
+        inputPerMtokUsd: 0.11,
+        outputPerMtokUsd: 0.28,
+        cacheReadPerMtokUsd: 0.011,
+        cacheWritePerMtokUsd: 0,
+      },
+    };
+    await writeFile(modelOverridesFile(home), JSON.stringify([entry]), "utf8");
+    const overrides = await loadModelOverrides(home);
+    expect(overrides).toHaveLength(1);
+    expect(overrides[0]?.id).toBe("glm-4.5-air");
+  });
+
+  it("accepts the { models: [...] } wrapper form too", async () => {
+    await mkdir(join(home, ".luban"), { recursive: true });
+    const entry = {
+      id: "x",
+      provider: "openai",
+      displayName: "X",
+      contextWindow: 8,
+      maxOutputTokens: 4,
+      supportsTools: false,
+      supportsReasoning: false,
+      pricing: {
+        inputPerMtokUsd: 0,
+        outputPerMtokUsd: 0,
+        cacheReadPerMtokUsd: 0,
+        cacheWritePerMtokUsd: 0,
+      },
+    };
+    await writeFile(modelOverridesFile(home), JSON.stringify({ models: [entry] }), "utf8");
+    expect(await loadModelOverrides(home)).toHaveLength(1);
+  });
+
+  it("rejects invalid entries with a readable error", async () => {
+    await mkdir(join(home, ".luban"), { recursive: true });
+    await writeFile(modelOverridesFile(home), '[{"id":"broken"}]', "utf8");
+    await expect(loadModelOverrides(home)).rejects.toThrow(/models\.json/);
+  });
+
+  it("rejects corrupted JSON with a readable error", async () => {
+    await mkdir(join(home, ".luban"), { recursive: true });
+    await writeFile(modelOverridesFile(home), "{nope", "utf8");
+    await expect(loadModelOverrides(home)).rejects.toThrow(/models\.json/);
   });
 });

@@ -2,6 +2,7 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
+import { modelCapabilitiesSchema, type ModelCapabilities } from "@luban/core";
 
 export const providerNames = [
   "anthropic",
@@ -84,4 +85,47 @@ export function resolveApiKey(
   env: Record<string, string | undefined> = process.env,
 ): string | undefined {
   return settings.apiKey ?? env.LUBAN_API_KEY;
+}
+
+export function modelOverridesFile(home: string = homedir()): string {
+  return join(settingsDir(home), "models.json");
+}
+
+const overridesFileSchema = z.union([
+  z.array(modelCapabilitiesSchema),
+  z.object({ models: z.array(modelCapabilitiesSchema) }).transform((wrapper) => wrapper.models),
+]);
+
+/**
+ * 读取 ~/.luban/models.json 的自定义模型能力声明（backlog #10）。
+ * 支持两种形态：裸数组 [{...}] 或 { "models": [{...}] }。
+ * 文件不存在返回空数组；内容非法抛出含文件路径的可读错误。
+ */
+export async function loadModelOverrides(home: string = homedir()): Promise<ModelCapabilities[]> {
+  let raw: string;
+  try {
+    raw = await readFile(modelOverridesFile(home), "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(
+      `models.json 不是合法 JSON：${modelOverridesFile(home)}（${(error as Error).message}）`,
+      { cause: error },
+    );
+  }
+  const result = overridesFileSchema.safeParse(parsed);
+  if (!result.success) {
+    const issues = result.error.issues
+      .map((issue) => `${issue.path.join(".") || "(root)"}: ${issue.message}`)
+      .join("; ");
+    throw new Error(`models.json 配置无效：${issues}（文件：${modelOverridesFile(home)}）`);
+  }
+  return result.data;
 }

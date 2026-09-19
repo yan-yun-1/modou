@@ -8,6 +8,7 @@ import {
   resolveCapabilities,
   type LanguageModel,
   type LubanEvent,
+  type ModelCapabilities,
   type UsageTotals,
 } from "@luban/core";
 import { resolveApiKey, type Settings } from "./settings.js";
@@ -16,6 +17,8 @@ export interface PrintModeOptions {
   settings: Settings;
   cwd: string;
   prompt: string;
+  /** models.json 的自定义模型能力（目录外模型如 glm-4.5-air 需要它解析能力与计价） */
+  modelOverrides?: ModelCapabilities[];
   /** 测试注入口：绕过真实 provider */
   model?: LanguageModel;
   /** 测试注入口：会话存储目录（默认 ~/.luban/sessions） */
@@ -43,7 +46,11 @@ const ZERO_USAGE: UsageTotals = {
  */
 export async function runPrintMode(options: PrintModeOptions): Promise<PrintModeResult> {
   const { settings, cwd, prompt } = options;
-  const capabilities = resolveCapabilities(settings.provider, settings.modelId);
+  const capabilities = resolveCapabilities(
+    settings.provider,
+    settings.modelId,
+    options.modelOverrides,
+  );
   const model =
     options.model ??
     createLanguageModel({

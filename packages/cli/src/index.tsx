@@ -13,7 +13,7 @@ import {
 import { LubanApp } from "./app.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 import { Onboarding } from "./onboarding.js";
-import { loadSettings, resolveApiKey, type Settings } from "./settings.js";
+import { loadSettings, loadModelOverrides, resolveApiKey, type Settings } from "./settings.js";
 import { runPrintMode } from "./print-mode.js";
 import { render } from "ink";
 import { buildProgram } from "./program.js";
@@ -33,8 +33,10 @@ async function main(options: CliOptions): Promise<void> {
 /** 无头模式：luban -p "任务" */
 async function runPrintCommand(prompt: string): Promise<void> {
   const settings = await requireSettings();
+  const modelOverrides = await loadModelOverrides(homedir());
   const result = await runPrintMode({
     settings,
+    modelOverrides,
     cwd: process.cwd(),
     prompt,
   });
@@ -64,7 +66,8 @@ async function runInteractive(): Promise<void> {
     settings = await runOnboarding(home);
   }
 
-  const capabilities = resolveCapabilities(settings.provider, settings.modelId);
+  const modelOverrides = await loadModelOverrides(home);
+  const capabilities = resolveCapabilities(settings.provider, settings.modelId, modelOverrides);
   const model = createLanguageModel({
     provider: settings.provider,
     modelId: settings.modelId,
