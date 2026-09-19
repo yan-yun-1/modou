@@ -1,0 +1,55 @@
+# 架构导读（10 分钟）
+
+面向要读代码或参与贡献的开发者。产品决策见 [PRD](./PRD.md)，任务拆解见 [plan](./plan.md)。
+
+## 包结构
+
+```
+packages/
+├─ core/    引擎：零 UI 依赖，可被任何前端嵌入
+│  ├─ events.ts          事件类型（zod 判别联合）——唯一事实来源
+│  ├─ session-store.ts   JSONL 追加式会话存储（并发串行化）
+│  ├─ session.ts         rebuildState：事件流 → 模型消息 + 用量合计
+│  ├─ permissions.ts     权限引擎：模式 × 白名单规则 × 高危拦截
+│  ├─ agent-loop.ts      主循环：多步 model↔tool 循环、审批、守卫
+│  ├─ prompt.ts          系统提示词装配
+│  ├─ models/            catalog（能力+计价）/ provider（8 家工厂）/ stream（流→事件）/ cost
+│  └─ tools/             Tool 接口、注册表、read/grep/glob/bash、walk 共享遍历器
+└─ cli/     终端交互
+   ├─ index.tsx          入口：-p 无头 / 交互两路径
+   ├─ settings.ts        ~/.luban/settings.json
+   ├─ onboarding.tsx     首次引导
+   ├─ app.tsx            LubanApp 主视图（事件驱动渲染）
+   ├─ print-mode.ts      无头执行（审批自动拒绝）
+   ├─ approval-bridge.ts loop 审批请求 ↔ UI 回答 的异步桥
+   └─ components/        MessageList / InputBox / ApprovalPrompt / CostBar
+```
+
+## 核心不变量（改代码前必读）
+
+1. **事件先持久化，再上屏**。`AgentLoop` 中所有 `persist(event)` 先 `store.append` 再 `yield`。text_delta 例外：只上屏不落盘，文本的持久化事实只有 `assistant_message`。
+2. **tool-call 必须配对 tool-result**。审批拒绝、计划模式拒绝、未知工具、执行失败四条路径都以 tool_result 文本回注模型（`toolResultMessage`），否则下一次模型调用会因悬空的 tool-call 报 API 错误。
+3. **权限判定在参数校验之前**，用的是原始 args；`kind` 只有三值（read/write/execute），权限引擎只依赖 kind，不感知具体工具。
+4. **模型消息形状 = AI SDK v7 的 `ModelMessage`**：tool-call 部件带 `input`，tool-result 部件不带 `input`（provider-utils 层类型）。升级 AI SDK 时重点核对这两处。
+
+## 关键流程：一次工具调用
+
+```
+模型流（streamTurn）→ tool_call 事件 → persist → 权限引擎 decide
+  ├─ allow → registry.validateAndRun → tool_result 事件 → 回注 messages
+  ├─ ask   → persist approval_request → approve()（UI 挂起等待）→ approval_result
+  │           ├─ granted → 执行 → tool_result → 回注
+  │           └─ denied  → tool_result("用户拒绝执行此操作") → 回注
+  └─ deny  → tool_result("权限拒绝…") → 回注（不弹审批）
+```
+
+## 设计取舍（为什么）
+
+- **不用 LangGraph/AutoGen**：编程 agent 需要完全掌控权限与上下文；mini-swe-agent 证明薄循环即可达标。
+- **TypeScript 而非 Rust/Go**：单人迭代速度是生死线；TUI 性能可后期局部替换。
+- **grep 路线而非向量索引**：中小仓库足够且零基础设施（PRD 1.3/4.4）。
+- **PowerShell EncodedCommand**：绕开 Windows 命令行嵌套引号被 CreateProcess 重 quoting 的坑；`exit $LASTEXITCODE` 透传退出码；`$ProgressPreference='SilentlyContinue'` 消除 CLIXML 噪声（见 tools/bash.ts 注释）。
+
+## 已知限制与 M1 待办
+
+见 [backlog-m1.md](./backlog-m1.md)。
