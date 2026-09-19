@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useApp } from "ink";
-import type { LubanEvent, UsageTotals } from "@luban/core";
+import type { LubanEvent, UsageTotals, ApprovalRequest } from "@luban/core";
 import { CostBar } from "./components/CostBar.js";
 import { InputBox } from "./components/InputBox.js";
+import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
 import { MessageList, type DisplayItem } from "./components/MessageList.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 
@@ -42,7 +43,7 @@ export function LubanApp({ loop, sessionId, approvals, budgetUsd, onExit }: Luba
   const [streaming, setStreaming] = useState("");
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<UsageTotals>(ZERO_USAGE);
-  const [pendingApproval, setPendingApproval] = useState<string | null>(null);
+  const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const loopRef = useRef(loop);
   const running = useRef(false);
 
@@ -51,7 +52,7 @@ export function LubanApp({ loop, sessionId, approvals, budgetUsd, onExit }: Luba
     if (!approvals) {
       return;
     }
-    const unsubscribe = approvals.subscribe((req) => setPendingApproval(req ? req.reason : null));
+    const unsubscribe = approvals.subscribe((req) => setPendingApproval(req));
     return () => {
       unsubscribe();
     };
@@ -158,7 +159,12 @@ export function LubanApp({ loop, sessionId, approvals, budgetUsd, onExit }: Luba
     <Box flexDirection="column" gap={1}>
       <MessageList items={items} />
       {streaming ? <Text>{streaming}</Text> : null}
-      {pendingApproval ? <Text color="yellow">等待审批：{pendingApproval}</Text> : null}
+      {pendingApproval ? (
+        <ApprovalPrompt
+          request={pendingApproval}
+          onAnswer={(answer) => approvals?.answer(answer)}
+        />
+      ) : null}
       <CostBar usage={usage} budgetUsd={budgetUsd} />
       <InputBox busy={busy} onSubmit={handleSubmit} />
     </Box>
