@@ -14,6 +14,8 @@ export interface PrintModeOptions {
   prompt: string;
   /** models.json 的自定义模型能力（目录外模型如 glm-4.5-air 需要它解析能力与计价） */
   modelOverrides?: ModelCapabilities[];
+  /** 事件回调（eval/观测用） */
+  onEvent?: (event: LubanEvent) => void;
   /** 测试注入口：绕过真实 provider */
   model?: LanguageModel;
   /** 测试注入口：会话存储目录（默认 ~/.luban/sessions） */
@@ -56,6 +58,7 @@ export async function runPrintMode(options: PrintModeOptions): Promise<PrintMode
 
   try {
     for await (const event of bundle.loop.run(prompt, bundle.sessionId)) {
+      options.onEvent?.(event);
       consumeEvent(event);
     }
   } catch (error) {

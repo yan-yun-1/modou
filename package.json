@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "smoke": "tsx scripts/smoke.mts"
+    "smoke": "tsx scripts/smoke.mts",
+    "eval": "tsx scripts/eval.mts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
