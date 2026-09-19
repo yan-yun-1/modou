@@ -9,8 +9,24 @@ const base: LubanEvent[] = [
   { type: "tool_call", id: "t1", name: "read", args: { path: "src/auth.ts" }, at: 4 },
   { type: "tool_result", id: "t1", output: "export function login() {}", truncated: false, at: 5 },
   { type: "assistant_message", text: "问题在第 3 行，已修复", at: 6 },
-  { type: "usage", inputTokens: 100, outputTokens: 10, cacheReadTokens: 4, costUsd: 0.01, at: 7 },
-  { type: "usage", inputTokens: 50, outputTokens: 5, cacheReadTokens: 2, costUsd: 0.02, at: 8 },
+  {
+    type: "usage",
+    inputTokens: 100,
+    outputTokens: 10,
+    cacheReadTokens: 4,
+    cacheWriteTokens: 1,
+    costUsd: 0.01,
+    at: 7,
+  },
+  {
+    type: "usage",
+    inputTokens: 50,
+    outputTokens: 5,
+    cacheReadTokens: 2,
+    cacheWriteTokens: 2,
+    costUsd: 0.02,
+    at: 8,
+  },
   { type: "approval_request", id: "t2", name: "bash", args: {}, reason: "r", at: 9 },
   { type: "approval_result", id: "t2", granted: true, remembered: false, at: 10 },
   { type: "error", message: "无碍", fatal: false, at: 11 },
@@ -45,6 +61,7 @@ describe("rebuildState", () => {
       inputTokens: 150,
       outputTokens: 15,
       cacheReadTokens: 6,
+      cacheWriteTokens: 3,
       costUsd: 0.03,
     });
   });
@@ -56,6 +73,7 @@ describe("rebuildState", () => {
       inputTokens: 0,
       outputTokens: 0,
       cacheReadTokens: 0,
+      cacheWriteTokens: 0,
       costUsd: 0,
     });
   });

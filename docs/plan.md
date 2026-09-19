@@ -19,15 +19,18 @@
 
 ```ts
 // packages/core/src/events.ts —— 事件是唯一事实来源（append-only）
+// 【C3 契约增补 2026-09-19】新增 text_delta（仅 UI 实时显示，不落盘）；
+// usage 增加 cacheWriteTokens（计费准确性）。以下为最新契约。
 type LubanEvent =
   | { type: 'session_started'; sessionId: string; model: string; at: number }
   | { type: 'user_message'; text: string; at: number }
   | { type: 'assistant_message'; text: string; at: number }        // 流式结束后的完整文本
+  | { type: 'text_delta'; delta: string; at: number }              // 不持久化，仅供 UI
   | { type: 'tool_call'; id: string; name: string; args: unknown; at: number }
   | { type: 'tool_result'; id: string; output: string; truncated: boolean; at: number }
   | { type: 'approval_request'; id: string; name: string; args: unknown; reason: string; at: number }
   | { type: 'approval_result'; id: string; granted: boolean; remembered: boolean; at: number }
-  | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens: number; costUsd: number; at: number }
+  | { type: 'usage'; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number; costUsd: number; at: number }
   | { type: 'error'; message: string; fatal: boolean; at: number };
 
 // packages/core/src/tools/types.ts

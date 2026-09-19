@@ -5,6 +5,7 @@ export interface UsageTotals {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
+  cacheWriteTokens: number;
   costUsd: number;
 }
 
@@ -23,6 +24,7 @@ export function rebuildState(events: LubanEvent[]): RebuiltSession {
     inputTokens: 0,
     outputTokens: 0,
     cacheReadTokens: 0,
+    cacheWriteTokens: 0,
     costUsd: 0,
   };
   const pendingCalls = new Map<string, string>();
@@ -79,6 +81,7 @@ export function rebuildState(events: LubanEvent[]): RebuiltSession {
         usageTotals.inputTokens += event.inputTokens;
         usageTotals.outputTokens += event.outputTokens;
         usageTotals.cacheReadTokens += event.cacheReadTokens;
+        usageTotals.cacheWriteTokens += event.cacheWriteTokens;
         usageTotals.costUsd += event.costUsd;
         break;
       default:

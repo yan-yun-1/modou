@@ -17,6 +17,8 @@ export const lubanEventSchema = z.discriminatedUnion("type", [
   }),
   z.object({ type: z.literal("user_message"), text: z.string(), at: timestamp }),
   z.object({ type: z.literal("assistant_message"), text: z.string(), at: timestamp }),
+  // 流式增量：仅用于 UI 实时显示，主循环不持久化（完整文本以 assistant_message 落盘）
+  z.object({ type: z.literal("text_delta"), delta: z.string(), at: timestamp }),
   z.object({
     type: z.literal("tool_call"),
     id: z.string().min(1),
@@ -51,6 +53,7 @@ export const lubanEventSchema = z.discriminatedUnion("type", [
     inputTokens: z.number().int().nonnegative(),
     outputTokens: z.number().int().nonnegative(),
     cacheReadTokens: z.number().int().nonnegative(),
+    cacheWriteTokens: z.number().int().nonnegative(),
     costUsd: z.number().nonnegative(),
     at: timestamp,
   }),
