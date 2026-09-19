@@ -1,20 +1,12 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
 import { Box } from "ink";
-import {
-  AgentLoop,
-  PermissionEngine,
-  SessionStore,
-  createBuiltinTools,
-  createLanguageModel,
-  buildSystemPrompt,
-  resolveCapabilities,
-} from "@luban/core";
 import { LubanApp } from "./app.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 import { Onboarding } from "./onboarding.js";
-import { loadSettings, loadModelOverrides, resolveApiKey, type Settings } from "./settings.js";
+import { loadSettings, loadModelOverrides, type Settings } from "./settings.js";
 import { runPrintMode } from "./print-mode.js";
+import { createLoopFromSettings } from "./loop-factory.js";
 import { render } from "ink";
 import { buildProgram } from "./program.js";
 
@@ -33,10 +25,9 @@ async function main(options: CliOptions): Promise<void> {
 /** 无头模式：luban -p "任务" */
 async function runPrintCommand(prompt: string): Promise<void> {
   const settings = await requireSettings();
-  const modelOverrides = await loadModelOverrides(homedir());
   const result = await runPrintMode({
     settings,
-    modelOverrides,
+    modelOverrides: await loadModelOverrides(homedir()),
     cwd: process.cwd(),
     prompt,
   });
@@ -66,45 +57,21 @@ async function runInteractive(): Promise<void> {
     settings = await runOnboarding(home);
   }
 
-  const modelOverrides = await loadModelOverrides(home);
-  const capabilities = resolveCapabilities(settings.provider, settings.modelId, modelOverrides);
-  const model = createLanguageModel({
-    provider: settings.provider,
-    modelId: settings.modelId,
-    apiKey: resolveApiKey(settings),
-    baseURL: settings.baseURL,
-  });
-  const tools = createBuiltinTools();
   const approvals = new ApprovalBridge();
-  const store = new SessionStore();
-  const sessionId = await store.create();
-  let spent = 0;
-
-  const loop = new AgentLoop({
-    model,
-    capabilities,
-    tools,
-    store,
-    permissions: new PermissionEngine({ mode: settings.permissionMode ?? "default" }),
-    approve: (req) => approvals.request(req),
-    systemPrompt: buildSystemPrompt({
-      cwd: process.cwd(),
-      platform: process.platform,
-      tools: tools.names(),
-    }),
+  const bundle = await createLoopFromSettings({
+    settings,
     cwd: process.cwd(),
-    isOverBudget: () => settings.budgetUsd !== undefined && spent > settings.budgetUsd,
+    modelOverrides: await loadModelOverrides(home),
+    approvals,
   });
 
   const instance = render(
     <LubanApp
-      loop={loop}
-      sessionId={sessionId}
-      approvals={approvals}
+      loop={bundle.loop}
+      sessionId={bundle.sessionId}
+      approvals={bundle.approvals}
       budgetUsd={settings.budgetUsd}
-      onUsageChange={(usage) => {
-        spent = usage.costUsd;
-      }}
+      onUsageChange={(usage) => bundle.updateSpent(usage.costUsd)}
     />,
   );
   await instance.waitUntilExit();

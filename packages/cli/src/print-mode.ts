@@ -1,17 +1,12 @@
-import {
-  AgentLoop,
-  PermissionEngine,
+import type {
+  LanguageModel,
+  LubanEvent,
+  ModelCapabilities,
   SessionStore,
-  createBuiltinTools,
-  createLanguageModel,
-  buildSystemPrompt,
-  resolveCapabilities,
-  type LanguageModel,
-  type LubanEvent,
-  type ModelCapabilities,
-  type UsageTotals,
+  UsageTotals,
 } from "@luban/core";
-import { resolveApiKey, type Settings } from "./settings.js";
+import type { Settings } from "./settings.js";
+import { createLoopFromSettings } from "./loop-factory.js";
 
 export interface PrintModeOptions {
   settings: Settings;
@@ -41,55 +36,26 @@ const ZERO_USAGE: UsageTotals = {
 
 /**
  * 无头模式（luban -p "..."）：单任务执行后退出。
- * 没有人在终端里审批——所有 ask 一律拒绝，模型会收到拒绝原因并自行收尾；
+ * 没有人在终端里审批——所有 ask 一律拒绝（工厂的无桥语义），模型会收到拒绝原因并自行收尾；
  * 因此默认权限模式下无头任务只读，写盘/执行需要在 yolo 或规则白名单下进行。
  */
 export async function runPrintMode(options: PrintModeOptions): Promise<PrintModeResult> {
   const { settings, cwd, prompt } = options;
-  const capabilities = resolveCapabilities(
-    settings.provider,
-    settings.modelId,
-    options.modelOverrides,
-  );
-  const model =
-    options.model ??
-    createLanguageModel({
-      provider: settings.provider,
-      modelId: settings.modelId,
-      apiKey: resolveApiKey(settings),
-      baseURL: settings.baseURL,
-    });
-  const tools = createBuiltinTools();
-  const store = options.store ?? new SessionStore();
-  const sessionId = `print-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  await store.create(sessionId);
-
-  let spent = 0;
-  const budgetUsd = settings.budgetUsd;
-
-  const loop = new AgentLoop({
-    model,
-    capabilities,
-    tools,
-    store,
-    permissions: new PermissionEngine({ mode: settings.permissionMode ?? "default" }),
-    approve: async () => ({ granted: false, remembered: false }),
-    systemPrompt: buildSystemPrompt({
-      cwd,
-      platform: process.platform,
-      tools: tools.names(),
-    }),
+  const bundle = await createLoopFromSettings({
+    settings,
     cwd,
-    isOverBudget: () => budgetUsd !== undefined && spent > budgetUsd,
+    modelOverrides: options.modelOverrides,
+    model: options.model,
+    store: options.store,
+    sessionId: `print-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
   });
 
   let output = "";
-  let costUsd = 0;
   let fatal = false;
   const usage: UsageTotals = { ...ZERO_USAGE };
 
   try {
-    for await (const event of loop.run(prompt, sessionId)) {
+    for await (const event of bundle.loop.run(prompt, bundle.sessionId)) {
       consumeEvent(event);
     }
   } catch (error) {
@@ -108,8 +74,7 @@ export async function runPrintMode(options: PrintModeOptions): Promise<PrintMode
         usage.cacheReadTokens += event.cacheReadTokens;
         usage.cacheWriteTokens += event.cacheWriteTokens;
         usage.costUsd += event.costUsd;
-        costUsd = usage.costUsd;
-        spent = usage.costUsd;
+        bundle.updateSpent(usage.costUsd);
         break;
       case "error":
         if (event.fatal) {
@@ -122,5 +87,5 @@ export async function runPrintMode(options: PrintModeOptions): Promise<PrintMode
     }
   }
 
-  return { exitCode: fatal || output.length === 0 ? 1 : 0, output, costUsd };
+  return { exitCode: fatal || output.length === 0 ? 1 : 0, output, costUsd: usage.costUsd };
 }
