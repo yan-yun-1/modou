@@ -8,7 +8,8 @@ export type CommandResult =
   | { action: "rollback"; n: number }
   | { action: "sessions" }
   | { action: "resume"; id: string }
-  | { action: "model" };
+  | { action: "model" }
+  | { action: "mcp" };
 
 /**
  * 解析斜杠命令。返回 action:
@@ -50,6 +51,8 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
     }
     case "model":
       return { action: "model" };
+    case "mcp":
+      return { action: "mcp" };
     case "rollback": {
       const n = Number(arg);
       if (!arg || !Number.isInteger(n) || n < 1) {

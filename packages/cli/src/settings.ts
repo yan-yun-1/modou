@@ -22,6 +22,23 @@ export const settingsSchema = z.object({
   baseURL: z.string().optional(),
   permissionMode: z.enum(["plan", "default", "yolo"]).default("default"),
   budgetUsd: z.number().positive().optional(),
+  /** MCP servers（契约增补：plan-m2 N3） */
+  mcpServers: z
+    .record(
+      z.string().min(1),
+      z.union([
+        z.object({
+          command: z.string().min(1),
+          args: z.array(z.string()).optional(),
+          env: z.record(z.string(), z.string()).optional(),
+        }),
+        z.object({
+          url: z.string().min(1),
+          headers: z.record(z.string(), z.string()).optional(),
+        }),
+      ]),
+    )
+    .optional(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

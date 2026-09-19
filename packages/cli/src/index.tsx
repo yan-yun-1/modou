@@ -87,6 +87,7 @@ async function runInteractive(useContinue: boolean): Promise<void> {
       loop={bundle.loop}
       sessionId={bundle.sessionId}
       store={bundle.store}
+      mcpStatus={bundle.mcpStatus}
       approvals={bundle.approvals}
       checkpointer={bundle.checkpointer}
       budgetUsd={settings.budgetUsd}

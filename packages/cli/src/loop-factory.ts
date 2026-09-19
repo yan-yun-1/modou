@@ -1,5 +1,6 @@
 import {
   AgentLoop,
+  McpConnection,
   PermissionEngine,
   SessionStore,
   createBuiltinTools,
@@ -8,6 +9,7 @@ import {
   formatAgreements,
   loadAgreements,
   buildRepoMap,
+  mcpToolsFromConnection,
   resolveCapabilities,
   type Checkpointer,
   type LanguageModel,
@@ -50,9 +52,18 @@ export interface LoopBundle {
   /** 仅交互模式存在 */
   approvals?: ApprovalBridge;
   checkpointer?: Checkpointer;
+  /** MCP servers 连接状态 */
+  mcpStatus: McpStatus[];
   /** 预算钩子的写入口：把本会话累计成本喂给 isOverBudget */
   updateSpent: (costUsd: number) => void;
   isOverBudget: () => boolean;
+}
+
+export interface McpStatus {
+  name: string;
+  connected: boolean;
+  tools: number;
+  error?: string;
 }
 
 /**
@@ -77,6 +88,27 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
   const sessionId =
     options.sessionId ?? `session-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
   await store.create(sessionId);
+
+  // MCP servers（plan-m2 N3）：连接并把工具注册进同一 registry；单个失败不阻断启动
+  const mcpStatus: McpStatus[] = [];
+  for (const [name, config] of Object.entries(settings.mcpServers ?? {})) {
+    try {
+      const connection = new McpConnection(name, config);
+      await connection.connect();
+      const mcpTools = await mcpToolsFromConnection(connection);
+      for (const tool of mcpTools) {
+        tools.register(tool);
+      }
+      mcpStatus.push({ name, connected: true, tools: mcpTools.length });
+    } catch (error) {
+      mcpStatus.push({
+        name,
+        connected: false,
+        tools: 0,
+        error: (error as Error).message,
+      });
+    }
+  }
 
   // 上下文装配（plan-m1 K1/K3）：基础提示词 + AGENTS.md 约定 + repo map
   const [agreementSections, repoMap] = await Promise.all([
@@ -112,6 +144,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     sessionId,
     store,
     systemPrompt,
+    mcpStatus,
     approvals: options.approvals,
     checkpointer: options.checkpointer,
     updateSpent: (costUsd: number) => {

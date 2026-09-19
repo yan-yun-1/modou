@@ -65,3 +65,9 @@ describe("parseCommand", () => {
     expect((result as { text: string }).text).toContain("用法");
   });
 });
+
+describe("/mcp", () => {
+  it("parses", () => {
+    expect(parseCommand("/mcp", usage)).toEqual({ action: "mcp" });
+  });
+});

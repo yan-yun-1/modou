@@ -1,11 +1,19 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 export interface McpStdioConfig {
   command: string;
   args?: string[];
   env?: Record<string, string>;
 }
+
+export interface McpHttpConfig {
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export type McpServerConfig = McpStdioConfig | McpHttpConfig;
 
 export interface McpToolInfo {
   name: string;
@@ -16,28 +24,36 @@ export interface McpToolInfo {
 
 const CLIENT_INFO = { name: "luban", version: "0.3.0" };
 
+function isHttpConfig(config: McpServerConfig): config is McpHttpConfig {
+  return "url" in config;
+}
+
 /**
- * 单个 MCP server 的连接封装（plan-m2 N1）：
- * stdio 传输（子进程）+ initialize 握手 + 工具列举/调用。
- * close 后 isConnected 变为 false，后续调用给出可读错误（不中断宿主会话）。
+ * 单个 MCP server 的连接封装（plan-m2 N1/N3）：
+ * - stdio 传输（子进程）或 Streamable HTTP 传输
+ * - initialize 握手 + 工具列举/调用
+ * - close 后 isConnected 变为 false，后续调用给出可读错误（不中断宿主会话）
  */
 export class McpConnection {
   readonly name: string;
-  readonly config: McpStdioConfig;
+  readonly config: McpServerConfig;
   #client: Client | null = null;
 
-  constructor(name: string, config: McpStdioConfig) {
+  constructor(name: string, config: McpServerConfig) {
     this.name = name;
     this.config = config;
   }
 
   async connect(): Promise<void> {
-    const env = this.config.env as Record<string, string> | undefined;
-    const transport = new StdioClientTransport({
-      command: this.config.command,
-      args: this.config.args ?? [],
-      env,
-    });
+    const transport = isHttpConfig(this.config)
+      ? new StreamableHTTPClientTransport(new URL(this.config.url), {
+          requestInit: { headers: this.config.headers },
+        })
+      : new StdioClientTransport({
+          command: this.config.command,
+          args: this.config.args ?? [],
+          env: this.config.env as Record<string, string> | undefined,
+        });
     this.#client = new Client(CLIENT_INFO, { capabilities: {} });
     await this.#client.connect(transport);
   }

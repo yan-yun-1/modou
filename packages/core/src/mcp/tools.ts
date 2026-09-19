@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { unifiedDiff } from "../diff.js";
 import type { Tool } from "../tools/types.js";
 import type { McpConnection } from "./client.js";
 

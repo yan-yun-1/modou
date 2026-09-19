@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useApp } from "ink";
 import type { Checkpointer, LubanEvent, UsageTotals, ApprovalRequest } from "@luban/core";
 import { ApprovalBridge } from "./approval-bridge.js";
+import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { CostBar } from "./components/CostBar.js";
 import { InputBox } from "./components/InputBox.js";
@@ -21,6 +22,8 @@ export interface LubanAppProps {
   checkpointer?: Checkpointer;
   /** 会话存储：/sessions 与 /resume 需要 */
   store?: StoreLike;
+  /** MCP servers 连接状态（入口层经工厂返回） */
+  mcpStatus?: McpStatus[];
   /** /model 触发：入口层结束当前会话并以新模型重开 */
   onModelSwitch?: () => void;
   budgetUsd?: number;
@@ -56,6 +59,7 @@ export function LubanApp({
   approvals,
   checkpointer,
   store,
+  mcpStatus,
   onModelSwitch,
   budgetUsd,
   onExit,
@@ -251,6 +255,25 @@ export function LubanApp({
       }
       if (command.action === "model") {
         onModelSwitch?.();
+        return;
+      }
+      if (command.action === "mcp") {
+        const servers = mcpStatus ?? [];
+        setItems((prev) => [
+          ...prev,
+          {
+            kind: "assistant",
+            text:
+              servers.length === 0
+                ? "未配置 MCP server（settings.json 的 mcpServers 字段）"
+                : `MCP servers：\n${servers
+                    .map(
+                      (s) =>
+                        `  ${s.connected ? "✓" : "✗"} ${s.name}（${s.tools} 个工具${s.error ? `，错误：${s.error}` : ""}）`,
+                    )
+                    .join("\n")}`,
+          },
+        ]);
         return;
       }
       void runTask(trimmed);
