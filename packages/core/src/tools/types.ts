@@ -12,6 +12,8 @@ export interface ToolResult {
   truncated?: boolean;
 }
 
+export type ToolKind = "read" | "write" | "execute";
+
 /**
  * 工具是引擎与外部世界交互的唯一通道（ACI 原则：工具面质量优先于数量）。
  * kind 驱动权限引擎：read 可自动放行，write/execute 需审批。
@@ -19,7 +21,7 @@ export interface ToolResult {
 export interface Tool<T = unknown> {
   name: string;
   description: string;
-  kind: "read" | "write" | "execute";
+  kind: ToolKind;
   schema: z.ZodType<T>;
   run(args: T, ctx: ToolContext): Promise<ToolResult>;
 }
