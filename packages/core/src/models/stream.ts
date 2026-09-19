@@ -7,6 +7,7 @@ export interface StreamTurnOptions {
   model: LanguageModel;
   messages: ModelMessage[];
   capabilities: ModelCapabilities;
+  system?: string;
   tools?: ToolSet;
   signal?: AbortSignal;
   /** 可注入时钟，测试用；默认 Date.now */
@@ -19,7 +20,7 @@ export interface StreamTurnOptions {
  * text_delta 仅供 UI 实时渲染，不落盘；assistant_message 是持久化的唯一文本事实。
  */
 export async function* streamTurn(options: StreamTurnOptions): AsyncGenerator<LubanEvent> {
-  const { model, messages, capabilities, tools, signal, at = Date.now } = options;
+  const { model, messages, capabilities, system, tools, signal, at = Date.now } = options;
   let text = "";
   let emitted = false;
 
@@ -30,7 +31,7 @@ export async function* streamTurn(options: StreamTurnOptions): AsyncGenerator<Lu
     }
   };
 
-  const result = streamText({ model, messages, tools, abortSignal: signal });
+  const result = streamText({ model, messages, system, tools, abortSignal: signal });
 
   for await (const part of result.fullStream) {
     switch (part.type) {
