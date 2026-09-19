@@ -53,7 +53,7 @@ const cases: EvalCase[] = [
   },
   {
     name: "grep-locate",
-    prompt: "用搜索找出哪个文件定义了 multiply，并告诉我文件名。",
+    prompt: "用 grep 工具搜索 multiply 被定义在哪个文件，回答中必须给出完整的文件名（含扩展名）。",
     check: async ({ output, toolCalls }) => {
       if (!toolCalls.includes("grep")) return "没有调用 grep 工具";
       return output.includes("math.js") ? null : `输出未指出 math.js：${output.slice(0, 80)}`;
@@ -97,7 +97,7 @@ const cases: EvalCase[] = [
   {
     name: "edit-append-function",
     mode: "yolo",
-    prompt: "在 math.js 末尾新增一个函数 sub(a, b)，返回 a - b。",
+    prompt: "使用 edit 或 write 工具直接修改 math.js 文件：在文件末尾新增函数 sub(a, b)，返回 a - b。不要只在回复中给出代码。",
     check: async ({ sandbox, toolCalls }) => {
       if (!toolCalls.includes("edit") && !toolCalls.includes("write")) {
         return "没有调用 edit/write 工具";
@@ -109,7 +109,7 @@ const cases: EvalCase[] = [
   {
     name: "edit-fix-typo",
     mode: "yolo",
-    prompt: "math.js 里 mull 函数名拼写错误，把它改成 mul，并保持函数体不变。",
+    prompt: "使用 edit 工具直接修改 math.js 文件：把拼写错误的函数名 mull 改成 mul，函数体保持不变。不要只在回复中给出代码。",
     check: async ({ sandbox }) => {
       const content = await readFile(join(sandbox, "math.js"), "utf8");
       return content.includes("function mul(") && !content.includes("function mull(")
@@ -154,7 +154,8 @@ async function makeSandbox(kind: "plain" | "tests"): Promise<string> {
   if (kind === "tests") {
     await writeFile(
       join(sandbox, "buggy.js"),
-      "function slug(s) {\n  return s.toLowerCase().trim().replace(/ +/g, '-');\n}\n\nmodule.exports = { slug };\n",
+      // 故意缺少 toLowerCase：slug('Hello World') 会得到 'Hello-World'，测试失败，要求模型修复
+      "function slug(s) {\n  return s.trim().replace(/ +/g, '-');\n}\n\nmodule.exports = { slug };\n",
       "utf8",
     );
     await writeFile(
