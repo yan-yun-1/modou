@@ -1,0 +1,23 @@
+{
+  "name": "@luban/cli",
+  "version": "0.0.1",
+  "description": "鲁班 Luban 终端 CLI：Agent 编程引擎的交互界面",
+  "type": "module",
+  "bin": {
+    "luban": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@luban/core": "workspace:*",
+    "commander": "^14.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.0.0"
+  }
+}
