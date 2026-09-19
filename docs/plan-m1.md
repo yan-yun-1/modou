@@ -8,11 +8,11 @@
 
 TDD 红绿循环、一任务一提交（`feat(scope): …`）、偏离计划即停、每 3–5 个任务人工检查点、预计时间按 ×3 缓冲（M1 总量约 45–55 净工时，符合 2 周全职）。
 
-## 契约增补预告（实现对应任务时回写 plan.md）
+## 契约增补记录（实现对应任务时回写）
 
-1. `approval_request` 增加可选字段 `diff?: string`（write/edit 审批时携带 unified diff 供 UI 展示）。
-2. 新增事件 `{ type: 'compaction'; summary: string; originalMessageCount: number; at: number }`（落盘，供回放与 UI 提示"已压缩"）。
-3. `AgentLoopDeps` 增加 `checkpointer?: Checkpointer` 与 `agreements?: AgreementsLoader`（依赖注入，core 不直接依赖 git/tree-sitter 实现）。
+1. ✅ **已应用（I3，commit 331c0bf）**：`approval_request` 增加可选字段 `diff?: string`；`ApprovalRequest` 接口同步增加；`Tool` 接口新增可选 `preview(args, ctx)`。
+2. 新增事件 `{ type: 'compaction'; summary: string; originalMessageCount: number; at: number }`（落盘，供回放与 UI 提示"已压缩"）——K2 实现时应用。
+3. `AgentLoopDeps` 增加 `checkpointer?: Checkpointer` 与上下文加载依赖注入——J2/K1 实现时应用。
 
 ---
 
