@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useApp } from "ink";
 import type { LubanEvent, UsageTotals, ApprovalRequest } from "@luban/core";
+import { ApprovalBridge } from "./approval-bridge.js";
+import { parseCommand } from "./commands.js";
 import { CostBar } from "./components/CostBar.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
 import { MessageList, type DisplayItem } from "./components/MessageList.js";
-import { ApprovalBridge } from "./approval-bridge.js";
 
 export interface LoopLike {
   run(input: string, sessionId: string): AsyncIterable<LubanEvent>;
@@ -135,19 +136,14 @@ export function LubanApp({ loop, sessionId, approvals, budgetUsd, onExit }: Luba
       if (!trimmed) {
         return;
       }
-      if (trimmed === "/exit") {
+      const command = parseCommand(trimmed, usage);
+      if (command.action === "exit") {
         onExit?.();
         exit();
         return;
       }
-      if (trimmed === "/cost") {
-        setItems((prev) => [
-          ...prev,
-          {
-            kind: "assistant",
-            text: `本会话用量：输入 ${usage.inputTokens} tok，输出 ${usage.outputTokens} tok，成本 ${usage.costUsd.toFixed(6)} USD`,
-          },
-        ]);
+      if (command.action === "message") {
+        setItems((prev) => [...prev, { kind: "assistant", text: command.text }]);
         return;
       }
       void runTask(trimmed);

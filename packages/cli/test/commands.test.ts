@@ -1,0 +1,40 @@
+import { describe, expect, it } from "vitest";
+import type { UsageTotals } from "@luban/core";
+import { parseCommand } from "../src/commands.js";
+
+const usage: UsageTotals = {
+  inputTokens: 100,
+  outputTokens: 50,
+  cacheReadTokens: 20,
+  cacheWriteTokens: 0,
+  costUsd: 0.000315,
+};
+
+describe("parseCommand", () => {
+  it("passes plain input through to the model", () => {
+    expect(parseCommand("修复登录 bug", usage)).toEqual({ action: "none" });
+  });
+
+  it("shows cost detail for /cost", () => {
+    const result = parseCommand("/cost", usage);
+    expect(result).toMatchObject({ action: "message" });
+    expect((result as { text: string }).text).toContain("100");
+    expect((result as { text: string }).text).toContain("0.000315");
+  });
+
+  it("exits on /exit and /quit", () => {
+    expect(parseCommand("/exit", usage)).toEqual({ action: "exit" });
+    expect(parseCommand("/quit", usage)).toEqual({ action: "exit" });
+  });
+
+  it("lists available commands for /help and unknown commands", () => {
+    expect(parseCommand("/help", usage)).toMatchObject({ action: "message" });
+    const unknown = parseCommand("/whatever", usage);
+    expect(unknown).toMatchObject({ action: "message" });
+    expect((unknown as { text: string }).text).toContain("/cost");
+  });
+
+  it("is case-insensitive and tolerates whitespace", () => {
+    expect(parseCommand("  /EXIT  ", usage)).toEqual({ action: "exit" });
+  });
+});
