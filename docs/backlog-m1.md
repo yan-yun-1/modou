@@ -24,3 +24,15 @@
 12. cli 的 `index.tsx` 中 `runInteractive` 与 `runPrintCommand` 有重复的模型/loop 装配逻辑，可提炼 `createLoopFromSettings()`。
 13. Windows 路径显示统一正斜杠（工具输出混有 `\` 与 `/`）。
 14. core 测试覆盖率 90.8%，session-store 的 append 队列异常分支未覆盖。
+
+## M0 补丁已解决（历史记录）
+
+15. ~~模型选择错误后无法重选~~：`luban model` 子命令已上线（复用 Onboarding 组件，`base` 合并保留权限/预算）。遗留的 TUI 内切换见下条。
+
+## 会话内切换模型（/model）—— M1
+
+16. TUI 内 `/model` 命令：保存新配置 → 结束当前会话 → 自动以新模型开新会话。前置依赖 #12 的 `createLoopFromSettings()` 提炼。语义是"新会话用新模型"，不做运行中热切换。
+
+## 明确不做（Non-goals）
+
+- **core 层运行中热切换模型**：当前会话的消息历史、上下文窗口与计价均绑定原模型能力声明，热切换会让 rebuild 逻辑背上跨模型兼容的复杂度，收益极低。换模型 = 开新会话/新任务。

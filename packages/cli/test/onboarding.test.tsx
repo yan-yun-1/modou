@@ -74,4 +74,37 @@ describe("Onboarding", () => {
     expect(done[0]?.apiKey).toBeUndefined();
     harness.unmount();
   }, 30_000);
+
+  it("merges base settings so re-selection keeps permissionMode and budget", async () => {
+    const done: Settings[] = [];
+    const base: Settings = {
+      provider: "deepseek",
+      modelId: "deepseek-chat",
+      apiKey: "old-key",
+      permissionMode: "yolo",
+      budgetUsd: 5,
+    };
+    const harness = renderInk(<Onboarding home={home} base={base} onDone={(s) => done.push(s)} />);
+    await settle();
+
+    // 选 anthropic → 默认模型 → 输入新 key
+    harness.stdin.write("\r");
+    await settle();
+    harness.stdin.write("\r");
+    await settle();
+    harness.stdin.write("sk-new-key");
+    await settle();
+    harness.stdin.write("\r");
+    await settle(150);
+
+    expect(done).toHaveLength(1);
+    expect(done[0]).toMatchObject({
+      provider: "anthropic",
+      modelId: "claude-sonnet-4-5",
+      apiKey: "sk-new-key",
+      permissionMode: "yolo",
+      budgetUsd: 5,
+    });
+    harness.unmount();
+  }, 30_000);
 });

@@ -27,12 +27,14 @@ const DEFAULT_MODELS: Record<ProviderName, string> = {
 
 export interface OnboardingProps {
   home: string;
+  /** 既有设置：重新选择模型时传入，保存时合并（保留 permissionMode/budgetUsd 等） */
+  base?: Settings;
   onDone: (settings: Settings) => void;
   onError?: (message: string) => void;
 }
 
-/** 首次运行引导：选 provider → 模型 ID → API Key（Ollama 跳过）→ 写入设置。 */
-export function Onboarding({ home, onDone, onError }: OnboardingProps) {
+/** 模型配置引导（首次运行与 `luban model` 重选共用）：选 provider → 模型 ID → API Key（Ollama 跳过）→ 写入设置。 */
+export function Onboarding({ home, base, onDone, onError }: OnboardingProps) {
   const [step, setStep] = useState<"provider" | "model" | "key" | "saving">("provider");
   const [providerIndex, setProviderIndex] = useState(0);
   const [modelId, setModelId] = useState("");
@@ -72,10 +74,13 @@ export function Onboarding({ home, onDone, onError }: OnboardingProps) {
   const finish = async (p: ProviderName, model: string, key: string) => {
     setStep("saving");
     const settings: Settings = {
+      ...base,
       provider: p,
       modelId: model,
-      apiKey: p === "ollama" ? undefined : key || undefined,
-      permissionMode: "default",
+      // 切到 ollama 时旧 key 无意义；留空提交视为沿用原 provider 的 key（如仅换同厂商模型变体）
+      apiKey: p === "ollama" ? undefined : key || base?.apiKey || undefined,
+      permissionMode: base?.permissionMode ?? "default",
+      budgetUsd: base?.budgetUsd,
     };
     try {
       await saveSettings(settings, home);
@@ -88,7 +93,7 @@ export function Onboarding({ home, onDone, onError }: OnboardingProps) {
   if (step === "provider") {
     return (
       <Box flexDirection="column" gap={1}>
-        <Text bold>欢迎使用鲁班（Luban）——首次运行引导</Text>
+        <Text bold>鲁班模型配置</Text>
         <Text>选择模型提供商（↑/↓ 移动，回车确认）：</Text>
         {providerNames.map((name, i) => (
           <Text key={name} color={i === providerIndex ? "green" : undefined}>

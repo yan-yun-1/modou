@@ -22,9 +22,10 @@ pnpm install
 pnpm build
 node packages/cli/dist/index.js        # 交互模式（首次运行进入引导）
 node packages/cli/dist/index.js -p "读取 package.json 并总结这个项目"   # 无头模式
+node packages/cli/dist/index.js model  # 重新选择模型（写入 settings.json，重启后生效）
 ```
 
-首次运行引导：选择模型提供商 → 确认模型 ID → 输入 API Key（Ollama 跳过）。配置写入 `~/.luban/settings.json`。
+首次运行引导：选择模型提供商 → 确认模型 ID → 输入 API Key（Ollama 跳过）。配置写入 `~/.luban/settings.json`；选错了用 `model` 子命令重选（权限模式与预算会保留）。
 
 本地模型（免 Key）示例：
 
