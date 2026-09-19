@@ -19,6 +19,8 @@ export interface LubanAppProps {
   approvals?: ApprovalBridge;
   budgetUsd?: number;
   onExit?: () => void;
+  /** 用量变化回调（入口层用于预算钩子） */
+  onUsageChange?: (usage: UsageTotals) => void;
 }
 
 const ZERO_USAGE: UsageTotals = {
@@ -38,7 +40,14 @@ function summarizeOutput(output: string): string {
   return output.length > 120 ? `${output.slice(0, 120)}…` : output;
 }
 
-export function LubanApp({ loop, sessionId, approvals, budgetUsd, onExit }: LubanAppProps) {
+export function LubanApp({
+  loop,
+  sessionId,
+  approvals,
+  budgetUsd,
+  onExit,
+  onUsageChange,
+}: LubanAppProps) {
   const { exit } = useApp();
   const [items, setItems] = useState<DisplayItem[]>([]);
   const [streaming, setStreaming] = useState("");
@@ -47,6 +56,8 @@ export function LubanApp({ loop, sessionId, approvals, budgetUsd, onExit }: Luba
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const loopRef = useRef(loop);
   const running = useRef(false);
+  const onUsageChangeRef = useRef(onUsageChange);
+  onUsageChangeRef.current = onUsageChange;
 
   // 审批桥订阅：桥上有待审批请求时展示审批 UI
   useEffect(() => {
@@ -90,13 +101,17 @@ export function LubanApp({ loop, sessionId, approvals, budgetUsd, onExit }: Luba
         ]);
         break;
       case "usage":
-        setUsage((prev) => ({
-          inputTokens: prev.inputTokens + event.inputTokens,
-          outputTokens: prev.outputTokens + event.outputTokens,
-          cacheReadTokens: prev.cacheReadTokens + event.cacheReadTokens,
-          cacheWriteTokens: prev.cacheWriteTokens + event.cacheWriteTokens,
-          costUsd: prev.costUsd + event.costUsd,
-        }));
+        setUsage((prev) => {
+          const next = {
+            inputTokens: prev.inputTokens + event.inputTokens,
+            outputTokens: prev.outputTokens + event.outputTokens,
+            cacheReadTokens: prev.cacheReadTokens + event.cacheReadTokens,
+            cacheWriteTokens: prev.cacheWriteTokens + event.cacheWriteTokens,
+            costUsd: prev.costUsd + event.costUsd,
+          };
+          onUsageChangeRef.current?.(next);
+          return next;
+        });
         break;
       case "error":
         setItems((prev) => [...prev, { kind: "error", text: event.message }]);

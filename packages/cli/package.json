@@ -24,6 +24,7 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.31",
+    "ai": "^7.0.106",
     "typescript": "^5.9.2",
     "vitest": "^3.0.0"
   }

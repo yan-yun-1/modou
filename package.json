@@ -12,12 +12,14 @@
     "test": "turbo run test",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.10.0",
     "prettier": "^3.9.8",
+    "tsx": "^4.23.13",
     "turbo": "^2.5.4",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.70.0"
