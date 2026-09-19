@@ -51,7 +51,7 @@ pnpm test          # 全部测试（120+）
 pnpm build         # 构建
 pnpm lint          # eslint
 pnpm format        # prettier
-LUBAN_SMOKE=1 pnpm smoke   # 真实端到端冒烟（默认本地 Ollama）
+LUBAN_SMOKE=1 pnpm smoke   # 真实端到端冒烟（默认读 ~/.luban/settings.json 的模型）
 ```
 
 架构与模块导读见 [docs/dev.md](docs/dev.md)；产品路线图见 [docs/PRD.md](docs/PRD.md)。
