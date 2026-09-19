@@ -127,48 +127,60 @@ export class AgentLoop {
       step++;
       let madeToolCall = false;
 
-      for await (const event of streamTurn({
-        model,
-        messages,
-        capabilities,
-        system: systemPrompt,
-        tools: Object.keys(toolSet).length > 0 ? toolSet : undefined,
-        signal,
-      })) {
-        switch (event.type) {
-          case "text_delta":
-            // 实时增量只给 UI，不落盘
-            yield event;
-            break;
-          case "assistant_message":
-            messages.push({
-              role: "assistant",
-              content: [{ type: "text", text: event.text }],
-            });
-            yield await persist(event);
-            break;
-          case "usage":
-            yield await persist(event);
-            break;
-          case "tool_call":
-            madeToolCall = true;
-            messages.push({
-              role: "assistant",
-              content: [
-                {
-                  type: "tool-call",
-                  toolCallId: event.id,
-                  toolName: event.name,
-                  input: event.args,
-                },
-              ],
-            });
-            yield await persist(event);
-            yield* this.#handleToolCall(event, sessionId, messages, persist, at);
-            break;
-          default:
-            break;
+      // 流式异常（网络断、provider 5xx、流内 error 片段）不冒泡：
+      // 落盘 fatal error 事件后正常结束 run，会话可继续（下轮 run 重建历史）。
+      try {
+        for await (const event of streamTurn({
+          model,
+          messages,
+          capabilities,
+          system: systemPrompt,
+          tools: Object.keys(toolSet).length > 0 ? toolSet : undefined,
+          signal,
+        })) {
+          switch (event.type) {
+            case "text_delta":
+              // 实时增量只给 UI，不落盘
+              yield event;
+              break;
+            case "assistant_message":
+              messages.push({
+                role: "assistant",
+                content: [{ type: "text", text: event.text }],
+              });
+              yield await persist(event);
+              break;
+            case "usage":
+              yield await persist(event);
+              break;
+            case "tool_call":
+              madeToolCall = true;
+              messages.push({
+                role: "assistant",
+                content: [
+                  {
+                    type: "tool-call",
+                    toolCallId: event.id,
+                    toolName: event.name,
+                    input: event.args,
+                  },
+                ],
+              });
+              yield await persist(event);
+              yield* this.#handleToolCall(event, sessionId, messages, persist, at);
+              break;
+            default:
+              break;
+          }
         }
+      } catch (error) {
+        yield await persist({
+          type: "error",
+          message: `模型调用失败：${(error as Error).message}`,
+          fatal: true,
+          at: at(),
+        });
+        break;
       }
 
       if (!madeToolCall) {
