@@ -52,4 +52,16 @@ describe("parseCommand", () => {
     expect((result as { text: string }).text).toContain("用法");
     expect(parseCommand("/rollback abc", usage)).toMatchObject({ action: "message" });
   });
+
+  it("parses /sessions, /resume <id> and /model", () => {
+    expect(parseCommand("/sessions", usage)).toEqual({ action: "sessions" });
+    expect(parseCommand("/resume s-abc", usage)).toEqual({ action: "resume", id: "s-abc" });
+    expect(parseCommand("/model", usage)).toEqual({ action: "model" });
+  });
+
+  it("rejects /resume without an id", () => {
+    const result = parseCommand("/resume", usage);
+    expect(result).toMatchObject({ action: "message" });
+    expect((result as { text: string }).text).toContain("用法");
+  });
 });

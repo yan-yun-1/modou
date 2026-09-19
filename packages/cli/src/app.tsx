@@ -19,10 +19,18 @@ export interface LubanAppProps {
   approvals?: ApprovalBridge;
   /** 回滚点：由入口层创建（非 git 目录自动降级） */
   checkpointer?: Checkpointer;
+  /** 会话存储：/sessions 与 /resume 需要 */
+  store?: StoreLike;
+  /** /model 触发：入口层结束当前会话并以新模型重开 */
+  onModelSwitch?: () => void;
   budgetUsd?: number;
   onExit?: () => void;
   /** 用量变化回调（入口层用于预算钩子） */
   onUsageChange?: (usage: UsageTotals) => void;
+}
+
+export interface StoreLike {
+  list(): Promise<string[]>;
 }
 
 const ZERO_USAGE: UsageTotals = {
@@ -47,6 +55,8 @@ export function LubanApp({
   sessionId,
   approvals,
   checkpointer,
+  store,
+  onModelSwitch,
   budgetUsd,
   onExit,
   onUsageChange,
@@ -57,6 +67,7 @@ export function LubanApp({
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<UsageTotals>(ZERO_USAGE);
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState(sessionId);
   const loopRef = useRef(loop);
   const running = useRef(false);
   const onUsageChangeRef = useRef(onUsageChange);
@@ -132,7 +143,7 @@ export function LubanApp({
       running.current = true;
       setBusy(true);
       try {
-        for await (const event of loopRef.current.run(input, sessionId)) {
+        for await (const event of loopRef.current.run(input, activeSessionId)) {
           applyEvent(event);
         }
       } catch (error) {
@@ -145,7 +156,7 @@ export function LubanApp({
         setBusy(false);
       }
     },
-    [applyEvent, sessionId],
+    [activeSessionId, applyEvent],
   );
 
   const handleSubmit = useCallback(
@@ -172,7 +183,7 @@ export function LubanApp({
           ]);
           return;
         }
-        const list = await checkpointer.list(sessionId);
+        const list = await checkpointer.list(activeSessionId);
         setItems((prev) => [
           ...prev,
           {
@@ -193,16 +204,58 @@ export function LubanApp({
           ]);
           return;
         }
-        const result = await checkpointer.restore(sessionId, command.n);
+        const result = await checkpointer.restore(activeSessionId, command.n);
         setItems((prev) => [
           ...prev,
           { kind: result.ok ? "assistant" : "error", text: result.message },
         ]);
         return;
       }
+      if (command.action === "sessions") {
+        if (!store) {
+          setItems((prev) => [...prev, { kind: "error", text: "会话存储不可用" }]);
+          return;
+        }
+        const ids = (await store.list()).slice(-20);
+        setItems((prev) => [
+          ...prev,
+          {
+            kind: "assistant",
+            text:
+              ids.length === 0
+                ? "暂无历史会话"
+                : `历史会话（最近 ${ids.length} 个）：\n${ids.map((id) => `  ${id}`).join("\n")}\n用 /resume <id> 恢复`,
+          },
+        ]);
+        return;
+      }
+      if (command.action === "resume") {
+        if (!store) {
+          setItems((prev) => [...prev, { kind: "error", text: "会话存储不可用" }]);
+          return;
+        }
+        const exists = (await store.list()).includes(command.id);
+        if (!exists) {
+          setItems((prev) => [
+            ...prev,
+            { kind: "error", text: `会话 "${command.id}" 不存在，用 /sessions 查看列表` },
+          ]);
+          return;
+        }
+        setActiveSessionId(command.id);
+        setItems((prev) => [
+          ...prev,
+          { kind: "assistant", text: `已切换到会话 ${command.id}（历史上下文已加载）` },
+        ]);
+        return;
+      }
+      if (command.action === "model") {
+        onModelSwitch?.();
+        return;
+      }
       void runTask(trimmed);
     },
-    [checkpointer, exit, onExit, runTask, sessionId, usage],
+    [activeSessionId, checkpointer, exit, onExit, onModelSwitch, runTask, store, usage],
   );
 
   return (

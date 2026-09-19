@@ -5,7 +5,10 @@ export type CommandResult =
   | { action: "exit" }
   | { action: "message"; text: string }
   | { action: "checkpoints" }
-  | { action: "rollback"; n: number };
+  | { action: "rollback"; n: number }
+  | { action: "sessions" }
+  | { action: "resume"; id: string }
+  | { action: "model" };
 
 /**
  * 解析斜杠命令。返回 action:
@@ -33,6 +36,20 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
       };
     case "checkpoints":
       return { action: "checkpoints" };
+    case "sessions":
+      return { action: "sessions" };
+    case "resume": {
+      const id = args.join(" ").trim();
+      if (!id) {
+        return {
+          action: "message",
+          text: "用法：/resume <会话id>。先用 /sessions 查看可用会话。",
+        };
+      }
+      return { action: "resume", id };
+    }
+    case "model":
+      return { action: "model" };
     case "rollback": {
       const n = Number(arg);
       if (!arg || !Number.isInteger(n) || n < 1) {
@@ -46,12 +63,12 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
     case "help":
       return {
         action: "message",
-        text: "可用命令：/cost（用量与成本）、/checkpoints（回滚点列表）、/rollback <n>（恢复到回滚点）、/exit（退出）。权限模式与预算在 settings.json 配置。",
+        text: "可用命令：/cost（用量与成本）、/checkpoints（回滚点列表）、/rollback <n>（恢复）、/sessions（会话列表）、/resume <id>（恢复会话）、/model（切换模型）、/exit（退出）。",
       };
     default:
       return {
         action: "message",
-        text: `未知命令 "${input.trim()}"。可用命令：/cost、/checkpoints、/rollback <n>、/exit、/help`,
+        text: `未知命令 "${input.trim()}"。可用命令：/cost、/checkpoints、/rollback <n>、/sessions、/resume <id>、/model、/exit、/help`,
       };
   }
 }

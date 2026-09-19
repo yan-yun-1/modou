@@ -7,7 +7,8 @@ export function buildProgram(): Command {
   const program = new Command()
     .name("luban")
     .description("鲁班 Luban —— 开源 Agent 编程引擎（headless 核心 + 终端 CLI）")
-    .version(VERSION);
+    .version(VERSION)
+    .option("--continue", "恢复最近一次会话");
 
   program
     .command("model")

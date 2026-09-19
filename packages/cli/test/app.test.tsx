@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LubanApp } from "../src/app.js";
 import { renderInk, settle } from "./ink-test-utils.js";
 import type { LubanEvent } from "@luban/core";
@@ -96,6 +96,60 @@ describe("LubanApp", () => {
     await settle(200);
 
     expect(harness.text).toContain("预算已用尽");
+    harness.unmount();
+  }, 30_000);
+});
+
+describe("LubanApp sessions", () => {
+  it("lists sessions and resumes one, switching the active session", async () => {
+    const usedSessionIds: string[] = [];
+    const loop = {
+      run: async function* (input: string, sid: string): AsyncIterable<LubanEvent> {
+        usedSessionIds.push(sid);
+        yield { type: "assistant_message", text: `回复于 ${sid}`, at: 1 };
+      },
+    };
+    const store = {
+      list: async () => ["session-old-1", "session-old-2"],
+    };
+    const harness = renderInk(<LubanApp loop={loop} sessionId="session-current" store={store} />);
+    await settle();
+
+    harness.stdin.write("/sessions");
+    await settle();
+    harness.stdin.write("\r");
+    await settle(150);
+    expect(harness.text).toContain("session-old-1");
+
+    harness.stdin.write("/resume session-old-1");
+    await settle();
+    harness.stdin.write("\r");
+    await settle(150);
+
+    harness.stdin.write("继续干活");
+    await settle();
+    harness.stdin.write("\r");
+    await settle(200);
+
+    expect(usedSessionIds).toContain("session-old-1");
+    expect(harness.text).toContain("已切换到会话 session-old-1");
+    harness.unmount();
+  }, 30_000);
+
+  it("notifies via onModelSwitch for /model", async () => {
+    const onModelSwitch = vi.fn();
+    const loop = {
+      run: async function* (): AsyncIterable<LubanEvent> {
+        yield { type: "assistant_message", text: "ok", at: 1 };
+      },
+    };
+    const harness = renderInk(<LubanApp loop={loop} sessionId="s" onModelSwitch={onModelSwitch} />);
+    await settle();
+    harness.stdin.write("/model");
+    await settle();
+    harness.stdin.write("\r");
+    await settle(150);
+    expect(onModelSwitch).toHaveBeenCalledTimes(1);
     harness.unmount();
   }, 30_000);
 });
