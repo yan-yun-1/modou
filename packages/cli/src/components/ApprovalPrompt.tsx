@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from "ink";
-import type { ApprovalAnswer, ApprovalRequest } from "@luban/core";
+import type { ApprovalAnswer, ApprovalRequest } from "@modou/core";
 
 export interface ApprovalPromptProps {
   request: ApprovalRequest;

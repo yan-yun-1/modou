@@ -1,10 +1,10 @@
 import type {
   LanguageModel,
-  LubanEvent,
+  ModouEvent,
   ModelCapabilities,
   SessionStore,
   UsageTotals,
-} from "@luban/core";
+} from "@modou/core";
 import type { Settings } from "./settings.js";
 import { createLoopFromSettings } from "./loop-factory.js";
 
@@ -15,10 +15,10 @@ export interface PrintModeOptions {
   /** models.json 的自定义模型能力（目录外模型如 glm-4.5-air 需要它解析能力与计价） */
   modelOverrides?: ModelCapabilities[];
   /** 事件回调（eval/观测用） */
-  onEvent?: (event: LubanEvent) => void;
+  onEvent?: (event: ModouEvent) => void;
   /** 测试注入口：绕过真实 provider */
   model?: LanguageModel;
-  /** 测试注入口：会话存储目录（默认 ~/.luban/sessions） */
+  /** 测试注入口：会话存储目录（默认 ~/.modou/sessions） */
   store?: SessionStore;
 }
 
@@ -37,7 +37,7 @@ const ZERO_USAGE: UsageTotals = {
 };
 
 /**
- * 无头模式（luban -p "..."）：单任务执行后退出。
+ * 无头模式（modou -p "..."）：单任务执行后退出。
  * 没有人在终端里审批——所有 ask 一律拒绝（工厂的无桥语义），模型会收到拒绝原因并自行收尾；
  * 因此默认权限模式下无头任务只读，写盘/执行需要在 yolo 或规则白名单下进行。
  */
@@ -63,13 +63,13 @@ export async function runPrintMode(options: PrintModeOptions): Promise<PrintMode
     }
   } catch (error) {
     fatal = true;
-    process.stderr.write(`[luban] 任务失败：${(error as Error).message}\n`);
+    process.stderr.write(`[modou] 任务失败：${(error as Error).message}\n`);
   } finally {
     // 关闭 MCP server 子进程，否则事件循环挂起进程不退出
     await bundle.closeMcp().catch(() => {});
   }
 
-  function consumeEvent(event: LubanEvent): void {
+  function consumeEvent(event: ModouEvent): void {
     switch (event.type) {
       case "assistant_message":
         output = event.text;
@@ -86,7 +86,7 @@ export async function runPrintMode(options: PrintModeOptions): Promise<PrintMode
         if (event.fatal) {
           fatal = true;
         }
-        process.stderr.write(`[luban] ${event.message}\n`);
+        process.stderr.write(`[modou] ${event.message}\n`);
         break;
       default:
         break;

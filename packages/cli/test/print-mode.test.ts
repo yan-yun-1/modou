@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
 import { runPrintMode } from "../src/print-mode.js";
-import { SessionStore } from "@luban/core";
+import { SessionStore } from "@modou/core";
 import type { Settings } from "../src/settings.js";
 
 let dir: string;

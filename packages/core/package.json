@@ -1,7 +1,7 @@
 {
-  "name": "@luban/core",
+  "name": "@modou/core",
   "version": "0.0.1",
-  "description": "鲁班 Agent 引擎核心：主循环、工具系统、权限、上下文、模型接入",
+  "description": "墨斗 Modou 核心：headless Agent 编程引擎（事件溯源、权限、工具、MCP）",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

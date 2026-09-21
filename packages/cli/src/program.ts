@@ -1,12 +1,12 @@
 import { homedir } from "node:os";
 import { Command } from "commander";
-import { VERSION } from "@luban/core";
+import { VERSION } from "@modou/core";
 import { runModelCommand } from "./model-command.js";
 
 export function buildProgram(): Command {
   const program = new Command()
-    .name("luban")
-    .description("鲁班 Luban —— 开源 Agent 编程引擎（headless 核心 + 终端 CLI）")
+    .name("modou")
+    .description("墨斗 Modou —— 开源 Agent 编程引擎（headless 核心 + 终端 CLI）")
     .version(VERSION)
     .option("--continue", "恢复最近一次会话");
 

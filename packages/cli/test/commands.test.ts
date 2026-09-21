@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { UsageTotals } from "@luban/core";
+import type { UsageTotals } from "@modou/core";
 import { parseCommand } from "../src/commands.js";
 
 const usage: UsageTotals = {

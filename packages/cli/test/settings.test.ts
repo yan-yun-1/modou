@@ -49,22 +49,22 @@ describe("settings", () => {
   });
 
   it("rejects invalid settings with a readable error", async () => {
-    await mkdir(join(home, ".luban"), { recursive: true });
+    await mkdir(join(home, ".modou"), { recursive: true });
     await writeFile(settingsFile(home), '{"provider":"nope"}', "utf8");
     await expect(loadSettings(home)).rejects.toThrow(/settings\.json/);
   });
 
   it("rejects corrupted JSON with a readable error", async () => {
-    await mkdir(join(home, ".luban"), { recursive: true });
+    await mkdir(join(home, ".modou"), { recursive: true });
     await writeFile(settingsFile(home), "{broken", "utf8");
     await expect(loadSettings(home)).rejects.toThrow(/settings\.json/);
   });
 
   it("resolveApiKey prefers the explicit key over the environment", () => {
-    expect(resolveApiKey({ ...valid, apiKey: "explicit" }, { LUBAN_API_KEY: "env" })).toBe(
+    expect(resolveApiKey({ ...valid, apiKey: "explicit" }, { MODOU_API_KEY: "env" })).toBe(
       "explicit",
     );
-    expect(resolveApiKey({ ...valid, apiKey: undefined }, { LUBAN_API_KEY: "env" })).toBe("env");
+    expect(resolveApiKey({ ...valid, apiKey: undefined }, { MODOU_API_KEY: "env" })).toBe("env");
     expect(resolveApiKey({ ...valid, apiKey: undefined }, {})).toBeUndefined();
   });
 
@@ -81,7 +81,7 @@ describe("loadModelOverrides", () => {
   });
 
   it("loads a valid models.json array", async () => {
-    await mkdir(join(home, ".luban"), { recursive: true });
+    await mkdir(join(home, ".modou"), { recursive: true });
     const entry = {
       id: "glm-4.5-air",
       provider: "glm",
@@ -104,7 +104,7 @@ describe("loadModelOverrides", () => {
   });
 
   it("accepts the { models: [...] } wrapper form too", async () => {
-    await mkdir(join(home, ".luban"), { recursive: true });
+    await mkdir(join(home, ".modou"), { recursive: true });
     const entry = {
       id: "x",
       provider: "openai",
@@ -125,13 +125,13 @@ describe("loadModelOverrides", () => {
   });
 
   it("rejects invalid entries with a readable error", async () => {
-    await mkdir(join(home, ".luban"), { recursive: true });
+    await mkdir(join(home, ".modou"), { recursive: true });
     await writeFile(modelOverridesFile(home), '[{"id":"broken"}]', "utf8");
     await expect(loadModelOverrides(home)).rejects.toThrow(/models\.json/);
   });
 
   it("rejects corrupted JSON with a readable error", async () => {
-    await mkdir(join(home, ".luban"), { recursive: true });
+    await mkdir(join(home, ".modou"), { recursive: true });
     await writeFile(modelOverridesFile(home), "{nope", "utf8");
     await expect(loadModelOverrides(home)).rejects.toThrow(/models\.json/);
   });

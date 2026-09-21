@@ -16,7 +16,7 @@ import {
   type LanguageModel,
   type ModelCapabilities,
   type ToolRegistry,
-} from "@luban/core";
+} from "@modou/core";
 import { randomUUID } from "node:crypto";
 import { resolveApiKey, type Settings } from "./settings.js";
 import { ApprovalBridge } from "./approval-bridge.js";

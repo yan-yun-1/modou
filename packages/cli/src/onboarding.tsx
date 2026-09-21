@@ -33,7 +33,7 @@ export interface OnboardingProps {
   onError?: (message: string) => void;
 }
 
-/** 模型配置引导（首次运行与 `luban model` 重选共用）：选 provider → 模型 ID → API Key（Ollama 跳过）→ 写入设置。 */
+/** 模型配置引导（首次运行与 `modou model` 重选共用）：选 provider → 模型 ID → API Key（Ollama 跳过）→ 写入设置。 */
 export function Onboarding({ home, base, onDone, onError }: OnboardingProps) {
   const [step, setStep] = useState<"provider" | "model" | "key" | "saving">("provider");
   const [providerIndex, setProviderIndex] = useState(0);
@@ -93,7 +93,7 @@ export function Onboarding({ home, base, onDone, onError }: OnboardingProps) {
   if (step === "provider") {
     return (
       <Box flexDirection="column" gap={1}>
-        <Text bold>鲁班模型配置</Text>
+        <Text bold>墨斗模型配置</Text>
         <Text>选择模型提供商（↑/↓ 移动，回车确认）：</Text>
         {providerNames.map((name, i) => (
           <Text key={name} color={i === providerIndex ? "green" : undefined}>

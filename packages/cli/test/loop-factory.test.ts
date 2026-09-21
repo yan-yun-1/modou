@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AgentLoop, type ModelCapabilities } from "@luban/core";
+import { AgentLoop, type ModelCapabilities } from "@modou/core";
 import { createLoopFromSettings } from "../src/loop-factory.js";
 import { ApprovalBridge } from "../src/approval-bridge.js";
 import type { Settings } from "../src/settings.js";

@@ -5,9 +5,9 @@ import { Onboarding } from "./onboarding.js";
 import { loadSettings, type Settings } from "./settings.js";
 
 /**
- * `luban model`：重新选择模型并写回 settings.json。
+ * `modou model`：重新选择模型并写回 settings.json。
  * 复用 Onboarding 组件；既有配置作为 base 合并（权限模式与预算保留）。
- * 生效时机：新配置在下一次启动 luban 时生效（当前会话不热切换）。
+ * 生效时机：新配置在下一次启动 modou 时生效（当前会话不热切换）。
  */
 export async function runModelCommand(home: string = homedir()): Promise<void> {
   const existing = await loadSettings(home);
@@ -30,6 +30,6 @@ export async function runModelCommand(home: string = homedir()): Promise<void> {
     );
   });
   process.stdout.write(
-    `[luban] 已保存：${settings.provider} / ${settings.modelId}。重启 luban 后生效。\n`,
+    `[modou] 已保存：${settings.provider} / ${settings.modelId}。重启 modou 后生效。\n`,
   );
 }

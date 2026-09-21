@@ -1,8 +1,9 @@
-import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { modelCapabilitiesSchema, type ModelCapabilities } from "@luban/core";
+import { modelCapabilitiesSchema, type ModelCapabilities } from "@modou/core";
 
 export const providerNames = [
   "anthropic",
@@ -45,11 +46,53 @@ export type Settings = z.infer<typeof settingsSchema>;
 export type ProviderName = (typeof providerNames)[number];
 
 export function settingsDir(home: string = homedir()): string {
-  return join(home, ".luban");
+  return join(home, ".modou");
 }
 
 export function settingsFile(home: string = homedir()): string {
   return join(settingsDir(home), "settings.json");
+}
+
+/**
+ * 更名迁移（M3 R0）：旧 ~/.luban 存在且 ~/.modou 不存在时，把旧目录整体复制到新目录
+ * （复制而非改名，旧目录保留作回退）。任何一步失败都静默回退——迁移失败不能阻断启动。
+ */
+export async function migrateLegacyDir(home: string = homedir()): Promise<boolean> {
+  const legacy = join(home, ".luban");
+  const current = settingsDir(home);
+  if (!existsSync(legacy) || existsSync(current)) {
+    return false;
+  }
+  try {
+    await mkdir(current, { recursive: true });
+    const entries = await readdir(legacy, { withFileTypes: true });
+    for (const entry of entries) {
+      const from = join(legacy, entry.name);
+      const to = join(current, entry.name);
+      if (entry.isDirectory()) {
+        await copyLegacyDir(from, to);
+      } else {
+        await copyFile(from, to);
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function copyLegacyDir(from: string, to: string): Promise<void> {
+  await mkdir(to, { recursive: true });
+  const entries = await readdir(from, { withFileTypes: true });
+  for (const entry of entries) {
+    const childFrom = join(from, entry.name);
+    const childTo = join(to, entry.name);
+    if (entry.isDirectory()) {
+      await copyLegacyDir(childFrom, childTo);
+    } else {
+      await copyFile(childFrom, childTo);
+    }
+  }
 }
 
 /** 读取全局设置；文件不存在返回 null（触发首次引导），内容非法则给出可读错误。 */
@@ -96,12 +139,14 @@ export async function saveSettings(settings: Settings, home: string = homedir())
   }
 }
 
-/** API key 解析：显式配置优先，其次环境变量 LUBAN_API_KEY。 */
+/**
+ * API key 解析：显式配置优先，其次环境变量 MODOU_API_KEY（兼容旧名 LUBAN_API_KEY 一个版本周期）。
+ */
 export function resolveApiKey(
   settings: Settings,
   env: Record<string, string | undefined> = process.env,
 ): string | undefined {
-  return settings.apiKey ?? env.LUBAN_API_KEY;
+  return settings.apiKey ?? env.MODOU_API_KEY ?? env.LUBAN_API_KEY;
 }
 
 export function modelOverridesFile(home: string = homedir()): string {
@@ -114,7 +159,7 @@ const overridesFileSchema = z.union([
 ]);
 
 /**
- * 读取 ~/.luban/models.json 的自定义模型能力声明（backlog #10）。
+ * 读取 ~/.modou/models.json 的自定义模型能力声明（backlog #10）。
  * 支持两种形态：裸数组 [{...}] 或 { "models": [{...}] }。
  * 文件不存在返回空数组；内容非法抛出含文件路径的可读错误。
  */

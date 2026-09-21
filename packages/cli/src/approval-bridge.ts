@@ -1,4 +1,4 @@
-import type { ApprovalAnswer, ApprovalRequest } from "@luban/core";
+import type { ApprovalAnswer, ApprovalRequest } from "@modou/core";
 
 type Subscriber = (req: ApprovalRequest | null) => void;
 

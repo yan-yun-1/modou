@@ -32,7 +32,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@luban/core':
+      '@modou/core':
         specifier: workspace:*
         version: link:../core
       commander:

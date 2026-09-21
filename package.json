@@ -1,8 +1,8 @@
 {
-  "name": "luban",
+  "name": "modou",
   "version": "0.0.0",
   "private": true,
-  "description": "鲁班 Luban —— 面向个人开发者的开源 Agent 编程引擎（headless 核心 + 终端 CLI）",
+  "description": "墨斗 Modou —— 面向个人开发者的开源 Agent 编程引擎（headless 核心 + 终端 CLI）",
   "packageManager": "pnpm@11.17.0",
   "engines": {
     "node": ">=24"

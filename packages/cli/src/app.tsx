@@ -5,9 +5,9 @@ import {
   PermissionEngine,
   type ApprovalRequest,
   type Checkpointer,
-  type LubanEvent,
+  type ModouEvent,
   type UsageTotals,
-} from "@luban/core";
+} from "@modou/core";
 import { ApprovalBridge } from "./approval-bridge.js";
 import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
@@ -22,10 +22,10 @@ export interface LoopLike {
     input: string,
     sessionId: string,
     options?: { permissions?: PermissionEngine; signal?: AbortSignal },
-  ): AsyncIterable<LubanEvent>;
+  ): AsyncIterable<ModouEvent>;
 }
 
-export interface LubanAppProps {
+export interface ModouAppProps {
   loop: LoopLike;
   sessionId: string;
   /** 审批桥：由入口层创建并接到 AgentLoop 的 approve 上 */
@@ -65,7 +65,7 @@ function summarizeOutput(output: string): string {
   return output.length > 120 ? `${output.slice(0, 120)}…` : output;
 }
 
-export function LubanApp({
+export function ModouApp({
   loop,
   sessionId,
   approvals,
@@ -76,7 +76,7 @@ export function LubanApp({
   budgetUsd,
   onExit,
   onUsageChange,
-}: LubanAppProps) {
+}: ModouAppProps) {
   const { exit } = useApp();
   const [items, setItems] = useState<DisplayItem[]>([]);
   const [streaming, setStreaming] = useState("");
@@ -101,7 +101,7 @@ export function LubanApp({
     };
   }, [approvals]);
 
-  const applyEvent = useCallback((event: LubanEvent) => {
+  const applyEvent = useCallback((event: ModouEvent) => {
     switch (event.type) {
       case "user_message":
         setItems((prev) => [...prev, { kind: "user", text: event.text }]);

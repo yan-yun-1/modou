@@ -1,8 +1,8 @@
 /**
  * 真实端到端冒烟：LUBAN_SMOKE=1 pnpm smoke
- * 默认读 ~/.luban/settings.json 的模型配置（当前为 GLM glm-4.5-air）；
+ * 默认读 ~/.modou/settings.json 的模型配置（当前为 GLM glm-4.5-air）；
  * SMOKE_PROVIDER / SMOKE_MODEL / SMOKE_API_KEY 环境变量可覆盖。
- * 目录外模型需在 ~/.luban/models.json 提供能力声明。
+ * 目录外模型需在 ~/.modou/models.json 提供能力声明。
  */
 import { homedir } from "node:os";
 import { runPrintMode } from "../packages/cli/src/print-mode.js";

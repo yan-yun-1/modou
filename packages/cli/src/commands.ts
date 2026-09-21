@@ -1,4 +1,4 @@
-import type { UsageTotals } from "@luban/core";
+import type { UsageTotals } from "@modou/core";
 
 export type CommandResult =
   | { action: "none" }

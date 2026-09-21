@@ -2,9 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LubanApp } from "../src/app.js";
+import { ModouApp } from "../src/app.js";
 import { renderInk, settle } from "./ink-test-utils.js";
-import type { LubanEvent } from "@luban/core";
+import type { ModouEvent } from "@modou/core";
 
 let dir: string;
 
@@ -16,9 +16,9 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-function fakeLoop(events: LubanEvent[]) {
+function fakeLoop(events: ModouEvent[]) {
   return {
-    run: async function* (input: string, _sessionId: string): AsyncIterable<LubanEvent> {
+    run: async function* (input: string, _sessionId: string): AsyncIterable<ModouEvent> {
       for (const event of events) {
         if (event.type === "user_message") {
           yield { ...event, text: input };
@@ -30,7 +30,7 @@ function fakeLoop(events: LubanEvent[]) {
   };
 }
 
-describe("LubanApp", () => {
+describe("ModouApp", () => {
   it("echoes the user input and renders the assistant reply with cost", async () => {
     const loop = fakeLoop([
       { type: "session_started", sessionId: "s1", model: "test-model", at: 1 },
@@ -47,7 +47,7 @@ describe("LubanApp", () => {
         at: 5,
       },
     ]);
-    const harness = renderInk(<LubanApp loop={loop} sessionId="s1" />);
+    const harness = renderInk(<ModouApp loop={loop} sessionId="s1" />);
     await settle();
 
     harness.stdin.write("hi");
@@ -69,7 +69,7 @@ describe("LubanApp", () => {
       { type: "tool_result", id: "t1", output: "src/a.ts:1: login", truncated: false, at: 3 },
       { type: "assistant_message", text: "找到了", at: 4 },
     ]);
-    const harness = renderInk(<LubanApp loop={loop} sessionId="s1" />);
+    const harness = renderInk(<ModouApp loop={loop} sessionId="s1" />);
     await settle();
     harness.stdin.write("go");
     await settle();
@@ -88,7 +88,7 @@ describe("LubanApp", () => {
       { type: "user_message", text: "", at: 1 },
       { type: "error", message: "预算已用尽", fatal: false, at: 2 },
     ]);
-    const harness = renderInk(<LubanApp loop={loop} sessionId="s1" />);
+    const harness = renderInk(<ModouApp loop={loop} sessionId="s1" />);
     await settle();
     harness.stdin.write("go");
     await settle();
@@ -100,11 +100,11 @@ describe("LubanApp", () => {
   }, 30_000);
 });
 
-describe("LubanApp sessions", () => {
+describe("ModouApp sessions", () => {
   it("lists sessions and resumes one, switching the active session", async () => {
     const usedSessionIds: string[] = [];
     const loop = {
-      run: async function* (input: string, sid: string): AsyncIterable<LubanEvent> {
+      run: async function* (input: string, sid: string): AsyncIterable<ModouEvent> {
         usedSessionIds.push(sid);
         yield { type: "assistant_message", text: `回复于 ${sid}`, at: 1 };
       },
@@ -112,7 +112,7 @@ describe("LubanApp sessions", () => {
     const store = {
       list: async () => ["session-old-1", "session-old-2"],
     };
-    const harness = renderInk(<LubanApp loop={loop} sessionId="session-current" store={store} />);
+    const harness = renderInk(<ModouApp loop={loop} sessionId="session-current" store={store} />);
     await settle();
 
     harness.stdin.write("/sessions");
@@ -139,11 +139,11 @@ describe("LubanApp sessions", () => {
   it("notifies via onModelSwitch for /model", async () => {
     const onModelSwitch = vi.fn();
     const loop = {
-      run: async function* (): AsyncIterable<LubanEvent> {
+      run: async function* (): AsyncIterable<ModouEvent> {
         yield { type: "assistant_message", text: "ok", at: 1 };
       },
     };
-    const harness = renderInk(<LubanApp loop={loop} sessionId="s" onModelSwitch={onModelSwitch} />);
+    const harness = renderInk(<ModouApp loop={loop} sessionId="s" onModelSwitch={onModelSwitch} />);
     await settle();
     harness.stdin.write("/model");
     await settle();

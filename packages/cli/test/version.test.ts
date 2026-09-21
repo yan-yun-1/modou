@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildProgram } from "../src/program.js";
-import { VERSION } from "@luban/core";
+import { VERSION } from "@modou/core";
 
 describe("luban CLI", () => {
   it("reports the core version via --version", () => {

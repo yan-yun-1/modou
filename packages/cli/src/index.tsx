@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
 import { Box } from "ink";
-import { GitCheckpointer, SessionStore } from "@luban/core";
-import { LubanApp } from "./app.js";
+import { GitCheckpointer, SessionStore } from "@modou/core";
+import { ModouApp } from "./app.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 import { runModelCommand } from "./model-command.js";
 import { Onboarding } from "./onboarding.js";
-import { loadSettings, loadModelOverrides, type Settings } from "./settings.js";
+import { loadSettings, loadModelOverrides, migrateLegacyDir, type Settings } from "./settings.js";
 import { runPrintMode } from "./print-mode.js";
 import { createLoopFromSettings } from "./loop-factory.js";
 import { render } from "ink";
@@ -18,6 +18,8 @@ interface CliOptions {
 }
 
 async function main(options: CliOptions): Promise<void> {
+  // 更名迁移（M3 R0）：旧 ~/.luban → ~/.modou，失败静默（不影响启动）
+  await migrateLegacyDir(homedir());
   if (options.print) {
     await runPrintCommand(options.print);
     return;
@@ -25,7 +27,7 @@ async function main(options: CliOptions): Promise<void> {
   await runInteractive(options.continue ?? false);
 }
 
-/** 无头模式：luban -p "任务" */
+/** 无头模式：modou -p "任务" */
 async function runPrintCommand(prompt: string): Promise<void> {
   const settings = await requireSettings();
   const result = await runPrintMode({
@@ -37,7 +39,7 @@ async function runPrintCommand(prompt: string): Promise<void> {
   if (result.output) {
     process.stdout.write(`${result.output}\n`);
   }
-  process.stderr.write(`[luban] 成本 ${result.costUsd.toFixed(6)} USD\n`);
+  process.stderr.write(`[modou] 成本 ${result.costUsd.toFixed(6)} USD\n`);
   process.exitCode = result.exitCode;
 }
 
@@ -45,7 +47,7 @@ async function requireSettings(): Promise<Settings> {
   const settings = await loadSettings(homedir());
   if (!settings) {
     process.stderr.write(
-      "[luban] 尚未配置：先运行 `luban` 完成首次引导，或在 ~/.luban/settings.json 手动配置。\n",
+      "[modou] 尚未配置：先运行 `modou` 完成首次引导，或在 ~/.modou/settings.json 手动配置。\n",
     );
     process.exit(1);
   }
@@ -66,7 +68,7 @@ async function runInteractive(useContinue: boolean): Promise<void> {
     const ids = await store.list();
     resumeId = ids.at(-1);
     if (!resumeId) {
-      process.stderr.write("[luban] 没有可恢复的历史会话，将开始新会话。\n");
+      process.stderr.write("[modou] 没有可恢复的历史会话，将开始新会话。\n");
     }
   }
 
@@ -84,7 +86,7 @@ async function runInteractive(useContinue: boolean): Promise<void> {
 
   const instance = render(
     // exitOnCtrlC=false：Ctrl+C 语义由 App 内部处理（任务中断/双击退出）
-    <LubanApp
+    <ModouApp
       loop={bundle.loop}
       sessionId={bundle.sessionId}
       store={bundle.store}
@@ -117,7 +119,7 @@ async function runOnboarding(home: string): Promise<Settings> {
           }}
           onError={(message) => {
             instance.unmount();
-            process.stderr.write(`[luban] ${message}\n`);
+            process.stderr.write(`[modou] ${message}\n`);
             process.exit(1);
           }}
         />

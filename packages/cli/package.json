@@ -1,9 +1,10 @@
 {
-  "name": "@luban/cli",
+  "name": "modou",
   "version": "0.0.1",
-  "description": "鲁班 Luban 终端 CLI：Agent 编程引擎的交互界面",
+  "description": "墨斗 Modou 终端 CLI：Agent 编程引擎的交互界面",
   "type": "module",
   "bin": {
+    "modou": "./dist/index.js",
     "luban": "./dist/index.js"
   },
   "files": [
@@ -14,7 +15,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@luban/core": "workspace:*",
+    "@modou/core": "workspace:*",
     "commander": "^14.0.0",
     "ink": "^5.0.0",
     "ink-text-input": "^6.0.0",

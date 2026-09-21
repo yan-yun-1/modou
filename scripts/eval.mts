@@ -1,6 +1,6 @@
 /**
  * M1 迷你 eval harness：pnpm eval（需 LUBAN_EVAL=1）
- * 默认读 ~/.luban/settings.json 的模型（当前 GLM glm-4.5-air）；
+ * 默认读 ~/.modou/settings.json 的模型（当前 GLM glm-4.5-air）；
  * 每个用例在一次性沙箱中运行，断言"关键工具被调用 + 文件结果正确"，而非仅"有输出"。
  */
 import { execFileSync } from "node:child_process";
@@ -23,7 +23,7 @@ if (!process.env.LUBAN_EVAL) {
 
 const userSettings = await loadSettings(homedir());
 if (!userSettings) {
-  console.error("[eval] 未找到 ~/.luban/settings.json，无法运行 eval");
+  console.error("[eval] 未找到 ~/.modou/settings.json，无法运行 eval");
   process.exit(1);
 }
 const settings: Settings = { ...userSettings, apiKey: userSettings.apiKey };
@@ -189,7 +189,7 @@ const cases: EvalCase[] = [
 ];
 
 async function makeSandbox(kind: "plain" | "tests"): Promise<string> {
-  const sandbox = await mkdtemp(join(tmpdir(), "luban-eval-"));
+  const sandbox = await mkdtemp(join(tmpdir(), "modou-eval-"));
   await mkdir(join(sandbox, "src"), { recursive: true });
   await writeFile(
     join(sandbox, "math.js"),
