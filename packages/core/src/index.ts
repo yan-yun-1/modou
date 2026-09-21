@@ -41,6 +41,7 @@ export {
 export { McpConnection, type McpServerConfig, type McpToolInfo } from "./mcp/client.js";
 export { mcpToolsFromConnection } from "./mcp/tools.js";
 export { ToolRegistry } from "./tools/registry.js";
-export { createBuiltinTools } from "./tools/index.js";
+export { createBuiltinTools, createReadonlyTools } from "./tools/index.js";
+export { createExploreTool } from "./tools/explore.js";
 export type { Tool, ToolContext, ToolKind, ToolResult } from "./tools/types.js";
 export type { LanguageModel } from "ai";

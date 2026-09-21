@@ -93,6 +93,12 @@ describe("createLoopFromSettings", () => {
     void bundle;
   });
 
+  it("registers the explore subagent tool", async () => {
+    const bundle = await createLoopFromSettings({ settings, cwd: dir });
+    // explore 注册在工具注册表中：从 systemPrompt 的工具列表断言
+    expect(bundle.systemPrompt).toContain("explore");
+  });
+
   it("composes AGENTS.md agreements and repo map into the system prompt", async () => {
     await writeFile(join(dir, "AGENTS.md"), "项目约定：使用 pnpm", "utf8");
     await mkdir(join(dir, "src"), { recursive: true });
