@@ -83,6 +83,7 @@ async function runInteractive(useContinue: boolean): Promise<void> {
   });
 
   const instance = render(
+    // exitOnCtrlC=false：Ctrl+C 语义由 App 内部处理（任务中断/双击退出）
     <LubanApp
       loop={bundle.loop}
       sessionId={bundle.sessionId}

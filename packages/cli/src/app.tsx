@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Box, Text, useApp } from "ink";
+import { Box, Text, useApp, useInput } from "ink";
 import {
   buildPlanTaskPrompt,
   PermissionEngine,
@@ -152,6 +152,26 @@ export function LubanApp({
     }
   }, []);
 
+  // Ctrl+C 语义（plan-m2 Q2）：任务中=中断任务；空闲时 5 秒内两次=退出
+  const taskAbortRef = useRef<AbortController | null>(null);
+  const lastCtrlC = useRef(0);
+  useInput((input, key) => {
+    if (!key.ctrl || input.toLowerCase() !== "c") {
+      return;
+    }
+    if (busy) {
+      taskAbortRef.current?.abort();
+      return;
+    }
+    if (Date.now() - lastCtrlC.current < 5_000) {
+      onExit?.();
+      exit();
+    } else {
+      lastCtrlC.current = Date.now();
+      setItems((prev) => [...prev, { kind: "error", text: "再按一次 Ctrl+C 退出（5 秒内）" }]);
+    }
+  });
+
   const runTask = useCallback(
     async (input: string, options?: { permissions?: PermissionEngine }) => {
       if (running.current) {
@@ -159,8 +179,13 @@ export function LubanApp({
       }
       running.current = true;
       setBusy(true);
+      const controller = new AbortController();
+      taskAbortRef.current = controller;
       try {
-        for await (const event of loopRef.current.run(input, activeSessionId, options)) {
+        for await (const event of loopRef.current.run(input, activeSessionId, {
+          ...options,
+          signal: controller.signal,
+        })) {
           applyEvent(event);
         }
       } catch (error) {
@@ -169,6 +194,7 @@ export function LubanApp({
           { kind: "error", text: `会话异常：${(error as Error).message}` },
         ]);
       } finally {
+        taskAbortRef.current = null;
         running.current = false;
         setBusy(false);
       }
