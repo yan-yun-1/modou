@@ -34,6 +34,8 @@ interface EvalCase {
   name: string;
   prompt: string;
   mode?: "default" | "yolo";
+  /** 该用例需要挂载的 MCP servers（键为 server 名） */
+  mcpServers?: NonNullable<Settings["mcpServers"]>;
   /** 返回 null 表示通过，否则为失败原因 */
   check: (ctx: { output: string; toolCalls: string[]; sandbox: string }) => Promise<string | null>;
 }
@@ -129,6 +131,18 @@ const cases: EvalCase[] = [
     },
   },
   {
+    name: "mcp-filesystem-read",
+    mode: "yolo",
+    mcpServers: {},
+    prompt: "用 MCP 文件系统工具（mcp__fs__ 开头）读取 readme.md，并告诉我内容里提到的颜色。",
+    check: async ({ output, toolCalls }) => {
+      if (!toolCalls.some((name) => name.startsWith("mcp__fs__"))) {
+        return "没有调用 MCP 文件系统工具";
+      }
+      return output.toLowerCase().includes("blue") ? null : "输出未包含 blue";
+    },
+  },
+  {
     name: "multi-step-fix-test",
     mode: "yolo",
     prompt:
@@ -195,10 +209,17 @@ for (let i = 0; i < cases.length; i++) {
   if (testCase.mode === "yolo") {
     gitInit(sandbox);
   }
-  const evalSettings: Settings = { ...settings, permissionMode: testCase.mode ?? "default" };
+  const evalSettings: Settings = {
+    ...settings,
+    permissionMode: testCase.mode ?? "default",
+    // MCP 用例：把沙箱目录挂载给 filesystem server
+    mcpServers: testCase.mcpServers
+      ? { fs: { command: "npx", args: ["-y", "@modelcontextprotocol/server-filesystem", sandbox] } }
+      : undefined,
+  };
   const toolCalls: string[] = [];
   const started = Date.now();
-  try {
+  const runOnce = async () => {
     const result = await runPrintMode({
       settings: evalSettings,
       modelOverrides,
@@ -211,6 +232,16 @@ for (let i = 0; i < cases.length; i++) {
       },
     });
     const detail = await testCase.check({ output: result.output, toolCalls, sandbox });
+    return { result, detail };
+  };
+  try {
+    // 单用例硬超时：LLM/npx 挂起不能拖垮整个评测
+    const { result, detail } = await Promise.race([
+      runOnce(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("用例超时（180s）")), 180_000).unref(),
+      ),
+    ]);
     const seconds = ((Date.now() - started) / 1000).toFixed(1);
     if (detail === null && result.exitCode === 0) {
       passed++;
@@ -218,7 +249,7 @@ for (let i = 0; i < cases.length; i++) {
     } else {
       failures.push(`${testCase.name}: ${detail ?? `exitCode=${result.exitCode}`}`);
       console.log(
-        `  ✗ ${testCase.name}（${seconds}s）→ ${detail ?? `exitCode=${result.exitCode}`}`,
+        `  ✗ ${testCase.name}（${seconds}s）→ ${detail ?? `exitCode=${result.exitCode}`}｜输出摘录: ${result.output.slice(0, 100)}`,
       );
     }
   } catch (error) {
