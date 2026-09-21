@@ -218,6 +218,7 @@ for (let i = 0; i < cases.length; i++) {
       : undefined,
   };
   const toolCalls: string[] = [];
+  let lastError: string | null = null;
   const started = Date.now();
   const runOnce = async () => {
     const result = await runPrintMode({
@@ -228,6 +229,9 @@ for (let i = 0; i < cases.length; i++) {
       onEvent: (event) => {
         if (event.type === "tool_call") {
           toolCalls.push(event.name);
+        }
+        if (event.type === "error") {
+          lastError = event.message;
         }
       },
     });
@@ -248,8 +252,9 @@ for (let i = 0; i < cases.length; i++) {
       console.log(`  ✓ ${testCase.name}（${seconds}s，$${result.costUsd.toFixed(6)}）`);
     } else {
       failures.push(`${testCase.name}: ${detail ?? `exitCode=${result.exitCode}`}`);
+      const diagnosis = lastError ?? `输出摘录: ${result.output.slice(0, 100)}`;
       console.log(
-        `  ✗ ${testCase.name}（${seconds}s）→ ${detail ?? `exitCode=${result.exitCode}`}｜输出摘录: ${result.output.slice(0, 100)}`,
+        `  ✗ ${testCase.name}（${seconds}s）→ ${detail ?? `exitCode=${result.exitCode}`}｜${diagnosis}`,
       );
     }
   } catch (error) {

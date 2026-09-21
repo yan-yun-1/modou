@@ -64,6 +64,9 @@ export async function runPrintMode(options: PrintModeOptions): Promise<PrintMode
   } catch (error) {
     fatal = true;
     process.stderr.write(`[luban] 任务失败：${(error as Error).message}\n`);
+  } finally {
+    // 关闭 MCP server 子进程，否则事件循环挂起进程不退出
+    await bundle.closeMcp().catch(() => {});
   }
 
   function consumeEvent(event: LubanEvent): void {

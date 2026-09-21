@@ -54,6 +54,8 @@ export interface LoopBundle {
   checkpointer?: Checkpointer;
   /** MCP servers 连接状态 */
   mcpStatus: McpStatus[];
+  /** 关闭全部 MCP 连接（结束会话时调用，否则 server 子进程会让进程挂起不退出） */
+  closeMcp: () => Promise<void>;
   /** 预算钩子的写入口：把本会话累计成本喂给 isOverBudget */
   updateSpent: (costUsd: number) => void;
   isOverBudget: () => boolean;
@@ -91,6 +93,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
 
   // MCP servers（plan-m2 N3）：连接并把工具注册进同一 registry；单个失败不阻断启动
   const mcpStatus: McpStatus[] = [];
+  const mcpConnections: McpConnection[] = [];
   for (const [name, config] of Object.entries(settings.mcpServers ?? {})) {
     try {
       const connection = new McpConnection(name, config);
@@ -99,6 +102,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       for (const tool of mcpTools) {
         tools.register(tool);
       }
+      mcpConnections.push(connection);
       mcpStatus.push({ name, connected: true, tools: mcpTools.length });
     } catch (error) {
       mcpStatus.push({
@@ -147,6 +151,11 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     mcpStatus,
     approvals: options.approvals,
     checkpointer: options.checkpointer,
+    closeMcp: async () => {
+      for (const connection of mcpConnections) {
+        await connection.close().catch(() => {});
+      }
+    },
     updateSpent: (costUsd: number) => {
       spent = costUsd;
       onCostUpdate?.(costUsd);
