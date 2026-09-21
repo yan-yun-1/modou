@@ -10,7 +10,7 @@ import type { Settings } from "../src/settings.js";
 let dir: string;
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), "luban-factory-"));
+  dir = await mkdtemp(join(tmpdir(), "modou-factory-"));
 });
 
 afterEach(async () => {
@@ -41,6 +41,25 @@ const glmOverride: ModelCapabilities = {
 };
 
 describe("createLoopFromSettings", () => {
+  it("injects discovered skills into the system prompt (D2)", async () => {
+    const skillDir = join(dir, ".luban", "skills", "commit-style");
+    await mkdir(skillDir, { recursive: true });
+    await writeFile(
+      join(skillDir, "SKILL.md"),
+      "---\nname: commit-style\ndescription: 项目提交规范\n---\n使用 Conventional Commits。",
+      "utf8",
+    );
+    const bundle = await createLoopFromSettings({ settings, cwd: dir });
+    expect(bundle.systemPrompt).toContain("## 可用 Skills");
+    expect(bundle.systemPrompt).toContain("commit-style");
+    expect(bundle.systemPrompt).toContain("项目提交规范");
+  });
+
+  it("omits the skills section when none are discovered (D2)", async () => {
+    const bundle = await createLoopFromSettings({ settings, cwd: dir });
+    expect(bundle.systemPrompt).not.toContain("## 可用 Skills");
+  });
+
   it("creates a loop bound to a fresh session in the store", async () => {
     const bundle = await createLoopFromSettings({ settings, cwd: dir });
     expect(bundle.loop).toBeInstanceOf(AgentLoop);

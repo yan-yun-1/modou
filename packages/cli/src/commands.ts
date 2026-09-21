@@ -11,6 +11,7 @@ export type CommandResult =
   | { action: "model" }
   | { action: "mcp" }
   | { action: "init" }
+  | { action: "skills" }
   | { action: "plan"; task: string };
 
 /**
@@ -57,6 +58,8 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
       return { action: "mcp" };
     case "init":
       return { action: "init" };
+    case "skills":
+      return { action: "skills" };
     case "plan": {
       const task = args.join(" ").trim();
       if (!task) {

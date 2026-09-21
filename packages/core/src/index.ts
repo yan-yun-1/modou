@@ -32,6 +32,7 @@ export { buildSystemPrompt, buildPlanTaskPrompt, type PromptContext } from "./pr
 export { formatAgreements, loadAgreements, type AgreementSection } from "./context/agents-md.js";
 export { compactMessages, estimateTokens, needsCompaction } from "./context/compaction.js";
 export { buildRepoMap } from "./context/repo-map.js";
+export { formatSkillsPrompt, loadSkills, parseSkill, type Skill } from "./skills.js";
 export {
   GitCheckpointer,
   type Checkpointer,

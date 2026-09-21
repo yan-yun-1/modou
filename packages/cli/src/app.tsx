@@ -12,6 +12,7 @@ import { ApprovalBridge } from "./approval-bridge.js";
 import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
+import { loadSkills } from "@modou/core";
 import { CostBar } from "./components/CostBar.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
@@ -349,6 +350,25 @@ export function ModouApp({
                     .map(
                       (s) =>
                         `  ${s.connected ? "✓" : "✗"} ${s.name}（${s.tools} 个工具${s.error ? `，错误：${s.error}` : ""}）`,
+                    )
+                    .join("\n")}`,
+          },
+        ]);
+        return;
+      }
+      if (command.action === "skills") {
+        const skills = await loadSkills({ cwd }).catch(() => []);
+        setItems((prev) => [
+          ...prev,
+          {
+            kind: "assistant",
+            text:
+              skills.length === 0
+                ? "未发现 Skills（项目 .luban/skills/ 或 ~/.modou/skills/ 下放置 <name>/SKILL.md）"
+                : `可用 Skills：\n${skills
+                    .map(
+                      (skill) =>
+                        `  ${skill.name}（${skill.source === "project" ? "项目" : "全局"}）—— ${skill.description}`,
                     )
                     .join("\n")}`,
           },

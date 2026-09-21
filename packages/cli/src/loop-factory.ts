@@ -10,6 +10,8 @@ import {
   loadAgreements,
   buildRepoMap,
   createExploreTool,
+  formatSkillsPrompt,
+  loadSkills,
   mcpToolsFromConnection,
   resolveCapabilities,
   type Checkpointer,
@@ -125,15 +127,17 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
   // explore 子代理工具需要 model/capabilities，在系统提示词组装前注册（plan-m2 P2）
   tools.register(createExploreTool({ model, capabilities, cwd, store }));
 
-  // 上下文装配（plan-m1 K1/K3）：基础提示词 + AGENTS.md 约定 + repo map
-  const [agreementSections, repoMap] = await Promise.all([
+  // 上下文装配（plan-m1 K1/K3 + plan-m3 D2）：基础提示词 + AGENTS.md 约定 + repo map + Skills 清单
+  const [agreementSections, repoMap, skills] = await Promise.all([
     loadAgreements({ cwd, home: options.home }).catch(() => []),
     buildRepoMap({ cwd }).catch(() => ""),
+    loadSkills({ cwd, home: options.home }).catch(() => []),
   ]);
   const systemPrompt = [
     buildSystemPrompt({ cwd, platform: process.platform, tools: tools.names() }),
     formatAgreements(agreementSections),
     repoMap,
+    formatSkillsPrompt(skills),
   ]
     .filter((part) => part !== "")
     .join("\n\n");
