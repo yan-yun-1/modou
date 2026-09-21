@@ -71,3 +71,18 @@ describe("/mcp", () => {
     expect(parseCommand("/mcp", usage)).toEqual({ action: "mcp" });
   });
 });
+
+describe("/plan", () => {
+  it("parses with a task", () => {
+    expect(parseCommand("/plan 重构登录模块", usage)).toEqual({
+      action: "plan",
+      task: "重构登录模块",
+    });
+  });
+
+  it("rejects without a task", () => {
+    const result = parseCommand("/plan", usage);
+    expect(result).toMatchObject({ action: "message" });
+    expect((result as { text: string }).text).toContain("用法");
+  });
+});

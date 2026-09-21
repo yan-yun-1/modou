@@ -1,16 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useApp } from "ink";
-import type { Checkpointer, LubanEvent, UsageTotals, ApprovalRequest } from "@luban/core";
+import {
+  buildPlanTaskPrompt,
+  PermissionEngine,
+  type ApprovalRequest,
+  type Checkpointer,
+  type LubanEvent,
+  type UsageTotals,
+} from "@luban/core";
 import { ApprovalBridge } from "./approval-bridge.js";
 import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { CostBar } from "./components/CostBar.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
+import { PlanConfirm } from "./components/PlanConfirm.js";
 import { MessageList, type DisplayItem } from "./components/MessageList.js";
 
 export interface LoopLike {
-  run(input: string, sessionId: string): AsyncIterable<LubanEvent>;
+  run(
+    input: string,
+    sessionId: string,
+    options?: { permissions?: PermissionEngine; signal?: AbortSignal },
+  ): AsyncIterable<LubanEvent>;
 }
 
 export interface LubanAppProps {
@@ -72,6 +84,7 @@ export function LubanApp({
   const [usage, setUsage] = useState<UsageTotals>(ZERO_USAGE);
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [activeSessionId, setActiveSessionId] = useState(sessionId);
+  const [pendingPlan, setPendingPlan] = useState<{ task: string; plan: string } | null>(null);
   const loopRef = useRef(loop);
   const running = useRef(false);
   const onUsageChangeRef = useRef(onUsageChange);
@@ -140,16 +153,57 @@ export function LubanApp({
   }, []);
 
   const runTask = useCallback(
-    async (input: string) => {
+    async (input: string, options?: { permissions?: PermissionEngine }) => {
       if (running.current) {
         return;
       }
       running.current = true;
       setBusy(true);
       try {
-        for await (const event of loopRef.current.run(input, activeSessionId)) {
+        for await (const event of loopRef.current.run(input, activeSessionId, options)) {
           applyEvent(event);
         }
+      } catch (error) {
+        setItems((prev) => [
+          ...prev,
+          { kind: "error", text: `会话异常：${(error as Error).message}` },
+        ]);
+      } finally {
+        running.current = false;
+        setBusy(false);
+      }
+    },
+    [activeSessionId, applyEvent],
+  );
+
+  /** /plan 工作流（plan-m2 O1）：只读产出计划 → 确认 → 带计划执行 */
+  const runPlan = useCallback(
+    async (task: string) => {
+      if (running.current) {
+        return;
+      }
+      running.current = true;
+      setBusy(true);
+      try {
+        let lastAssistant = "";
+        for await (const event of loopRef.current.run(
+          buildPlanTaskPrompt(task),
+          activeSessionId,
+          { permissions: new PermissionEngine({ mode: "plan" }) },
+        )) {
+          if (event.type === "assistant_message") {
+            lastAssistant = event.text;
+          }
+          applyEvent(event);
+        }
+        if (!lastAssistant.trim()) {
+          setItems((prev) => [
+            ...prev,
+            { kind: "error", text: "计划模式未产出计划文本，请重试" },
+          ]);
+          return;
+        }
+        setPendingPlan({ task, plan: lastAssistant.trim() });
       } catch (error) {
         setItems((prev) => [
           ...prev,
@@ -276,9 +330,13 @@ export function LubanApp({
         ]);
         return;
       }
+      if (command.action === "plan") {
+        void runPlan(command.task);
+        return;
+      }
       void runTask(trimmed);
     },
-    [activeSessionId, checkpointer, exit, onExit, onModelSwitch, runTask, store, usage],
+    [activeSessionId, checkpointer, exit, onExit, onModelSwitch, runPlan, runTask, store, usage],
   );
 
   return (
@@ -289,6 +347,22 @@ export function LubanApp({
         <ApprovalPrompt
           request={pendingApproval}
           onAnswer={(answer) => approvals?.answer(answer)}
+        />
+      ) : null}
+      {pendingPlan ? (
+        <PlanConfirm
+          task={pendingPlan.task}
+          plan={pendingPlan.plan}
+          onApprove={() => {
+            const { task, plan } = pendingPlan;
+            setPendingPlan(null);
+            setItems((prev) => [...prev, { kind: "assistant", text: "已确认计划，开始执行" }]);
+            void runTask(`${task}\n\n[已确认的实施计划——请严格按以下步骤执行]\n${plan}`);
+          }}
+          onReject={() => {
+            setPendingPlan(null);
+            setItems((prev) => [...prev, { kind: "assistant", text: "已放弃执行该计划" }]);
+          }}
         />
       ) : null}
       <CostBar usage={usage} budgetUsd={budgetUsd} />

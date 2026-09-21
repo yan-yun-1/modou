@@ -9,7 +9,8 @@ export type CommandResult =
   | { action: "sessions" }
   | { action: "resume"; id: string }
   | { action: "model" }
-  | { action: "mcp" };
+  | { action: "mcp" }
+  | { action: "plan"; task: string };
 
 /**
  * 解析斜杠命令。返回 action:
@@ -53,6 +54,13 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
       return { action: "model" };
     case "mcp":
       return { action: "mcp" };
+    case "plan": {
+      const task = args.join(" ").trim();
+      if (!task) {
+        return { action: "message", text: "用法：/plan <任务描述>。agent 会只读调研并产出实施计划，确认后再执行。" };
+      }
+      return { action: "plan", task };
+    }
     case "rollback": {
       const n = Number(arg);
       if (!arg || !Number.isInteger(n) || n < 1) {

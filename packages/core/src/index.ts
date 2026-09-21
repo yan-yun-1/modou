@@ -28,7 +28,7 @@ export {
   type ApprovalAnswer,
   type ApprovalRequest,
 } from "./agent-loop.js";
-export { buildSystemPrompt, type PromptContext } from "./prompt.js";
+export { buildSystemPrompt, buildPlanTaskPrompt, type PromptContext } from "./prompt.js";
 export { formatAgreements, loadAgreements, type AgreementSection } from "./context/agents-md.js";
 export { compactMessages, estimateTokens, needsCompaction } from "./context/compaction.js";
 export { buildRepoMap } from "./context/repo-map.js";
