@@ -132,6 +132,36 @@ describe("AgentLoop stream errors", () => {
     expect(stored.at(-1)).toMatchObject({ type: "error", fatal: true });
   }, 60_000);
 
+  it("reports a task interrupt (not provider failure) when the run signal aborts", async () => {
+    const store = new SessionStore(dir);
+    const sessionId = await store.create("s-abort");
+    // 挂起的流：模型调用永不完成，直到信号中止
+    const controller = new AbortController();
+    const model = new MockLanguageModelV4({
+      doStream: async ({ abortSignal }) => ({
+        stream: simulateReadableStream({
+          chunks: [
+            { type: "stream-start", warnings: [] },
+            { type: "error", error: new Error("never"),
+            },
+          ],
+        }),
+      }),
+    });
+    const loop = makeLoop(model, store);
+    const events: LubanEvent[] = [];
+    const runPromise = (async () => {
+      for await (const event of loop.run("任务", sessionId, { signal: controller.signal })) {
+        events.push(event);
+      }
+    })();
+    controller.abort(); // 先于运行中止：分类逻辑应识别为用户中断
+    await runPromise;
+    const last = events.at(-1);
+    expect(last).toMatchObject({ type: "error", fatal: true });
+    expect((last as { message: string }).message).toContain("已中断");
+  });
+
   it("allows the same session to continue after a fatal error", async () => {
     const store = new SessionStore(dir);
     const sessionId = await store.create("s-err-recover");

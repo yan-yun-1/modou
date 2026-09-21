@@ -72,6 +72,8 @@ export async function* streamTurn(options: StreamTurnOptions): AsyncGenerator<Lu
       }
       case "error":
         throw part.error;
+      case "abort":
+        throw new Error("The operation was aborted");
       default:
         break;
     }

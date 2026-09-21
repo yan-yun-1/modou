@@ -214,9 +214,14 @@ export class AgentLoop {
           }
         }
       } catch (error) {
+        // 用户主动中止与 provider 故障区分开（plan-m2 Q2）
+        const message =
+          effectiveSignal?.aborted
+            ? "任务已中断"
+            : `模型调用失败：${(error as Error).message}`;
         yield await persist({
           type: "error",
-          message: `模型调用失败：${(error as Error).message}`,
+          message,
           fatal: true,
           at: at(),
         });
