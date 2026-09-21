@@ -1,6 +1,7 @@
 # 实现计划：M3「公开发布」（对应 PRD 里程碑 M3，第 7–8 周）
 
 > 关联：[docs/PRD.md](./PRD.md)、[docs/plan-m2.md](./plan-m2.md)（M2 已完成，v0.3.0-alpha）、[docs/backlog-m3.md](./backlog-m3.md)
+> 更名决议（2026-09-21）：产品名定为**墨斗 Modou**，R0 批次先行执行更名，其余任务以 modou 命名实施。
 > 前置：M2 已验收（MCP stdio 真实接入、/plan 闭环、explore 子代理、eval 10/13 达基线）。
 > 范围声明：本计划覆盖 PRD M3 主线——**发布准备（LICENSE/包名/npm）+ Skills 最小实现 + eval harness 收尾 + 发布动作**，并顺手清偿 backlog-m3 中低成本的评测/工程债项。LSP 上下文、OS 级沙箱落地、ACP 兼容不在本计划（PRD 将其排在 M4：`docs/PRD.md` 路线图 M4 = server 包 + ACP + Skills/hooks/LSP + 沙箱增强），其中 Skills 因成本低且是"可迁移"卖点，按 backlog-m3 决策**提前并入 M3**。
 
@@ -8,9 +9,14 @@
 
 PRD M3 验收标准为「自建评测通过率基线建立且不回退；从安装到完成任务 < 5 分钟」。前者 M2 已建立基线（10/13），本计划用 JSON 报告把"不回退"变为可机械判定；后者要求 npm 全局安装可用——本计划用 `npm pack` 产物 + 全新目录安装实测。
 
-## 发布命名决策
+## 发布命名决策（2026-09-21 用户确认：产品更名「墨斗 Modou」）
 
-- npm 包名：PRD 与回溯检查均写 `luban`。npm 上 `luban` 包（0.0.1，2017 年，无 README、8 年未更新）实质已死，但包名被占。**决策：CLI 包名取 `@luban-dev/cli`（bin 仍为 `luban`），core 取 `@luban-dev/core`；GitHub 仓库名用 `luban`。** 避开与死包沟通成本，scope 包可随时发布。若用户未来拿回 `luban` 裸名可再迁移。
+- 原决策「用 `@luban-dev/*` scope 包」作废：用户选择换产品名争取 npm 裸名。实时核查 `modou`（npm 裸名与 scope 均未被占）可注册，已定名。
+- **产品名：墨斗 / Modou**——墨斗弹线定直，与木匠规矩「先弹线，后动锯」对应 Plan Mode（先计划 → 确认 → 再执行），传承原鲁班木工叙事。
+- npm 包：`modou`（CLI）、`@modou/core`（引擎）；bin 命令：`modou`（`luban` 作为兼容别名保留一个版本周期）。
+- 用户目录：`~/.luban/` → `~/.modou/`，首版启动时**自动探测迁移**（旧目录存在且新目录不存在 → 整体改名复制，不删除旧目录）；`LUBAN_API_KEY` 环境变量同步改 `MODOU_API_KEY`（旧名保留读取一个周期）。
+- 内部标识同步：git 影子引用 `refs/luban/…` → `refs/modou/…`（列快照同时扫两个前缀，旧快照仍可回滚）；事件类型名 `LubanEvent` → `ModouEvent`（core 导出两个名字一个周期，避免下游断裂）；MCP CLIENT_INFO name → `modou`。
+- GitHub 仓库名：`modou`。域名候选 `modou.sh`（未建站，发布前注册）。
 - 许可证：Apache-2.0（PRD 已定）。
 - 版本：`v0.4.0-alpha`（本里程碑 tag；npm 正式 0.1.0 发布放到真实仓库就绪后）。
 
@@ -20,6 +26,7 @@ TDD 红绿循环、一任务一提交、偏离计划即停、每 3–5 个任务
 
 ## 契约增补预告（实现时回写本文件）
 
+0. **更名（R0 决策）**：包名 `modou` / `@modou/core`、bin `modou`（luban 别名一个周期）、目录 `~/.modou/`（自动迁移）、env `MODOU_API_KEY`、refs `refs/modou/`（双前缀兼容读）、导出 `ModouEvent`（=旧 LubanEvent 别名保留）、子会话前缀 `sub-` 不变、eval 沙箱前缀 `modou-eval-`。
 1. 新增命令：`luban --init`（无头生成 AGENTS.md 模板）与 TUI `/init`。
 2. settings.json 新增 `cwd?: string`（项目目录覆盖，默认 process.cwd()）。
 3. `Tool` 接口新增可选 `skill?: string`（标注来源 Skill，/skills 与调试用）。
@@ -34,7 +41,7 @@ TDD 红绿循环、一任务一提交、偏离计划即停、每 3–5 个任务
 
 #### 任务 A1：`--init` 生成 AGENTS.md 模板
 - 文件：`/packages/cli/src/init.ts`（新）、`/packages/cli/src/program.ts`（改）、`/packages/cli/test/init.test.ts`（新）
-- 描述：`luban --init [dir]`——在目录写一份 AGENTS.md 模板（项目概述/构建与测试命令/代码风格三节，含引导注释）；已存在时不覆盖、提示路径。同时提供 TUI `/init` 复用同一函数。这是"从安装到完成任务 < 5 分钟"的关键一步：新用户先 `/init` 让 agent 记住项目约定。
+- 描述：`luban --init [dir]`——在目录写一份 AGENTS.md 模板（项目概述/构建与测试命令/代码风格三节，含引导注释）；已存在时不覆盖、提示路径。同时提供 TUI `/init` 复用同一函数。这是"从安装到完成任务 < 5 分钟"的关键一步：新用户先 `/init` 让 agent 记住项目约定。（实现时命令与提示文案统一用 `modou` 命名。）
 - 验证：空目录生成合法模板；二次运行不覆盖；TUI 命令可用。
 - 依赖：无。预计：60 分钟
 
@@ -153,7 +160,7 @@ E1 ──┬── E2
 | 风险 | 概率 | 对策 |
 |---|---|---|
 | eval 修复后真实模型波动导致基线回退 | 中 | B1 验收即"连跑 3 轮 ≥ 2/3"；回退则先修用例质量再谈基线 |
-| npm 包名冲突/被抢注 | 低 | 已决策 scope 包 `@luban-dev/*`；GitHub 仓库名 `luban` 无冲突 |
+| npm 包名冲突/被抢注 | 低 | 已定名 `modou`（2026-09-21 实时核查 npm 裸名与 scope 均可注册）；GitHub 仓库名 `modou` 无冲突 |
 | Skills 渐进披露在 glm-4.5-air 上遵循度不足 | 中 | D3 用例允许 3 轮重试；失败则降级为整段注入（token 换可靠性），记录到 backlog |
 | 全局安装产物缺文件（bin/dist 遗漏） | 中 | E3 用 `npm pack --dry-run` + 真实 tgz 安装双验证 |
 
