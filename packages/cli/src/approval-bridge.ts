@@ -2,41 +2,46 @@ import type { ApprovalAnswer, ApprovalRequest } from "@luban/core";
 
 type Subscriber = (req: ApprovalRequest | null) => void;
 
+interface PendingEntry {
+  req: ApprovalRequest;
+  resolve: (a: ApprovalAnswer) => void;
+}
+
 /**
  * 审批桥：连接 AgentLoop 内部的审批请求与 UI 层。
- * loop 侧调 request() 挂起等待；UI 侧订阅展示、调 answer() 交还决定。
+ * 多个请求并发到达时按 FIFO 排队逐个展示（plan-m2 Q1），回答完成后自动弹出下一个。
  */
 export class ApprovalBridge {
-  #pending: { req: ApprovalRequest; resolve: (a: ApprovalAnswer) => void } | null = null;
+  #queue: PendingEntry[] = [];
   #subscribers = new Set<Subscriber>();
 
   request(req: ApprovalRequest): Promise<ApprovalAnswer> {
-    if (this.#pending) {
-      // 已有待审批请求时，后到的直接拒绝，避免排队堆积
-      return Promise.resolve({ granted: false, remembered: false });
-    }
     return new Promise((resolve) => {
-      this.#pending = { req, resolve };
+      this.#queue.push({ req, resolve });
       this.#notify();
     });
   }
 
   subscribe(fn: Subscriber): () => void {
     this.#subscribers.add(fn);
-    fn(this.#pending?.req ?? null);
+    fn(this.#current());
     return () => this.#subscribers.delete(fn);
   }
 
+  /** 回答队首请求；若队列非空自动展示下一个 */
   answer(answer: ApprovalAnswer): void {
-    const pending = this.#pending;
-    this.#pending = null;
+    const next = this.#queue.shift();
     this.#notify();
-    pending?.resolve(answer);
+    next?.resolve(answer);
+  }
+
+  #current(): ApprovalRequest | null {
+    return this.#queue[0]?.req ?? null;
   }
 
   #notify(): void {
     for (const fn of this.#subscribers) {
-      fn(this.#pending?.req ?? null);
+      fn(this.#current());
     }
   }
 }

@@ -65,13 +65,22 @@ describe("ApprovalBridge", () => {
     expect(seen.at(-1)).toBeNull();
   });
 
-  it("auto-denies a second request while one is pending", async () => {
+  it("queues concurrent requests FIFO and resolves them in order", async () => {
     const bridge = new ApprovalBridge();
+    const seen: (string | null)[] = [];
+    bridge.subscribe((r) => seen.push(r?.id ?? null));
+
     const first = bridge.request(req);
     const second = bridge.request({ ...req, id: "t2" });
 
-    expect(second).resolves.toEqual({ granted: false, remembered: false });
+    // 队首展示 t1，t2 排队
+    expect(seen).toEqual([null, "t1", "t1"]);
     bridge.answer({ granted: true, remembered: false });
     await expect(first).resolves.toEqual({ granted: true, remembered: false });
+    // t1 回答后队首变为 t2
+    expect(seen.at(-1)).toBe("t2");
+    bridge.answer({ granted: false, remembered: false });
+    await expect(second).resolves.toEqual({ granted: false, remembered: false });
+    expect(seen.at(-1)).toBeNull();
   });
 });
