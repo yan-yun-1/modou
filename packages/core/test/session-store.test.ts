@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { LubanEvent } from "../src/events.js";
+import type { ModouEvent } from "../src/events.js";
 import { SessionStore } from "../src/session-store.js";
 
 let dir: string;
@@ -15,7 +15,7 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
-function ev(at: number, text: string): LubanEvent {
+function ev(at: number, text: string): ModouEvent {
   return { type: "user_message", text, at };
 }
 
@@ -38,7 +38,7 @@ describe("SessionStore", () => {
     async () => {
       const store = new SessionStore(dir);
       const id = await store.create();
-      const events: LubanEvent[] = [];
+      const events: ModouEvent[] = [];
       for (let i = 0; i < 1000; i++) {
         events.push(
           i % 2 === 0
@@ -86,8 +86,8 @@ describe("SessionStore", () => {
     expect(await store.list()).toEqual(["a-session", "b-session", "c-session"]);
   });
 
-  it("defaults its base directory to ~/.luban/sessions", () => {
+  it("defaults its base directory to ~/.modou/sessions", () => {
     const store = new SessionStore();
-    expect(store.baseDir).toContain(join(".luban", "sessions"));
+    expect(store.baseDir).toContain(join(".modou", "sessions"));
   });
 });

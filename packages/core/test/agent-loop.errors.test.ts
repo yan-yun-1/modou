@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
-import type { LubanEvent } from "../src/events.js";
+import type { ModouEvent } from "../src/events.js";
 import type { ModelCapabilities } from "../src/models/catalog.js";
 import { AgentLoop } from "../src/agent-loop.js";
 import { PermissionEngine } from "../src/permissions.js";
@@ -79,8 +79,8 @@ function makeLoop(model: MockLanguageModelV4, store: SessionStore) {
   });
 }
 
-async function collect(loop: AgentLoop, input: string, sessionId: string): Promise<LubanEvent[]> {
-  const events: LubanEvent[] = [];
+async function collect(loop: AgentLoop, input: string, sessionId: string): Promise<ModouEvent[]> {
+  const events: ModouEvent[] = [];
   for await (const event of loop.run(input, sessionId)) {
     events.push(event);
   }
@@ -119,7 +119,7 @@ describe("AgentLoop stream errors", () => {
     );
 
     let thrown: Error | undefined;
-    let events: LubanEvent[] = [];
+    let events: ModouEvent[] = [];
     try {
       events = await collect(loop, "干活", sessionId);
     } catch (error) {
@@ -148,7 +148,7 @@ describe("AgentLoop stream errors", () => {
       }),
     });
     const loop = makeLoop(model, store);
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     const runPromise = (async () => {
       for await (const event of loop.run("任务", sessionId, { signal: controller.signal })) {
         events.push(event);

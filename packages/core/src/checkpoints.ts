@@ -29,7 +29,7 @@ export interface Checkpointer {
 
 /**
  * git 影子引用回滚点（backlog #4 / plan-m1 J1）：
- * - 快照用「临时 index + write-tree + commit-tree + update-ref refs/luban/<session>/<n>」，
+ * - 快照用「临时 index + write-tree + commit-tree + update-ref refs/modou/<session>/<n>」，
  *   全程不触碰用户的真实 index 与分支历史。
  * - 恢复 = 先给当前状态自动留档，再按快照重建工作区（含删除快照后新增的文件）。
  * - 非 git 目录自动降级为 no-op。
@@ -58,14 +58,14 @@ export class GitCheckpointer implements Checkpointer {
   }
 
   private refFor(sessionId: string, n: number): string {
-    return `refs/luban/${sessionId}/${n}`;
+    return `refs/modou/${sessionId}/${n}`;
   }
 
   async snapshot(sessionId: string): Promise<string | null> {
     if (!this.available) {
       return null;
     }
-    const tmpIndex = join(tmpdir(), `luban-index-${randomUUID()}`);
+    const tmpIndex = join(tmpdir(), `modou-index-${randomUUID()}`);
     const indexEnv = { GIT_INDEX_FILE: tmpIndex };
     try {
       // 用临时 index 把当前工作区（含未跟踪、不含被忽略文件）固化成一棵树
@@ -81,7 +81,7 @@ export class GitCheckpointer implements Checkpointer {
         head = null;
       }
       const next = await this.#nextN(sessionId);
-      const message = `luban checkpoint ${sessionId} #${next}`;
+      const message = `modou checkpoint ${sessionId} #${next}`;
       const commitArgs = ["commit-tree", tree, "-m", message];
       if (head) {
         commitArgs.push("-p", head);
@@ -103,7 +103,7 @@ export class GitCheckpointer implements Checkpointer {
     try {
       const out = await this.git([
         "for-each-ref",
-        `refs/luban/${sessionId}/`,
+        `refs/modou/${sessionId}/`,
         "--format=%(refname)%09%(creatordate:iso-strict)",
         "--sort=version:refname",
       ]);
@@ -134,8 +134,8 @@ export class GitCheckpointer implements Checkpointer {
     // 恢复前先给当前状态留档（恢复动作本身可撤销）
     const preRestore = await this.snapshot(sessionId);
 
-    const tmpSnapIndex = join(tmpdir(), `luban-restore-snap-${randomUUID()}`);
-    const tmpNowIndex = join(tmpdir(), `luban-restore-now-${randomUUID()}`);
+    const tmpSnapIndex = join(tmpdir(), `modou-restore-snap-${randomUUID()}`);
+    const tmpNowIndex = join(tmpdir(), `modou-restore-now-${randomUUID()}`);
     const snapEnv = { GIT_INDEX_FILE: tmpSnapIndex };
     const nowEnv = { GIT_INDEX_FILE: tmpNowIndex };
     try {

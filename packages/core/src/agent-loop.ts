@@ -1,7 +1,7 @@
 import { tool as aiTool, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import type { Checkpointer } from "./checkpoints.js";
 import { compactMessages, needsCompaction } from "./context/compaction.js";
-import type { LubanEvent } from "./events.js";
+import type { ModouEvent } from "./events.js";
 import type { ModelCapabilities } from "./models/catalog.js";
 import { streamTurn } from "./models/stream.js";
 import type { PermissionEngine, PermissionRule } from "./permissions.js";
@@ -40,7 +40,7 @@ export interface AgentLoopDeps {
   checkpointer?: Checkpointer;
 }
 
-type ToolCallEvent = Extract<LubanEvent, { type: "tool_call" }>;
+type ToolCallEvent = Extract<ModouEvent, { type: "tool_call" }>;
 
 function toolResultMessage(id: string, name: string, output: string): ModelMessage {
   return {
@@ -83,13 +83,13 @@ export class AgentLoop {
     input: string,
     sessionId: string,
     options?: { permissions?: PermissionEngine; signal?: AbortSignal },
-  ): AsyncGenerator<LubanEvent> {
+  ): AsyncGenerator<ModouEvent> {
     const { store, model, capabilities, tools, systemPrompt } = this.#deps;
     const effectivePermissions = options?.permissions ?? this.#deps.permissions;
     const effectiveSignal = options?.signal ?? this.#deps.signal;
     const at = Date.now;
 
-    const persist = async (event: LubanEvent): Promise<LubanEvent> => {
+    const persist = async (event: ModouEvent): Promise<ModouEvent> => {
       await store.append(sessionId, event);
       return event;
     };
@@ -251,11 +251,11 @@ export class AgentLoop {
     event: ToolCallEvent,
     sessionId: string,
     messages: ModelMessage[],
-    persist: (event: LubanEvent) => Promise<LubanEvent>,
+    persist: (event: ModouEvent) => Promise<ModouEvent>,
     at: () => number,
     permissions: PermissionEngine,
     signal?: AbortSignal,
-  ): AsyncGenerator<LubanEvent> {
+  ): AsyncGenerator<ModouEvent> {
     const { tools, approve, cwd } = this.#deps;
     const tool = tools.get(event.name);
 

@@ -1,5 +1,5 @@
 import type { ModelMessage } from "ai";
-import type { LubanEvent } from "./events.js";
+import type { ModouEvent } from "./events.js";
 
 export interface UsageTotals {
   inputTokens: number;
@@ -18,7 +18,7 @@ export interface RebuiltSession {
  * 从事件流重建会话状态：模型可直接使用的消息历史 + 累计用量。
  * 审批、错误等运营类事件不进入模型消息，但 usage 会计入总量。
  */
-export function rebuildState(events: LubanEvent[]): RebuiltSession {
+export function rebuildState(events: ModouEvent[]): RebuiltSession {
   const messages: ModelMessage[] = [];
   const usageTotals: UsageTotals = {
     inputTokens: 0,

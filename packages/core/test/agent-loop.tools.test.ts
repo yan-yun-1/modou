@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
-import type { LubanEvent } from "../src/events.js";
+import type { ModouEvent } from "../src/events.js";
 import type { ModelCapabilities } from "../src/models/catalog.js";
 import { AgentLoop } from "../src/agent-loop.js";
 import type { Checkpointer } from "../src/checkpoints.js";
@@ -125,7 +125,7 @@ async function runFixture(
   input: string,
   options: FixtureOptions = {},
 ): Promise<{
-  events: LubanEvent[];
+  events: ModouEvent[];
   store: SessionStore;
   sessionId: string;
   approveSpy: ReturnType<typeof vi.fn>;
@@ -150,7 +150,7 @@ async function runFixture(
     cwd: dir,
     checkpointer: options.checkpointer,
   });
-  const events: LubanEvent[] = [];
+  const events: ModouEvent[] = [];
   for await (const event of loop.run(input, sessionId, { permissions: options.runPermissions })) {
     events.push(event);
   }

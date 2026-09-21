@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { parseEvent, type LubanEvent } from "./events.js";
+import { parseEvent, type ModouEvent } from "./events.js";
 
 /**
  * 会话以 JSONL（每行一个 JSON 事件）落盘，天然支持追加、回放与多端同步。
@@ -14,7 +14,7 @@ export class SessionStore {
   #queues = new Map<string, Promise<void>>();
 
   constructor(baseDir?: string) {
-    this.baseDir = baseDir ?? join(homedir(), ".luban", "sessions");
+    this.baseDir = baseDir ?? join(homedir(), ".modou", "sessions");
   }
 
   async create(id?: string): Promise<string> {
@@ -25,7 +25,7 @@ export class SessionStore {
     return sessionId;
   }
 
-  async append(sessionId: string, event: LubanEvent): Promise<void> {
+  async append(sessionId: string, event: ModouEvent): Promise<void> {
     const line = JSON.stringify(event) + "\n";
     const previous = this.#queues.get(sessionId) ?? Promise.resolve();
     const next = previous.then(() => appendFile(this.sessionFile(sessionId), line, "utf8"));
@@ -36,7 +36,7 @@ export class SessionStore {
     return next;
   }
 
-  async read(sessionId: string): Promise<LubanEvent[]> {
+  async read(sessionId: string): Promise<ModouEvent[]> {
     let raw: string;
     try {
       raw = await readFile(this.sessionFile(sessionId), "utf8");
@@ -61,7 +61,7 @@ export class SessionStore {
           );
         }
       })
-      .filter((event): event is LubanEvent => event !== null);
+      .filter((event): event is ModouEvent => event !== null);
   }
 
   async list(): Promise<string[]> {

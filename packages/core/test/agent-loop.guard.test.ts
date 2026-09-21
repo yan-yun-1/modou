@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
-import type { LubanEvent } from "../src/events.js";
+import type { ModouEvent } from "../src/events.js";
 import type { ModelCapabilities } from "../src/models/catalog.js";
 import { AgentLoop } from "../src/agent-loop.js";
 import { PermissionEngine } from "../src/permissions.js";
@@ -82,7 +82,7 @@ describe("AgentLoop guards", () => {
       maxSteps: 3,
     });
 
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     for await (const event of loop.run("一直干", sessionId)) {
       events.push(event);
     }
@@ -115,7 +115,7 @@ describe("AgentLoop guards", () => {
       isOverBudget: () => true,
     });
 
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     for await (const event of loop.run("干活", sessionId)) {
       events.push(event);
     }

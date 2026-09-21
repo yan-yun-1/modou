@@ -22,7 +22,7 @@ export interface McpToolInfo {
   inputSchema: unknown;
 }
 
-const CLIENT_INFO = { name: "luban", version: "0.3.0" };
+const CLIENT_INFO = { name: "modou", version: "0.3.0" };
 
 function isHttpConfig(config: McpServerConfig): config is McpHttpConfig {
   return "url" in config;

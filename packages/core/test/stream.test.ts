@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
-import type { LubanEvent } from "../src/events.js";
+import type { ModouEvent } from "../src/events.js";
 import type { ModelCapabilities } from "../src/models/catalog.js";
 import { streamTurn } from "../src/models/stream.js";
 import type { ModelMessage } from "ai";
@@ -56,7 +56,7 @@ function makeModel() {
 describe("streamTurn", () => {
   it("maps an AI SDK stream into luban events with cost", async () => {
     let tick = 1;
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     for await (const event of streamTurn({
       model: makeModel(),
       messages,
@@ -105,7 +105,7 @@ describe("streamTurn", () => {
         }),
       }),
     });
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     for await (const event of streamTurn({ model, messages, capabilities: caps })) {
       events.push(event);
     }

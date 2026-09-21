@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLubanEvent, lubanEventSchema, parseEvent } from "../src/events.js";
+import { isModouEvent, modouEventSchema, parseEvent } from "../src/events.js";
 
 const validEvents = [
   { type: "session_started", sessionId: "s-1", model: "claude-sonnet-4", at: 1 },
@@ -29,12 +29,12 @@ const validEvents = [
   { type: "error", message: "超时", fatal: false, at: 10 },
 ] as const;
 
-describe("LubanEvent schema", () => {
+describe("ModouEvent schema", () => {
   it("accepts and round-trips every valid event type", () => {
     for (const event of validEvents) {
       const parsed = parseEvent(event);
       expect(parsed).toEqual(event);
-      expect(lubanEventSchema.safeParse(JSON.parse(JSON.stringify(parsed))).success).toBe(true);
+      expect(modouEventSchema.safeParse(JSON.parse(JSON.stringify(parsed))).success).toBe(true);
     }
   });
 
@@ -66,9 +66,9 @@ describe("LubanEvent schema", () => {
     expect(() => parseEvent({ type: "user_message", text: "x", at: 1.5 })).toThrow();
   });
 
-  it("isLubanEvent narrows unknown values", () => {
-    expect(isLubanEvent(validEvents[0])).toBe(true);
-    expect(isLubanEvent({ hello: 1 })).toBe(false);
-    expect(isLubanEvent(null)).toBe(false);
+  it("isModouEvent narrows unknown values", () => {
+    expect(isModouEvent(validEvents[0])).toBe(true);
+    expect(isModouEvent({ hello: 1 })).toBe(false);
+    expect(isModouEvent(null)).toBe(false);
   });
 });

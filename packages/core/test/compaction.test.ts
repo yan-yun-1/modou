@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MockLanguageModelV4, simulateReadableStream } from "ai/test";
-import type { LubanEvent } from "../src/events.js";
+import type { ModouEvent } from "../src/events.js";
 import type { ModelCapabilities, ModelMessage } from "../src/models/catalog.js";
 import { AgentLoop } from "../src/agent-loop.js";
 import { estimateTokens, needsCompaction } from "../src/context/compaction.js";
@@ -98,7 +98,7 @@ describe("AgentLoop compaction", () => {
       cwd: dir,
     });
 
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     // 4000 字符 ≈ 1000 token > 1000 窗口的 80% → 触发压缩
     for await (const event of loop.run("任务背景：".concat("x".repeat(3900)), sessionId)) {
       events.push(event);
@@ -138,7 +138,7 @@ describe("AgentLoop compaction", () => {
       cwd: dir,
     });
 
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     for await (const event of loop.run("任务背景：".concat("x".repeat(3900)), sessionId)) {
       events.push(event);
     }
@@ -171,7 +171,7 @@ describe("AgentLoop compaction", () => {
       cwd: dir,
     });
 
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     for await (const event of loop.run("任务背景：".concat("x".repeat(3900)), sessionId)) {
       events.push(event);
     }
@@ -208,7 +208,7 @@ describe("AgentLoop compaction", () => {
       systemPrompt: "t",
       cwd: dir,
     });
-    const events: LubanEvent[] = [];
+    const events: ModouEvent[] = [];
     for await (const event of loop.run("hi", sessionId)) {
       events.push(event);
     }

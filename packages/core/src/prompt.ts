@@ -13,7 +13,7 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   const today = (ctx.now ?? new Date()).toISOString().slice(0, 10);
   const toolList = ctx.tools.length > 0 ? ctx.tools.join(", ") : "（无）";
 
-  return `你是鲁班（Luban），一个运行在终端里的编程 Agent。你的任务是帮助开发者高效且安全地完成编码工作。
+  return `你是墨斗（Modou），一个运行在终端里的编程 Agent。你的任务是帮助开发者高效且安全地完成编码工作。
 
 ## 当前环境
 - 工作目录：${ctx.cwd}

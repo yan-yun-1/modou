@@ -1,7 +1,7 @@
 import { streamText, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import type { ModelCapabilities } from "./catalog.js";
 import { computeCost } from "./cost.js";
-import type { LubanEvent } from "../events.js";
+import type { ModouEvent } from "../events.js";
 
 export interface StreamTurnOptions {
   model: LanguageModel;
@@ -19,12 +19,12 @@ export interface StreamTurnOptions {
  * 事件顺序：text_delta… → tool_call… → assistant_message（完整文本）→ usage（含成本）。
  * text_delta 仅供 UI 实时渲染，不落盘；assistant_message 是持久化的唯一文本事实。
  */
-export async function* streamTurn(options: StreamTurnOptions): AsyncGenerator<LubanEvent> {
+export async function* streamTurn(options: StreamTurnOptions): AsyncGenerator<ModouEvent> {
   const { model, messages, capabilities, system, tools, signal, at = Date.now } = options;
   let text = "";
   let emitted = false;
 
-  const emitText = function* (): Generator<LubanEvent> {
+  const emitText = function* (): Generator<ModouEvent> {
     if (!emitted && text.length > 0) {
       emitted = true;
       yield { type: "assistant_message", text, at: at() };

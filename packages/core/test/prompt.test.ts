@@ -9,7 +9,7 @@ describe("buildSystemPrompt", () => {
       tools: ["read", "grep", "glob", "bash"],
       now: new Date("2026-09-19T12:00:00+08:00"),
     });
-    expect(prompt).toContain("鲁班");
+    expect(prompt).toContain("墨斗");
     expect(prompt).toContain("E:/demo/project");
     expect(prompt).toContain("win32");
     expect(prompt).toContain("2026-09-19");

@@ -1,5 +1,5 @@
 export { VERSION } from "./version.js";
-export { isLubanEvent, lubanEventSchema, parseEvent, type LubanEvent } from "./events.js";
+export { isModouEvent, modouEventSchema, parseEvent, type ModouEvent } from "./events.js";
 export { rebuildState, type RebuiltSession, type UsageTotals } from "./session.js";
 export { SessionStore } from "./session-store.js";
 export {

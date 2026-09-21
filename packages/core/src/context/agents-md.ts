@@ -48,7 +48,7 @@ async function collectSubdirs(root: string, depth: number): Promise<string[]> {
 
 /**
  * AGENTS.md 分层加载（plan-m1 K1）：
- * 全局（~/.luban/AGENTS.md）→ 项目（<cwd>/AGENTS.md）→ 一二级子目录的 AGENTS.md。
+ * 全局（~/.modou/AGENTS.md）→ 项目（<cwd>/AGENTS.md）→ 一二级子目录的 AGENTS.md。
  * 总字符数受 maxTotalChars 预算约束，超出截断并注记。
  */
 export async function loadAgreements(options: {

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { LubanEvent } from "../src/events.js";
+import type { ModouEvent } from "../src/events.js";
 import { rebuildState } from "../src/session.js";
 
-const base: LubanEvent[] = [
+const base: ModouEvent[] = [
   { type: "session_started", sessionId: "s-1", model: "claude-sonnet-4", at: 1 },
   { type: "user_message", text: "修复登录 bug", at: 2 },
   { type: "assistant_message", text: "我先看一下相关代码", at: 3 },

@@ -8,7 +8,7 @@ const timestamp = z.number().int().nonnegative();
 
 const args = z.unknown().optional();
 
-export const lubanEventSchema = z.discriminatedUnion("type", [
+export const modouEventSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("session_started"),
     sessionId: z.string().min(1),
@@ -76,12 +76,12 @@ export const lubanEventSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-export type LubanEvent = z.infer<typeof lubanEventSchema>;
+export type ModouEvent = z.infer<typeof modouEventSchema>;
 
-export function parseEvent(value: unknown): LubanEvent {
-  return lubanEventSchema.parse(value);
+export function parseEvent(value: unknown): ModouEvent {
+  return modouEventSchema.parse(value);
 }
 
-export function isLubanEvent(value: unknown): value is LubanEvent {
-  return lubanEventSchema.safeParse(value).success;
+export function isModouEvent(value: unknown): value is ModouEvent {
+  return modouEventSchema.safeParse(value).success;
 }
