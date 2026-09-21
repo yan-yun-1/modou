@@ -4,6 +4,8 @@ export interface ToolContext {
   /** 工具执行的工作目录（通常是当前项目根） */
   cwd: string;
   signal: AbortSignal;
+  /** 当前主会话 id（C3：subagent 派生真实父会话；契约增补：plan-m3） */
+  sessionId?: string;
 }
 
 export interface ToolResult {

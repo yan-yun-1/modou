@@ -30,6 +30,22 @@ const settings: Settings = { ...userSettings, apiKey: userSettings.apiKey };
 const modelOverrides = await loadModelOverrides(homedir());
 const providerLabel: ProviderName = settings.provider;
 
+interface EvalReport {
+  at: string;
+  provider: string;
+  model: string;
+  passed: number;
+  total: number;
+  baseline: number;
+  cases: {
+    name: string;
+    ok: boolean;
+    seconds: number | null;
+    costUsd: number | null;
+    detail?: string;
+  }[];
+}
+
 interface EvalCase {
   name: string;
   prompt: string;
@@ -113,7 +129,7 @@ const cases: EvalCase[] = [
     name: "edit-fix-typo",
     mode: "yolo",
     prompt:
-      "使用 edit 工具直接修改 math.js 文件：把拼写错误的函数名 mull 改成 mul，函数体保持不变。不要只在回复中给出代码。",
+      "先 read math.js，再用 edit 工具直接修改它：把拼写错误的函数名 mull 改成 mul，函数体保持不变。不要只在回复中给出代码。",
     check: async ({ sandbox }) => {
       const content = await readFile(join(sandbox, "math.js"), "utf8");
       return content.includes("function mul(") && !content.includes("function mull(")
@@ -149,7 +165,9 @@ const cases: EvalCase[] = [
   },
   {
     name: "grep-count-batch",
-    prompt: "src/utils 目录下有几个函数？用搜索工具确认后回答数字。",
+    // fixture：src/utils/{array.js,string.js} 共恰好 3 个函数（见 makeSandbox）
+    prompt:
+      "src/utils 目录下定义了几个函数？用搜索或读取工具逐个文件确认后，最后一行单独输出形如「共 N 个函数」的结论（N 是阿拉伯数字）。",
     check: async ({ output, toolCalls }) => {
       if (
         !toolCalls.includes("grep") &&
@@ -158,7 +176,9 @@ const cases: EvalCase[] = [
       ) {
         return "没有使用任何搜索/读取工具";
       }
-      return /\d/.test(output) ? null : "输出未包含数字";
+      return /共\s*3\s*个函数/.test(output)
+        ? null
+        : `结论不是「共 3 个函数」：${output.slice(-80)}`;
     },
   },
   {
@@ -177,7 +197,7 @@ const cases: EvalCase[] = [
     name: "multi-step-fix-test",
     mode: "yolo",
     prompt:
-      "运行命令 node run-tests.js，如果测试失败就修复 buggy.js 里的错误再重跑，直到测试通过。",
+      "分步执行：先运行命令 node run-tests.js；失败时先 read buggy.js 找出问题，再用 edit 修复，然后重跑 node run-tests.js，直到输出 ALL TESTS PASS。",
     check: async ({ output, toolCalls }) => {
       if (!toolCalls.includes("bash")) return "没有调用 bash 工具";
       if (!toolCalls.includes("edit") && !toolCalls.includes("write")) return "没有修改代码";
@@ -191,6 +211,18 @@ const cases: EvalCase[] = [
 async function makeSandbox(kind: "plain" | "tests"): Promise<string> {
   const sandbox = await mkdtemp(join(tmpdir(), "modou-eval-"));
   await mkdir(join(sandbox, "src"), { recursive: true });
+  // grep-count-batch fixture：恰好 3 个函数（断言「共 3 个函数」）
+  await mkdir(join(sandbox, "src", "utils"), { recursive: true });
+  await writeFile(
+    join(sandbox, "src", "utils", "array.js"),
+    "function first(list) {\n  return list[0];\n}\n\nfunction last(list) {\n  return list[list.length - 1];\n}\n",
+    "utf8",
+  );
+  await writeFile(
+    join(sandbox, "src", "utils", "string.js"),
+    "function shout(text) {\n  return text.toUpperCase();\n}\n",
+    "utf8",
+  );
   await writeFile(
     join(sandbox, "math.js"),
     "function add(a, b) {\n  return a + b;\n}\n\nfunction multiply(a, b) {\n  return a * b;\n}\n\nfunction mull(a, b) {\n  return a * b;\n}\n",
@@ -233,6 +265,7 @@ function gitInit(dir: string): void {
 console.log(`[eval] provider=${providerLabel} model=${settings.modelId}`);
 let passed = 0;
 const failures: string[] = [];
+const caseResults: EvalReport["cases"] = [];
 
 for (let i = 0; i < cases.length; i++) {
   const testCase = cases[i]!;
@@ -280,25 +313,86 @@ for (let i = 0; i < cases.length; i++) {
     const seconds = ((Date.now() - started) / 1000).toFixed(1);
     if (detail === null && result.exitCode === 0) {
       passed++;
+      caseResults.push({
+        name: testCase.name,
+        ok: true,
+        seconds: Number(seconds),
+        costUsd: result.costUsd,
+      });
       console.log(`  ✓ ${testCase.name}（${seconds}s，$${result.costUsd.toFixed(6)}）`);
     } else {
-      failures.push(`${testCase.name}: ${detail ?? `exitCode=${result.exitCode}`}`);
+      const failDetail = detail ?? `exitCode=${result.exitCode}`;
+      failures.push(`${testCase.name}: ${failDetail}`);
+      caseResults.push({
+        name: testCase.name,
+        ok: false,
+        seconds: Number(seconds),
+        costUsd: result.costUsd,
+        detail: failDetail,
+      });
       const diagnosis = lastError ?? `输出摘录: ${result.output.slice(0, 100)}`;
       console.log(
         `  ✗ ${testCase.name}（${seconds}s）→ ${detail ?? `exitCode=${result.exitCode}`}｜${diagnosis}`,
       );
     }
   } catch (error) {
-    failures.push(`${testCase.name}: ${(error as Error).message}`);
-    console.log(`  ✗ ${testCase.name} → 异常：${(error as Error).message}`);
+    const message = (error as Error).message;
+    failures.push(`${testCase.name}: ${message}`);
+    caseResults.push({
+      name: testCase.name,
+      ok: false,
+      seconds: null,
+      costUsd: null,
+      detail: message,
+    });
+    console.log(`  ✗ ${testCase.name} → 异常：${message}`);
   } finally {
     await rm(sandbox, { recursive: true, force: true }).catch(() => {});
   }
 }
 
 console.log(`\n[eval] 通过 ${passed}/${cases.length}（基线 10）`);
+
+// B2（plan-m3）：结构化 JSON 报告 + 与上一份报告的基线对比
+const reportDir = join(import.meta.dirname, "..", "eval-results");
+await mkdir(reportDir, { recursive: true });
+const reportPath = join(reportDir, "eval-report.json");
+const previousRaw = await readFile(reportPath, "utf8").catch(() => null);
+const previous = previousRaw ? (JSON.parse(previousRaw) as EvalReport | null) : null;
+
+const report: EvalReport = {
+  at: new Date().toISOString(),
+  provider: providerLabel,
+  model: settings.modelId,
+  passed,
+  total: cases.length,
+  baseline: 10,
+  cases: caseResults,
+};
+await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+console.log(`[eval] 报告已写入 ${reportPath}`);
+
+if (previous) {
+  const prevByName = new Map(previous.cases.map((c) => [c.name, c]));
+  const regressed = report.cases.filter((c) => !c.ok && prevByName.get(c.name)?.ok === true);
+  const fixed = report.cases.filter((c) => c.ok && prevByName.get(c.name)?.ok === false);
+  if (fixed.length > 0) {
+    console.log(`[eval] 较上次新增通过：${fixed.map((c) => c.name).join("、")}`);
+  }
+  if (regressed.length > 0) {
+    console.error(
+      `[eval] 基线回退（上次通过、本次失败）：${regressed.map((c) => c.name).join("、")}`,
+    );
+  }
+  if (report.passed < previous.passed) {
+    console.error(
+      `[eval] 通过总数回退：${previous.passed}/${previous.total} → ${report.passed}/${report.total}`,
+    );
+  }
+}
+
 if (passed < 10) {
-  console.error("[eval] 通过率低于基线（10/12），M2 出口条件未满足");
+  console.error("[eval] 通过率低于基线（10/13），出口条件未满足");
   process.exit(1);
 }
 console.log("[eval] 达到基线");

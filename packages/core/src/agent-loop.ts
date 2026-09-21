@@ -296,6 +296,7 @@ export class AgentLoop {
             .preview(event.args, {
               cwd,
               signal: signal ?? new AbortController().signal,
+              sessionId,
             })
             .catch(() => null)
         : null;
@@ -356,6 +357,7 @@ export class AgentLoop {
       const result = await tools.validateAndRun(event.name, event.args, {
         cwd,
         signal: signal ?? new AbortController().signal,
+        sessionId,
       });
       output = result.output;
       truncated = result.truncated ?? false;
