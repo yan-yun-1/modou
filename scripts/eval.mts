@@ -131,6 +131,37 @@ const cases: EvalCase[] = [
     },
   },
   {
+    name: "write-json-config",
+    mode: "yolo",
+    prompt: '创建 settings.json，内容为 {"debug": false,"level": 3}（合法 JSON）。',
+    check: async ({ sandbox }) => {
+      const content = await readFile(join(sandbox, "settings.json"), "utf8").catch(() => null);
+      if (content === null) return "文件未创建";
+      try {
+        const parsed = JSON.parse(content);
+        return parsed.debug === false && parsed.level === 3
+          ? null
+          : `内容不符：${content.slice(0, 60)}`;
+      } catch {
+        return "不是合法 JSON";
+      }
+    },
+  },
+  {
+    name: "grep-count-batch",
+    prompt: "src/utils 目录下有几个函数？用搜索工具确认后回答数字。",
+    check: async ({ output, toolCalls }) => {
+      if (
+        !toolCalls.includes("grep") &&
+        !toolCalls.includes("glob") &&
+        !toolCalls.includes("read")
+      ) {
+        return "没有使用任何搜索/读取工具";
+      }
+      return /\d/.test(output) ? null : "输出未包含数字";
+    },
+  },
+  {
     name: "mcp-filesystem-read",
     mode: "yolo",
     mcpServers: {},
@@ -265,9 +296,9 @@ for (let i = 0; i < cases.length; i++) {
   }
 }
 
-console.log(`\n[eval] 通过 ${passed}/${cases.length}`);
-if (passed < 7) {
-  console.error("[eval] 通过率低于基线（7/10），M1 出口条件未满足");
+console.log(`\n[eval] 通过 ${passed}/${cases.length}（基线 10）`);
+if (passed < 10) {
+  console.error("[eval] 通过率低于基线（10/12），M2 出口条件未满足");
   process.exit(1);
 }
 console.log("[eval] 达到基线");
