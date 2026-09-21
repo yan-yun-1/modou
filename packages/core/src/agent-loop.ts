@@ -358,5 +358,15 @@ export class AgentLoop {
       at: at(),
     });
     messages.push(toolResultMessage(event.id, event.name, output));
+
+    // 子代理工具（契约增补 3）：摘要落盘为独立事件，供审计与 UI 展示
+    if (tool.subagentName) {
+      yield await persist({
+        type: "subagent",
+        name: tool.subagentName,
+        summary: output.slice(0, 500),
+        at: at(),
+      });
+    }
   }
 }

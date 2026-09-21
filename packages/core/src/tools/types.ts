@@ -24,6 +24,8 @@ export interface Tool<T = unknown> {
   kind: ToolKind;
   /** 工具来源：内置实现或 MCP server 桥接（契约增补：plan-m2 N2） */
   source?: "builtin" | "mcp";
+  /** 子代理工具标记：设置后 tool_result 之后会落盘 subagent 事件（契约增补：plan-m2 P2） */
+  subagentName?: string;
   schema: z.ZodType<T>;
   run(args: T, ctx: ToolContext): Promise<ToolResult>;
   /**
