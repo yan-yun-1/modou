@@ -53,3 +53,26 @@ packages/
 ## 已知限制与 M1 待办
 
 见 [backlog-m1.md](./backlog-m1.md)。
+
+
+## 发布手册（M3）
+
+npm 发布（仓库公开后执行）：
+
+1. 版本检查：`packages/*/package.json` 版本一致（当前 0.4.0）。
+2. 构建：`pnpm build`（必须先于 pack，产物在 dist/）。
+3. 打包演练：`npm pack` 两包（core 产物 `modou-core-x.y.z.tgz`，cli 产物 `modou-x.y.z.tgz`），
+   核对 unpacked 内容只含 dist/、README、LICENSE、package.json。
+4. 全新目录安装实测（演练已通过）：
+   ```bash
+   npm install -g ./packages/cli/pkgs/modou-0.4.0.tgz ./packages/core/pkgs/modou-core-0.4.0.tgz
+   modou --version && modou init && modou -p "1+1"
+   ```
+5. 正式发布（按依赖序）：
+   ```bash
+   (cd packages/core && npm publish --access public)
+   (cd packages/cli  && npm publish --access public)
+   ```
+6. 打 tag：`git tag vX.Y.Z && git push --tags`。
+
+注意：`files` 字段只含 `dist`，README/LICENSE/package.json 会自动包含；`.luban/`、`eval-results/` 不会进入产物。

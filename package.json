@@ -24,5 +24,19 @@
     "turbo": "^2.5.4",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.70.0"
-  }
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/modou-dev/modou.git"
+  },
+  "keywords": [
+    "agent",
+    "ai",
+    "coding-agent",
+    "cli",
+    "mcp",
+    "terminal",
+    "llm"
+  ]
 }

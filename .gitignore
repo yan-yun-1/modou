@@ -9,3 +9,6 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# npm pack 演练产物（E3）
+pkgs/

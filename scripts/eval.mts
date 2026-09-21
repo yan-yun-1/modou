@@ -165,9 +165,10 @@ const cases: EvalCase[] = [
   },
   {
     name: "grep-count-batch",
+    mode: "yolo",
     // fixture：src/utils/{array.js,string.js} 共恰好 3 个函数（见 makeSandbox）
     prompt:
-      "src/utils 目录下定义了几个函数？用搜索或读取工具逐个文件确认后，最后一行单独输出形如「共 N 个函数」的结论（N 是阿拉伯数字）。",
+      "统计 src/utils 目录下定义了几个函数。步骤：先用 glob 列出该目录下所有 .js 文件，再逐个 read，最后回答「共 N 个函数」（N 是阿拉伯数字）。",
     check: async ({ output, toolCalls }) => {
       if (
         !toolCalls.includes("grep") &&
@@ -179,6 +180,30 @@ const cases: EvalCase[] = [
       return /共\s*3\s*个函数/.test(output)
         ? null
         : `结论不是「共 3 个函数」：${output.slice(-80)}`;
+    },
+  },
+  {
+    name: "skill-follow",
+    mode: "yolo",
+    prompt: "把 notes.md 里的 blue 全部改成 green。",
+    check: async ({ sandbox, output, toolCalls }) => {
+      // 专项断言：模型按 SKILL.md 的约定先 read 再 edit（渐进披露生效的证据）
+      const skill = await readFile(
+        join(sandbox, ".luban", "skills", "commit-style", "SKILL.md"),
+        "utf8",
+      ).catch(() => null);
+      if (skill === null) return "沙箱 skill 未预置";
+      const content = await readFile(join(sandbox, "notes.md"), "utf8");
+      if (content.includes("blue") || !content.includes("green")) {
+        return `编辑未完成：${content.slice(0, 60)}`;
+      }
+      // read 在 edit 之前被调用（skill 正文要求"任何 edit 前先 read"）
+      const readIdx = toolCalls.indexOf("read");
+      const editIdx = toolCalls.indexOf("edit");
+      if (readIdx === -1 || editIdx === -1 || readIdx > editIdx) {
+        return `未按 SKILL.md 约定先 read 后 edit：${output.slice(-60)}`;
+      }
+      return null;
     },
   },
   {
@@ -211,6 +236,13 @@ const cases: EvalCase[] = [
 async function makeSandbox(kind: "plain" | "tests"): Promise<string> {
   const sandbox = await mkdtemp(join(tmpdir(), "modou-eval-"));
   await mkdir(join(sandbox, "src"), { recursive: true });
+  // skill-follow fixture：预置一个"编辑纪律" skill，验证渐进披露遵循
+  await mkdir(join(sandbox, ".luban", "skills", "commit-style"), { recursive: true });
+  await writeFile(
+    join(sandbox, ".luban", "skills", "commit-style", "SKILL.md"),
+    "---\nname: edit-discipline\ndescription: 项目的文件编辑纪律：任何 edit 工具调用之前必须先 read 目标文件\n---\n# 编辑纪律\n\n在本项目中，调用 edit 之前必须先调用 read 读取目标文件，确认内容后再编辑。",
+    "utf8",
+  );
   // grep-count-batch fixture：恰好 3 个函数（断言「共 3 个函数」）
   await mkdir(join(sandbox, "src", "utils"), { recursive: true });
   await writeFile(

@@ -1,67 +1,84 @@
 # 墨斗 Modou
 
-> 面向个人开发者的开源 Agent 编程引擎：headless 核心 + 终端 CLI，把任务交给 agent 干，把审批权、回滚能力和账单留在自己手里。
+> 面向个人开发者的开源 Agent 编程引擎：headless 核心 + 终端 CLI。把任务交给 agent 干，把审批权、回滚能力和账单留在自己手里。
 
-**状态**：M2（生态与健壮：MCP / Plan Mode / Subagent）。详见 [docs/PRD.md](docs/PRD.md)、[docs/plan.md](docs/plan.md)、[docs/plan-m1.md](docs/plan-m1.md) 与 [docs/plan-m2.md](docs/plan-m2.md)。
+墨斗是木匠弹线定直的工具——先弹线（Plan Mode 定计划），后动锯（确认后再执行）。
 
-## 特性（M0）
+**状态**：M3（公开发布准备：Skills / --init / eval harness）。路线图见 [docs/PRD.md](docs/PRD.md)。
 
-- **事件即事实**：所有行为以 append-only JSONL 事件流落盘（`~/.modou/sessions/`），会话可恢复、可回放。
-- **工具系统**：read（行号视窗）/ grep（无需 ripgrep）/ glob / bash（进程树超时击杀、输出尾部保留），按 ACI 原则设计。
-- **安全默认**：plan（只读）/ default（写与执行需审批）/ yolo 三档模式；always-allow 白名单（命令前缀/路径前缀）；高危命令（rm -rf、git push --force 等）任何模式都强制人工确认。
-- **多模型**：Anthropic / OpenAI / GLM / DeepSeek / Qwen / Kimi / OpenRouter / Ollama（本地模型免 Key），统一能力声明与**精确到缓存读写的成本核算**。
-- **Windows 一等公民**：PowerShell EncodedCommand 调用（任意引号免疫、退出码透传），开发与测试均在 Windows 本机完成。
-- **无头模式**：`modou -p "任务"` 单命令执行（CI/脚本可用）。
-
-## 快速开始（源码）
+## 30 秒上手（源码）
 
 要求：Node ≥ 24、pnpm ≥ 10。
 
 ```bash
-pnpm install
-pnpm build
-node packages/cli/dist/index.js        # 交互模式（首次运行进入引导）
-node packages/cli/dist/index.js -p "读取 package.json 并总结这个项目"   # 无头模式
-node packages/cli/dist/index.js model  # 重新选择模型（写入 settings.json，重启后生效）
+pnpm install && pnpm build
+node packages/cli/dist/index.js init   # 在当前项目生成 AGENTS.md 模板，填入你的项目约定
+node packages/cli/dist/index.js        # 交互模式（首次运行进入模型引导）
 ```
 
-首次运行引导：选择模型提供商 → 确认模型 ID → 输入 API Key（Ollama 跳过）。配置写入 `~/.modou/settings.json`；选错了用 `model` 子命令重选（权限模式与预算会保留）。
+然后直接说任务：`把 utils.js 里重复的解析逻辑抽成一个函数`。默认模式下每一次写文件、每一条命令都会先请你审批（可按 `a` 记住选择）。
 
-本地模型（免 Key）示例：
+无头模式（CI / 脚本）：
 
-```json
-// ~/.modou/settings.json
-{ "provider": "ollama", "modelId": "llama3.2:1b", "permissionMode": "default" }
+```bash
+node packages/cli/dist/index.js -p "运行 pnpm test 并总结失败原因"
 ```
 
-> 提示：1B 级别的玩具模型无法可靠遵循工具协议，建议 7B+ 或商用模型。模型能力可按 [docs/dev.md](docs/dev.md) 在 models.json 中覆盖。
+## 核心特性
+
+- **事件即事实**：所有行为以 append-only JSONL 事件流落盘（`~/.modou/sessions/`），会话可恢复、可回放、可审计。
+- **Plan Mode**：`/plan <任务>` 先只读调研产出实施计划，你确认后才动代码。
+- **工具系统**：read（行号视窗）/ grep / glob / edit（唯一性强制 + 失败给最接近候选）/ write / bash（进程树超时击杀），按 ACI 原则设计。
+- **MCP 生态**：`settings.json` 配置 `mcpServers` 即可接入社区 server（stdio 与 Streamable HTTP），工具与本机内置工具同一套权限门禁。
+- **Skills**：项目 `.luban/skills/<name>/SKILL.md` 定义能力包（frontmatter 写 name/description），agent 按任务自动读取遵循；`/skills` 查看已发现的包。
+- **安全默认**：plan（只读）/ default（写与执行需审批）/ yolo 三档；always-allow 白名单；高危命令任何模式都强制人工确认。
+- **Checkpoint 回滚**：agent 每次写文件前自动 git 影子引用快照，`/rollback <n>` 一键恢复，不污染你的分支历史。
+- **成本透明**：精确到缓存读写的 token 计量与金额核算，`/cost` 随时查看，可设预算上限。
+- **多模型**：Anthropic / OpenAI / GLM / DeepSeek / Qwen / Kimi / OpenRouter / Ollama（本地模型免 Key）。
+- **Windows 一等公民**：PowerShell EncodedCommand 调用（任意引号免疫、退出码透传），开发与测试均在 Windows 本机完成。
 
 ## 交互命令
 
 | 命令 | 说明 |
 |---|---|
-| `/cost` | 查看本会话 token 用量与成本明细 |
-| `/sessions` / `/resume <id>` | 列出历史会话 / 恢复指定会话 |
 | `/plan <任务>` | 只读调研产出实施计划，确认后按计划执行 |
+| `/init` | 生成 AGENTS.md 项目约定模板（已存在不覆盖） |
+| `/skills` | 查看已发现的 Skills 能力包 |
 | `/mcp` | 查看 MCP server 连接状态与工具数 |
-| `/checkpoints` / `/rollback <n>` | 回滚点列表 / 恢复（agent 每次写文件前自动快照） |
+| `/cost` | 查看本会话 token 用量与成本明细 |
+| `/checkpoints` / `/rollback <n>` | 回滚点列表 / 恢复 |
+| `/sessions` / `/resume <id>` | 列出历史会话 / 恢复指定会话 |
 | `/model` | 切换模型（保存后自动以新模型开新会话） |
 | `/exit` | 退出 |
 | `y` / `a` / `n` | 审批请求：允许本次 / 总是允许 / 拒绝 |
 
+## MCP 配置示例
+
+```json
+// ~/.modou/settings.json
+{
+  "provider": "anthropic",
+  "modelId": "claude-sonnet-4-5",
+  "permissionMode": "default",
+  "mcpServers": {
+    "fs": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/dir"] }
+  }
+}
+```
+
 ## 开发
 
 ```bash
-pnpm test          # 全部测试（120+）
+pnpm test          # 全部测试（240+）
 pnpm build         # 构建
 pnpm lint          # eslint
 pnpm format        # prettier
-LUBAN_SMOKE=1 pnpm smoke   # 真实端到端冒烟（默认读 ~/.modou/settings.json 的模型）
-LUBAN_EVAL=1 pnpm eval     # 13 用例沙箱评测（读/查/写/改/MCP/多步修复，基线 10）
+LUBAN_SMOKE=1 pnpm smoke   # 真实端到端冒烟（读 ~/.modou/settings.json 的模型）
+LUBAN_EVAL=1 pnpm eval     # 14 用例沙箱评测（读/查/写/改/MCP/Skills/多步修复，基线 10；产出 eval-results/eval-report.json）
 ```
 
-架构与模块导读见 [docs/dev.md](docs/dev.md)；产品路线图见 [docs/PRD.md](docs/PRD.md)。
+架构与模块导读见 [docs/dev.md](docs/dev.md)；产品决策与路线图见 [docs/PRD.md](docs/PRD.md)。
 
 ## 许可
 
-Apache-2.0（规划，见 PRD 第 10 节；v0.1.0 npm 发布时附 LICENSE 文件）。
+[Apache-2.0](LICENSE)

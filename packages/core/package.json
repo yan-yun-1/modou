@@ -1,6 +1,6 @@
 {
   "name": "@modou/core",
-  "version": "0.0.1",
+  "version": "0.4.0",
   "description": "墨斗 Modou 核心：headless Agent 编程引擎（事件溯源、权限、工具、MCP）",
   "type": "module",
   "main": "./dist/index.js",
@@ -31,5 +31,28 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "ai": "^7.0.106",
     "zod": "^4.6.5"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/modou-dev/modou.git"
+  },
+  "keywords": [
+    "agent",
+    "ai",
+    "coding-agent",
+    "cli",
+    "mcp",
+    "terminal",
+    "llm"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "author": {
+    "name": "Modou Team"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

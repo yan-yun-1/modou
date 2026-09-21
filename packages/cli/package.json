@@ -1,6 +1,6 @@
 {
   "name": "modou",
-  "version": "0.0.1",
+  "version": "0.4.0",
   "description": "墨斗 Modou 终端 CLI：Agent 编程引擎的交互界面",
   "type": "module",
   "bin": {
@@ -28,5 +28,28 @@
     "ai": "^7.0.106",
     "typescript": "^5.9.2",
     "vitest": "^3.0.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/modou-dev/modou.git"
+  },
+  "keywords": [
+    "agent",
+    "ai",
+    "coding-agent",
+    "cli",
+    "mcp",
+    "terminal",
+    "llm"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "author": {
+    "name": "Modou Team"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
