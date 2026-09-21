@@ -11,7 +11,7 @@ let dir: string;
 let ctx: ToolContext;
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), "luban-explore-"));
+  dir = await mkdtemp(join(tmpdir(), "modou-explore-"));
   ctx = { cwd: dir, signal: new AbortController().signal };
 });
 
@@ -77,6 +77,21 @@ describe("explore tool", () => {
     });
     const result = await tool.run({ question: "登录逻辑在哪" }, ctx);
     expect(result.output).toContain("src/auth.ts");
+  });
+
+  it("derives the sub session id from the real parent session id (C3)", async () => {
+    const { SessionStore } = await import("../src/session-store.js");
+    const store = new SessionStore(join(dir, "sessions"));
+    const tool = createExploreTool({
+      model: textModel("发现：x"),
+      capabilities: caps,
+      cwd: dir,
+      store,
+    });
+    await tool.run({ question: "y" }, { ...ctx, sessionId: "session-main-1" });
+    const ids = await store.list();
+    expect(ids.length).toBeGreaterThan(0);
+    expect(ids[0]).toMatch(/^sub-session-main-1-explore-/);
   });
 
   it("propagates fatal subagent errors as readable failures", async () => {

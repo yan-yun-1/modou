@@ -390,6 +390,7 @@ export function ModouApp({
       {pendingApproval ? (
         <ApprovalPrompt
           request={pendingApproval}
+          queueCount={approvals?.pendingCount ?? 1}
           onAnswer={(answer) => approvals?.answer(answer)}
         />
       ) : null}

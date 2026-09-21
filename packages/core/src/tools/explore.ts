@@ -8,6 +8,8 @@ export interface ExploreToolDeps {
   model: LanguageModel;
   capabilities: ModelCapabilities;
   cwd: string;
+  /** 注入会话存储（测试用）；默认新建默认目录 store */
+  store?: import("../session-store.js").SessionStore;
 }
 
 /**
@@ -25,9 +27,9 @@ export function createExploreTool(deps: ExploreToolDeps): Tool<{ question: strin
     schema: z.object({
       question: z.string().min(1).describe("要勘察的问题，尽量具体"),
     }),
-    async run(args) {
+    async run(args, ctx) {
       const result = await runSubagent({
-        parentSessionId: "adhoc",
+        parentSessionId: ctx.sessionId ?? "adhoc",
         name: "explore",
         task: args.question,
         model: deps.model,
@@ -37,6 +39,7 @@ export function createExploreTool(deps: ExploreToolDeps): Tool<{ question: strin
           "你是代码勘察子代理。用只读工具（read/grep/glob）广泛探索代码库，回答给定问题。" +
           "输出必须简明：直接给结论 + 涉及的文件路径 + 一句话说明，不要贴大段代码。",
         maxSteps: 12,
+        store: deps.store,
       });
       if (result.fatal) {
         throw new Error(`explore 子代理失败：${result.fatal}`);

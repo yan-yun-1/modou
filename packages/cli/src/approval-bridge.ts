@@ -22,6 +22,11 @@ export class ApprovalBridge {
     });
   }
 
+  /** 队列中等待审批的请求总数（C2：UI 显示"队列中还有 N 个"） */
+  get pendingCount(): number {
+    return this.#queue.length;
+  }
+
   subscribe(fn: Subscriber): () => void {
     this.#subscribers.add(fn);
     fn(this.#current());

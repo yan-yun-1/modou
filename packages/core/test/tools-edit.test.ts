@@ -9,7 +9,7 @@ let dir: string;
 let ctx: ToolContext;
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), "luban-edit-"));
+  dir = await mkdtemp(join(tmpdir(), "modou-edit-"));
   ctx = { cwd: dir, signal: new AbortController().signal };
 });
 
@@ -86,6 +86,34 @@ describe("edit tool", () => {
     await expect(
       editTool.run({ path: "nope.ts", old_text: "a", new_text: "b" }, ctx),
     ).rejects.toThrow(/不存在/);
+  });
+
+  it("appends a file snippet hint when args fail validation (C1)", async () => {
+    await seedFile("notes.md", "favorite color is blue\n");
+    const { ToolRegistry } = await import("../src/tools/registry.js");
+    const registry = new ToolRegistry();
+    registry.register(editTool);
+    await expect(
+      registry.validateAndRun(
+        "edit",
+        { path: "notes.md", old_text: "", new_text: "x" },
+        { cwd: dir, signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow(/favorite color is blue/);
+  });
+
+  it("lists expected params when path is missing (C1)", async () => {
+    const { editTool } = await import("../src/tools/edit.js");
+    const { ToolRegistry } = await import("../src/tools/registry.js");
+    const registry = new ToolRegistry();
+    registry.register(editTool);
+    await expect(
+      registry.validateAndRun(
+        "edit",
+        { old_text: "a", new_text: "b" },
+        { cwd: dir, signal: new AbortController().signal },
+      ),
+    ).rejects.toThrow(/参数校验失败/);
   });
 
   it("is registered as kind write so the permission engine gates it", () => {

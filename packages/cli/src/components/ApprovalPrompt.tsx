@@ -4,6 +4,8 @@ import type { ApprovalAnswer, ApprovalRequest } from "@modou/core";
 export interface ApprovalPromptProps {
   request: ApprovalRequest;
   onAnswer: (answer: ApprovalAnswer) => void;
+  /** 队列中等待审批的请求总数（含当前）；>1 时卡片标题显示还有多少个在排队 */
+  queueCount?: number;
 }
 
 const MAX_DIFF_LINES = 40;
@@ -43,7 +45,7 @@ function DiffView({ diff }: { diff: string }) {
 }
 
 /** 审批卡片：y=允许本次，a=总是允许（写入 always-allow 规则），n=拒绝。write/edit 附带 unified diff。 */
-export function ApprovalPrompt({ request, onAnswer }: ApprovalPromptProps) {
+export function ApprovalPrompt({ request, onAnswer, queueCount = 1 }: ApprovalPromptProps) {
   useInput((input) => {
     const key = input.toLowerCase();
     if (key === "y") {
@@ -60,7 +62,10 @@ export function ApprovalPrompt({ request, onAnswer }: ApprovalPromptProps) {
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1}>
-      <Text color="yellow">⚠ 审批请求：{request.name}</Text>
+      <Text color="yellow">
+        ⚠ 审批请求：{request.name}
+        {queueCount > 1 ? `（队列中还有 ${queueCount - 1} 个待审批）` : ""}
+      </Text>
       <Text>{request.reason}</Text>
       {request.diff ? <DiffView diff={request.diff} /> : null}
       {args !== "{}" && !request.diff ? <Text dimColor>{args}</Text> : null}

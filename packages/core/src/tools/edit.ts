@@ -118,6 +118,13 @@ export const editTool: Tool<EditArgs> = {
   kind: "write",
   schema: editSchema,
   async run(args, ctx) {
+    // C1（plan-m3）：path 缺失时参数校验在 registry 先拦截——这里无法拿到文件；针对
+    // old_text 缺失（模型最常犯），在报错里附文件开头内容摘要，帮助模型直接定位。
+    if (typeof args.path !== "string" || args.path === "") {
+      throw new Error(
+        'edit 工具参数校验失败：path 必填。正确用法：{"path": "<文件路径>", "old_text": "<要替换的原文>", "new_text": "<新文本>"}',
+      );
+    }
     const filePath = resolveWithin(ctx.cwd, args.path);
     let content = await readFile(filePath, "utf8").catch(() => {
       throw new Error(`文件不存在：${args.path}`);

@@ -52,6 +52,36 @@ describe("ApprovalPrompt", () => {
     harness.unmount();
   });
 
+  it("shows the queued count when more approvals are pending (C2)", async () => {
+    const harness = renderInk(
+      <ApprovalPrompt request={request} queueCount={3} onAnswer={() => {}} />,
+    );
+    await settle();
+    expect(harness.text).toContain("队列中还有 2 个待审批");
+    harness.unmount();
+  });
+
+  it("hides the queue hint for a single pending approval (C2)", async () => {
+    const harness = renderInk(
+      <ApprovalPrompt request={request} queueCount={1} onAnswer={() => {}} />,
+    );
+    await settle();
+    expect(harness.text).not.toContain("队列中还有");
+    harness.unmount();
+  });
+
+  it("exposes pendingCount on the bridge and decrements after answer (C2)", async () => {
+    const { ApprovalBridge } = await import("../src/approval-bridge.js");
+    const bridge = new ApprovalBridge();
+    void bridge.request(request);
+    void bridge.request({ ...request, id: "t2" });
+    expect(bridge.pendingCount).toBe(2);
+    bridge.answer({ granted: true, remembered: false });
+    expect(bridge.pendingCount).toBe(1);
+    bridge.answer({ granted: false, remembered: false });
+    expect(bridge.pendingCount).toBe(0);
+  });
+
   it("renders the diff with add/remove lines when provided", async () => {
     const withDiff: ApprovalRequest = {
       ...request,

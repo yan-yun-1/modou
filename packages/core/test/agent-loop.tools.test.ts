@@ -80,7 +80,12 @@ const fakeRead: Tool<{ path: string }> = {
   description: "读取",
   kind: "read",
   schema: z.object({ path: z.string() }),
-  run: async (args) => ({ output: `content-of-${args.path}` }),
+  run: async (args, ctx) => ({
+    output:
+      ctx.sessionId !== undefined
+        ? `content-of-${args.path}@${ctx.sessionId}`
+        : `content-of-${args.path}`,
+  }),
 };
 
 const fakeBash: Tool<{ command: string }> = {
@@ -176,11 +181,21 @@ describe("AgentLoop tools", () => {
     );
     expect(events.map((e) => e.type)).toEqual(TYPE_SEQUENCE_WITH_RESULT);
     const result = events.find((e) => e.type === "tool_result");
-    expect(result).toMatchObject({ id: "t1", output: "content-of-a.txt", truncated: false });
+    expect(result).toMatchObject({ id: "t1", truncated: false });
+    expect((result as { output: string }).output).toContain("content-of-a.txt");
     expect(approveSpy).not.toHaveBeenCalled();
 
     const stored = await store.read(sessionId);
     expect(stored.some((e) => e.type === "approval_request")).toBe(false);
+  });
+
+  it("passes the session id through ToolContext (C3)", async () => {
+    const { events, sessionId } = await runFixture(
+      [toolCallStream("t1", "fakeRead", { path: "a.txt" }), textStream("读取完成")],
+      "看看 a.txt",
+    );
+    const result = events.find((e) => e.type === "tool_result");
+    expect(result).toMatchObject({ output: `content-of-a.txt@${sessionId}` });
   });
 
   it("asks for approval on execute tools, persists the round-trip, remembers the rule", async () => {
