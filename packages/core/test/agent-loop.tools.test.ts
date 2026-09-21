@@ -116,6 +116,8 @@ interface FixtureOptions {
   }>;
   rules?: Parameters<PermissionEngine["remember"]>[0][];
   checkpointer?: Checkpointer;
+  /** 传给 loop.run 的运行级权限覆盖（O1） */
+  runPermissions?: PermissionEngine;
 }
 
 async function runFixture(
@@ -149,7 +151,7 @@ async function runFixture(
     checkpointer: options.checkpointer,
   });
   const events: LubanEvent[] = [];
-  for await (const event of loop.run(input, sessionId)) {
+  for await (const event of loop.run(input, sessionId, { permissions: options.runPermissions })) {
     events.push(event);
   }
   return { events, store, sessionId, approveSpy };
@@ -222,6 +224,18 @@ describe("AgentLoop tools", () => {
     expect((result as { output: string }).output).toContain("拒绝");
     const approvalResult = events.find((e) => e.type === "approval_result");
     expect(approvalResult).toMatchObject({ granted: false, remembered: false });
+  });
+
+  it("honors a run-level permissions override (plan mode denies writes without prompting)", async () => {
+    const { events, approveSpy } = await runFixture(
+      [toolCallStream("t3e", "fakeWrite", { path: "a.ts", text: "x" }), textStream("明白")],
+      "写文件",
+      { mode: "default", runPermissions: new PermissionEngine({ mode: "plan" }) },
+    );
+    const result = events.find((e) => e.type === "tool_result");
+    expect((result as { output: string }).output).toContain("权限拒绝");
+    expect(events.some((e) => e.type === "approval_request")).toBe(false);
+    expect(approveSpy).not.toHaveBeenCalled();
   });
 
   it("attaches a preview diff to approval requests for tools that implement preview", async () => {

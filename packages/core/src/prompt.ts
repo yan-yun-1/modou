@@ -38,3 +38,18 @@ export function buildSystemPrompt(ctx: PromptContext): string {
 2. 简洁直接：先给结论，再给必要的解释，不堆砌废话。
 3. 写代码遵循项目既有风格，不引入不必要的依赖。`;
 }
+
+/**
+ * Plan Mode 任务提示词（plan-m2 O1）：包装用户任务为只读规划指令。
+ * 配合 plan 权限模式（只读）使用——写工具会被权限引擎拒绝。
+ */
+export function buildPlanTaskPrompt(task: string): string {
+  return `【计划模式】请针对以下任务进行只读调研并产出实施计划。禁止执行任何修改——你可以用只读工具探索代码库，但所有写文件与执行命令的操作都会被拒绝。
+
+计划必须包含：
+1. 目标与验收标准（一段话）
+2. 实施步骤（编号列表，每步注明涉及的文件路径）
+3. 风险与需要用户确认的决策点
+
+用户任务：${task}`;
+}

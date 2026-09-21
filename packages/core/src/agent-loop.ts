@@ -79,8 +79,14 @@ export class AgentLoop {
     this.#deps = deps;
   }
 
-  async *run(input: string, sessionId: string): AsyncGenerator<LubanEvent> {
-    const { store, model, capabilities, tools, systemPrompt, signal } = this.#deps;
+  async *run(
+    input: string,
+    sessionId: string,
+    options?: { permissions?: PermissionEngine; signal?: AbortSignal },
+  ): AsyncGenerator<LubanEvent> {
+    const { store, model, capabilities, tools, systemPrompt } = this.#deps;
+    const effectivePermissions = options?.permissions ?? this.#deps.permissions;
+    const effectiveSignal = options?.signal ?? this.#deps.signal;
     const at = Date.now;
 
     const persist = async (event: LubanEvent): Promise<LubanEvent> => {
@@ -162,7 +168,7 @@ export class AgentLoop {
           capabilities,
           system: systemPrompt,
           tools: Object.keys(toolSet).length > 0 ? toolSet : undefined,
-          signal,
+          signal: effectiveSignal,
         })) {
           switch (event.type) {
             case "text_delta":
@@ -193,7 +199,15 @@ export class AgentLoop {
                 ],
               });
               yield await persist(event);
-              yield* this.#handleToolCall(event, sessionId, messages, persist, at);
+              yield* this.#handleToolCall(
+                event,
+                sessionId,
+                messages,
+                persist,
+                at,
+                effectivePermissions,
+                effectiveSignal,
+              );
               break;
             default:
               break;
@@ -225,8 +239,10 @@ export class AgentLoop {
     messages: ModelMessage[],
     persist: (event: LubanEvent) => Promise<LubanEvent>,
     at: () => number,
+    permissions: PermissionEngine,
+    signal?: AbortSignal,
   ): AsyncGenerator<LubanEvent> {
-    const { tools, permissions, approve, cwd, signal } = this.#deps;
+    const { tools, approve, cwd } = this.#deps;
     const tool = tools.get(event.name);
 
     if (!tool) {
