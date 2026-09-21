@@ -1,95 +1,94 @@
 {
-  "at": "2026-09-21T19:07:20.472Z",
+  "at": "2026-09-21T20:03:52.580Z",
   "provider": "glm",
   "model": "glm-4.5-air",
-  "passed": 13,
+  "passed": 14,
   "total": 14,
   "baseline": 10,
   "cases": [
     {
       "name": "read-summarize",
       "ok": true,
-      "seconds": 3.1,
-      "costUsd": 0.00023799999999999998
+      "seconds": 2.8,
+      "costUsd": 0.000134
     },
     {
       "name": "grep-locate",
       "ok": true,
-      "seconds": 3.1,
-      "costUsd": 0.000143
+      "seconds": 3.6,
+      "costUsd": 0.000157
     },
     {
       "name": "glob-list",
       "ok": true,
-      "seconds": 2.1,
-      "costUsd": 0.00012099999999999999
+      "seconds": 2.9,
+      "costUsd": 0.00013900000000000002
     },
     {
       "name": "json-answer",
       "ok": true,
-      "seconds": 2.1,
-      "costUsd": 0.00011999999999999999
+      "seconds": 3.1,
+      "costUsd": 0.00014
     },
     {
       "name": "write-create",
       "ok": true,
-      "seconds": 3.5,
-      "costUsd": 0.000182
+      "seconds": 3,
+      "costUsd": 0.00014199999999999998
     },
     {
       "name": "edit-replace",
       "ok": true,
-      "seconds": 4.5,
-      "costUsd": 0.000183
+      "seconds": 5.8,
+      "costUsd": 0.00021099999999999998
     },
     {
       "name": "edit-append-function",
       "ok": true,
-      "seconds": 6.7,
-      "costUsd": 0.000286
+      "seconds": 4.6,
+      "costUsd": 0.000221
     },
     {
       "name": "edit-fix-typo",
       "ok": true,
-      "seconds": 4.1,
-      "costUsd": 0.000217
+      "seconds": 30.6,
+      "costUsd": 0.00022099999999999998
     },
     {
       "name": "bash-calc",
       "ok": true,
-      "seconds": 4.9,
-      "costUsd": 0.000134
+      "seconds": 3.1,
+      "costUsd": 0.000132
     },
     {
       "name": "write-json-config",
       "ok": true,
-      "seconds": 2.7,
-      "costUsd": 0.000144
+      "seconds": 2.9,
+      "costUsd": 0.000152
     },
     {
       "name": "grep-count-batch",
-      "ok": false,
-      "seconds": 4.6,
-      "costUsd": 0.000077,
-      "detail": "结论不是「共 3 个函数」：\n我来帮你统计 src/utils 目录下定义的函数数量。首先列出该目录下所有 .js 文件：\n"
+      "ok": true,
+      "seconds": 3.8,
+      "costUsd": 0.0002
     },
     {
       "name": "skill-follow",
       "ok": true,
-      "seconds": 3.7,
-      "costUsd": 0.000177
+      "seconds": 3.6,
+      "costUsd": 0.000178
     },
     {
       "name": "mcp-filesystem-read",
       "ok": true,
-      "seconds": 12.1,
-      "costUsd": 0.0006150000000000001
+      "seconds": 16.2,
+      "costUsd": 0.0007670000000000001
     },
     {
       "name": "multi-step-fix-test",
       "ok": true,
-      "seconds": 9.4,
-      "costUsd": 0.00037600000000000003
+      "seconds": 7.6,
+      "costUsd": 0.000319
     }
   ]
 }
