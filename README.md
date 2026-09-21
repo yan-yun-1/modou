@@ -2,7 +2,7 @@
 
 > 面向个人开发者的开源 Agent 编程引擎：headless 核心 + 终端 CLI，把任务交给 agent 干，把审批权、回滚能力和账单留在自己手里。
 
-**状态**：M1（安全与上下文）。详见 [docs/PRD.md](docs/PRD.md)、[docs/plan.md](docs/plan.md) 与 [docs/plan-m1.md](docs/plan-m1.md)。
+**状态**：M2（生态与健壮：MCP / Plan Mode / Subagent）。详见 [docs/PRD.md](docs/PRD.md)、[docs/plan.md](docs/plan.md)、[docs/plan-m1.md](docs/plan-m1.md) 与 [docs/plan-m2.md](docs/plan-m2.md)。
 
 ## 特性（M0）
 
@@ -42,6 +42,8 @@ node packages/cli/dist/index.js model  # 重新选择模型（写入 settings.js
 |---|---|
 | `/cost` | 查看本会话 token 用量与成本明细 |
 | `/sessions` / `/resume <id>` | 列出历史会话 / 恢复指定会话 |
+| `/plan <任务>` | 只读调研产出实施计划，确认后按计划执行 |
+| `/mcp` | 查看 MCP server 连接状态与工具数 |
 | `/checkpoints` / `/rollback <n>` | 回滚点列表 / 恢复（agent 每次写文件前自动快照） |
 | `/model` | 切换模型（保存后自动以新模型开新会话） |
 | `/exit` | 退出 |
@@ -55,7 +57,7 @@ pnpm build         # 构建
 pnpm lint          # eslint
 pnpm format        # prettier
 LUBAN_SMOKE=1 pnpm smoke   # 真实端到端冒烟（默认读 ~/.luban/settings.json 的模型）
-LUBAN_EVAL=1 pnpm eval     # 10 用例沙箱评测（读/查/写/改/多步修复）
+LUBAN_EVAL=1 pnpm eval     # 13 用例沙箱评测（读/查/写/改/MCP/多步修复，基线 10）
 ```
 
 架构与模块导读见 [docs/dev.md](docs/dev.md)；产品路线图见 [docs/PRD.md](docs/PRD.md)。
