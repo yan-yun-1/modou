@@ -115,6 +115,42 @@ describe("AgentLoop compaction", () => {
     expect(events.some((e) => e.type === "assistant_message" && e.text === "继续任务")).toBe(true);
   });
 
+  it("meters the summarization call cost into a usage event", async () => {
+    const store = new SessionStore(dir);
+    const sessionId = await store.create("s-compact-cost");
+    const model = new MockLanguageModelV4({
+      doGenerate: async () => ({
+        content: [{ type: "text", text: "摘要" }],
+        finishReason: "stop",
+        usage,
+        warnings: [],
+      }),
+      doStream: [textStream("继续")],
+    });
+    const loop = new AgentLoop({
+      model,
+      capabilities: smallCaps,
+      tools: new ToolRegistry(),
+      store,
+      permissions: new PermissionEngine({ mode: "default" }),
+      approve: async () => ({ granted: false, remembered: false }),
+      systemPrompt: "t",
+      cwd: dir,
+    });
+
+    const events: LubanEvent[] = [];
+    for await (const event of loop.run("任务背景：".concat("x".repeat(3900)), sessionId)) {
+      events.push(event);
+    }
+
+    // 压缩事件的用量应单独落盘为 usage 事件（成本可见）
+    const usageEvents = events.filter((e) => e.type === "usage");
+    const metered = usageEvents.some(
+      (e) => e.type === "usage" && e.costUsd > 0 && e.inputTokens === 10,
+    );
+    expect(metered).toBe(true);
+  });
+
   it("falls back to no compaction when the summarization call fails", async () => {
     const store = new SessionStore(dir);
     const sessionId = await store.create("s-compact-fail");

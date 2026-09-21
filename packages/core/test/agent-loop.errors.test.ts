@@ -138,12 +138,11 @@ describe("AgentLoop stream errors", () => {
     // 挂起的流：模型调用永不完成，直到信号中止
     const controller = new AbortController();
     const model = new MockLanguageModelV4({
-      doStream: async ({ abortSignal }) => ({
+      doStream: async () => ({
         stream: simulateReadableStream({
           chunks: [
             { type: "stream-start", warnings: [] },
-            { type: "error", error: new Error("never"),
-            },
+            { type: "error", error: new Error("never") },
           ],
         }),
       }),

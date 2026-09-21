@@ -1,4 +1,6 @@
 import { generateText, type LanguageModel, type ModelMessage } from "ai";
+import { computeCost } from "../models/cost.js";
+import type { ModelCapabilities } from "../models/catalog.js";
 
 /** 触发压缩的窗口占用阈值 */
 const COMPACTION_THRESHOLD = 0.8;
@@ -38,19 +40,42 @@ function serialize(messages: ModelMessage[]): string {
 export async function compactMessages(options: {
   messages: ModelMessage[];
   model: LanguageModel;
+  capabilities: ModelCapabilities;
   keepLast?: number;
-}): Promise<{ messages: ModelMessage[]; summary: string; originalCount: number }> {
-  const { messages, model } = options;
+}): Promise<{
+  messages: ModelMessage[];
+  summary: string;
+  originalCount: number;
+  meteredUsage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheWriteTokens: number;
+    costUsd: number;
+  };
+}> {
+  const { messages, model, capabilities } = options;
   const keepLast = options.keepLast ?? KEEP_LAST;
   const keepCount = Math.min(keepLast, Math.max(0, messages.length - 1));
   if (messages.length === 0) {
-    return { messages, summary: "", originalCount: 0 };
+    return {
+      messages,
+      summary: "",
+      originalCount: 0,
+      meteredUsage: {
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 0,
+      },
+    };
   }
 
   const older = messages.slice(0, messages.length - keepCount);
   const recent = messages.slice(messages.length - keepCount);
 
-  const { text } = await generateText({
+  const { text, usage: genUsage } = await generateText({
     model,
     maxRetries: 0,
     // v7：system 指令走 instructions 选项（messages 中的 system 角色会被拒绝）
@@ -64,9 +89,24 @@ export async function compactMessages(options: {
   });
 
   const summary = text.trim();
+  // 摘要调用本身的用量也计量（plan-m2 Q3）：转成本并入 usage 事件
+  const inputTokens = genUsage?.inputTokens ?? 0;
+  const outputTokens = genUsage?.outputTokens ?? 0;
+  const cacheReadTokens = genUsage?.inputTokenDetails?.cacheReadTokens ?? 0;
+  const cacheWriteTokens = genUsage?.inputTokenDetails?.cacheWriteTokens ?? 0;
+  const meteredUsage = {
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+    costUsd: computeCost(
+      { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens },
+      capabilities.pricing,
+    ),
+  };
   const compacted: ModelMessage[] = [
     { role: "user", content: `[会话摘要——此前对话的压缩记录]\n${summary}` },
     ...recent,
   ];
-  return { messages: compacted, summary, originalCount: messages.length };
+  return { messages: compacted, summary, originalCount: messages.length, meteredUsage };
 }

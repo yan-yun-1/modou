@@ -147,7 +147,6 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     checkpointer: options.checkpointer,
   });
 
-
   return {
     loop,
     sessionId,

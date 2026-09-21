@@ -139,12 +139,22 @@ export class AgentLoop {
       // 上下文压缩（plan-m1 K2）：接近窗口上限时摘要重建历史；失败降级为继续
       if (needsCompaction(messages, capabilities.contextWindow)) {
         try {
-          const result = await compactMessages({ messages, model });
+          const result = await compactMessages({ messages, model, capabilities });
           messages = result.messages;
           yield await persist({
             type: "compaction",
             summary: result.summary,
             originalMessageCount: result.originalCount,
+            at: at(),
+          });
+          // 摘要调用的成本单独计量（Q3）
+          yield await persist({
+            type: "usage",
+            inputTokens: result.meteredUsage.inputTokens,
+            outputTokens: result.meteredUsage.outputTokens,
+            cacheReadTokens: result.meteredUsage.cacheReadTokens,
+            cacheWriteTokens: result.meteredUsage.cacheWriteTokens,
+            costUsd: result.meteredUsage.costUsd,
             at: at(),
           });
         } catch (error) {
@@ -215,10 +225,9 @@ export class AgentLoop {
         }
       } catch (error) {
         // 用户主动中止与 provider 故障区分开（plan-m2 Q2）
-        const message =
-          effectiveSignal?.aborted
-            ? "任务已中断"
-            : `模型调用失败：${(error as Error).message}`;
+        const message = effectiveSignal?.aborted
+          ? "任务已中断"
+          : `模型调用失败：${(error as Error).message}`;
         yield await persist({
           type: "error",
           message,
