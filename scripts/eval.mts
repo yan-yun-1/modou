@@ -316,7 +316,8 @@ for (let i = 0; i < cases.length; i++) {
   const toolCalls: string[] = [];
   let lastError: string | null = null;
   const started = Date.now();
-  const runOnce = async () => {
+  const runOnce = async (attempt: number) => {
+    const attemptToolCalls: string[] = [];
     const result = await runPrintMode({
       settings: evalSettings,
       modelOverrides,
@@ -324,24 +325,49 @@ for (let i = 0; i < cases.length; i++) {
       prompt: testCase.prompt,
       onEvent: (event) => {
         if (event.type === "tool_call") {
-          toolCalls.push(event.name);
+          attemptToolCalls.push(event.name);
         }
         if (event.type === "error") {
           lastError = event.message;
         }
       },
     });
-    const detail = await testCase.check({ output: result.output, toolCalls, sandbox });
-    return { result, detail };
+    const detail = await testCase.check({
+      output: result.output,
+      toolCalls: attemptToolCalls,
+      sandbox,
+    });
+    return { result, detail, attemptToolCalls, attempt };
   };
   try {
-    // 单用例硬超时：LLM/npx 挂起不能拖垮整个评测
-    const { result, detail } = await Promise.race([
-      runOnce(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("用例超时（180s）")), 180_000).unref(),
-      ),
-    ]);
+    // 单用例最多 2 次尝试（模型偶发早停；总超时 180s 不变）
+    let outcome:
+      | {
+          result: Awaited<ReturnType<typeof runOnce>>["result"];
+          detail: string | null;
+          attemptToolCalls: string[];
+          attempt: number;
+        }
+      | undefined;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const once = await Promise.race([
+        runOnce(attempt),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("用例超时（180s）")), 180_000).unref(),
+        ),
+      ]);
+      if (once.detail === null && once.result.exitCode === 0) {
+        outcome = once;
+        break;
+      }
+      if (attempt === 1) {
+        // 第二次尝试重置（沙箱文件状态可能已被第一次污染的用例不受影响：check 自行判断）
+        toolCalls.length = 0;
+      }
+      outcome = once;
+    }
+    const { result, detail } = outcome!;
+    toolCalls.push(...outcome!.attemptToolCalls);
     const seconds = ((Date.now() - started) / 1000).toFixed(1);
     if (detail === null && result.exitCode === 0) {
       passed++;

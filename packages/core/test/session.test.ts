@@ -37,10 +37,11 @@ describe("rebuildState", () => {
     const { messages, usageTotals } = rebuildState(base);
     expect(messages).toEqual([
       { role: "user", content: "修复登录 bug" },
-      { role: "assistant", content: [{ type: "text", text: "我先看一下相关代码" }] },
       {
+        // M3：同轮 text + tool-call 合并为一条 assistant 消息（与主循环一致）
         role: "assistant",
         content: [
+          { type: "text", text: "我先看一下相关代码" },
           { type: "tool-call", toolCallId: "t1", toolName: "read", input: { path: "src/auth.ts" } },
         ],
       },

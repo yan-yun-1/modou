@@ -1,4 +1,10 @@
-import { tool as aiTool, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
+import {
+  tool as aiTool,
+  type LanguageModel,
+  type ModelMessage,
+  type ToolCallPart,
+  type ToolSet,
+} from "ai";
 import type { Checkpointer } from "./checkpoints.js";
 import { compactMessages, needsCompaction } from "./context/compaction.js";
 import type { ModouEvent } from "./events.js";
@@ -74,6 +80,8 @@ function ruleFromArgs(kind: ToolKind, args: unknown): PermissionRule | null {
  */
 export class AgentLoop {
   #deps: AgentLoopDeps;
+  /** 当前流轮次已产出的文本（tool_call 到达时与之合并为一条 assistant 消息） */
+  #pendingText: string | undefined;
 
   constructor(deps: AgentLoopDeps) {
     this.#deps = deps;
@@ -186,28 +194,28 @@ export class AgentLoop {
               yield event;
               break;
             case "assistant_message":
-              messages.push({
-                role: "assistant",
-                content: [{ type: "text", text: event.text }],
-              });
+              this.#pendingText = event.text;
               yield await persist(event);
               break;
             case "usage":
               yield await persist(event);
               break;
-            case "tool_call":
+            case "tool_call": {
               madeToolCall = true;
-              messages.push({
-                role: "assistant",
-                content: [
-                  {
-                    type: "tool-call",
-                    toolCallId: event.id,
-                    toolName: event.name,
-                    input: event.args,
-                  },
-                ],
+              // 同轮 text + tool-call 合并为一条 assistant 消息（provider 语义）：
+              // 拆成两条会让 GLM 等模型在 tool-result 轮复述开场白后空转早停（M3 根因）。
+              const parts: (ToolCallPart | { type: "text"; text: string })[] = [];
+              if (this.#pendingText) {
+                parts.push({ type: "text", text: this.#pendingText });
+                this.#pendingText = undefined;
+              }
+              parts.push({
+                type: "tool-call",
+                toolCallId: event.id,
+                toolName: event.name,
+                input: event.args,
               });
+              messages.push({ role: "assistant", content: parts });
               yield await persist(event);
               yield* this.#handleToolCall(
                 event,
@@ -219,9 +227,18 @@ export class AgentLoop {
                 effectiveSignal,
               );
               break;
+            }
             default:
               break;
           }
+        }
+        // 有文本无工具调用的轮次：文本单独成消息
+        if (this.#pendingText) {
+          messages.push({
+            role: "assistant",
+            content: [{ type: "text", text: this.#pendingText }],
+          });
+          this.#pendingText = undefined;
         }
       } catch (error) {
         // 用户主动中止与 provider 故障区分开（plan-m2 Q2）

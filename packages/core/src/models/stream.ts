@@ -40,6 +40,8 @@ export async function* streamTurn(options: StreamTurnOptions): AsyncGenerator<Mo
         yield { type: "text_delta", delta: part.text, at: at() };
         break;
       case "tool-call":
+        // 先 flush 本轮累积文本：主循环把 text 与 tool-call 合并为一条 assistant 消息
+        yield* emitText();
         yield {
           type: "tool_call",
           id: part.toolCallId,

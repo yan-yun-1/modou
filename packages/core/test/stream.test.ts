@@ -69,8 +69,9 @@ describe("streamTurn", () => {
     expect(events).toEqual([
       { type: "text_delta", delta: "你好", at: 1 },
       { type: "text_delta", delta: "，世界", at: 2 },
-      { type: "tool_call", id: "t1", name: "read", args: { path: "a.ts" }, at: 3 },
-      { type: "assistant_message", text: "你好，世界", at: 4 },
+      // M3：tool_call 前先 flush 文本（主循环把 text+tool-call 合并为一条 assistant 消息）
+      { type: "assistant_message", text: "你好，世界", at: 3 },
+      { type: "tool_call", id: "t1", name: "read", args: { path: "a.ts" }, at: 4 },
       {
         type: "usage",
         inputTokens: 100,

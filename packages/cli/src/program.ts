@@ -10,7 +10,8 @@ export function buildProgram(): Command {
     .name("modou")
     .description("墨斗 Modou —— 开源 Agent 编程引擎（headless 核心 + 终端 CLI）")
     .version(VERSION)
-    .option("--continue", "恢复最近一次会话");
+    .option("--continue", "恢复最近一次会话")
+    .option("-p, --print <任务>", "无头模式：单任务执行后退出（CI/脚本可用）");
 
   program
     .command("model")

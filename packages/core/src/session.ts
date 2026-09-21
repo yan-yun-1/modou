@@ -47,19 +47,23 @@ export function rebuildState(events: ModouEvent[]): RebuiltSession {
         pendingText = pendingText === null ? event.text : pendingText + event.text;
         break;
       case "tool_call": {
-        flushText();
         pendingCalls.set(event.id, event.name);
-        messages.push({
-          role: "assistant",
-          content: [
-            {
-              type: "tool-call",
-              toolCallId: event.id,
-              toolName: event.name,
-              input: event.args,
-            },
-          ],
+        // 与主循环一致：同轮 text + tool-call 合并为一条 assistant 消息（M3 根因修复）
+        const parts: Array<
+          | { type: "text"; text: string }
+          | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
+        > = [];
+        if (pendingText !== null) {
+          parts.push({ type: "text", text: pendingText });
+          pendingText = null;
+        }
+        parts.push({
+          type: "tool-call",
+          toolCallId: event.id,
+          toolName: event.name,
+          input: event.args,
         });
+        messages.push({ role: "assistant", content: parts } as ModelMessage);
         break;
       }
       case "tool_result": {
