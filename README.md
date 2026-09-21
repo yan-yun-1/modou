@@ -1,4 +1,4 @@
-# 鲁班 Luban
+# 墨斗 Modou
 
 > 面向个人开发者的开源 Agent 编程引擎：headless 核心 + 终端 CLI，把任务交给 agent 干，把审批权、回滚能力和账单留在自己手里。
 
@@ -6,12 +6,12 @@
 
 ## 特性（M0）
 
-- **事件即事实**：所有行为以 append-only JSONL 事件流落盘（`~/.luban/sessions/`），会话可恢复、可回放。
+- **事件即事实**：所有行为以 append-only JSONL 事件流落盘（`~/.modou/sessions/`），会话可恢复、可回放。
 - **工具系统**：read（行号视窗）/ grep（无需 ripgrep）/ glob / bash（进程树超时击杀、输出尾部保留），按 ACI 原则设计。
 - **安全默认**：plan（只读）/ default（写与执行需审批）/ yolo 三档模式；always-allow 白名单（命令前缀/路径前缀）；高危命令（rm -rf、git push --force 等）任何模式都强制人工确认。
 - **多模型**：Anthropic / OpenAI / GLM / DeepSeek / Qwen / Kimi / OpenRouter / Ollama（本地模型免 Key），统一能力声明与**精确到缓存读写的成本核算**。
 - **Windows 一等公民**：PowerShell EncodedCommand 调用（任意引号免疫、退出码透传），开发与测试均在 Windows 本机完成。
-- **无头模式**：`luban -p "任务"` 单命令执行（CI/脚本可用）。
+- **无头模式**：`modou -p "任务"` 单命令执行（CI/脚本可用）。
 
 ## 快速开始（源码）
 
@@ -25,12 +25,12 @@ node packages/cli/dist/index.js -p "读取 package.json 并总结这个项目"  
 node packages/cli/dist/index.js model  # 重新选择模型（写入 settings.json，重启后生效）
 ```
 
-首次运行引导：选择模型提供商 → 确认模型 ID → 输入 API Key（Ollama 跳过）。配置写入 `~/.luban/settings.json`；选错了用 `model` 子命令重选（权限模式与预算会保留）。
+首次运行引导：选择模型提供商 → 确认模型 ID → 输入 API Key（Ollama 跳过）。配置写入 `~/.modou/settings.json`；选错了用 `model` 子命令重选（权限模式与预算会保留）。
 
 本地模型（免 Key）示例：
 
 ```json
-// ~/.luban/settings.json
+// ~/.modou/settings.json
 { "provider": "ollama", "modelId": "llama3.2:1b", "permissionMode": "default" }
 ```
 
@@ -56,7 +56,7 @@ pnpm test          # 全部测试（120+）
 pnpm build         # 构建
 pnpm lint          # eslint
 pnpm format        # prettier
-LUBAN_SMOKE=1 pnpm smoke   # 真实端到端冒烟（默认读 ~/.luban/settings.json 的模型）
+LUBAN_SMOKE=1 pnpm smoke   # 真实端到端冒烟（默认读 ~/.modou/settings.json 的模型）
 LUBAN_EVAL=1 pnpm eval     # 13 用例沙箱评测（读/查/写/改/MCP/多步修复，基线 10）
 ```
 

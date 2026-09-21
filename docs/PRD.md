@@ -1,4 +1,4 @@
-# PRD：开源 Agent 编程产品「鲁班 / Luban」（工作代号）
+# PRD：开源 Agent 编程产品「墨斗 / Modou」
 
 | 项 | 内容 |
 |---|---|
@@ -6,7 +6,7 @@
 | 日期 | 2026-09-19 |
 | 状态 | 待用户评审 |
 | 调研基础 | 2026-09-19 实时抓取的 GitHub 数据与官方文档，覆盖 14 个开源项目 + 6 个商业竞品 + 架构模式/标准专项 |
-| 工作代号说明 | 「鲁班 / Luban」为占位代号，发布前需查重并可替换；CLI 命令暂定 `luban` |
+| 命名决议 | 2026-09-21 定名「墨斗 / Modou」（npm 裸名可注册；墨斗弹线定直 ↔ Plan Mode 先计划后执行）；CLI 命令 `modou`，包名 `modou` / `@modou/core` |
 
 ## 0. 已确认的产品决策
 
@@ -147,7 +147,7 @@
 - 验收：统计值与 provider 账单误差 < 5%；缓存命中单独计价展示。
 
 **F9 会话持久化与恢复**
-- 会话以 JSONL 事件流落盘（`~/.luban/sessions/`），可恢复、可回放、可导出。
+- 会话以 JSONL 事件流落盘（`~/.modou/sessions/`），可恢复、可回放、可导出。
 - 验收：进程被杀后恢复会话不丢上下文。
 
 **F10 配置系统**
@@ -167,7 +167,7 @@
 | F14 | Hooks | 会话/工具生命周期钩子（PreToolUse、PostToolUse 等） |
 | F15 | Skills（SKILL.md） | 兼容开放 Skills 标准，按需加载能力包 |
 | F16 | LSP 上下文 | 基于 vscode-languageserver-protocol 独立客户端，诊断与定义跳转注入上下文 |
-| F17 | 非交互模式与 SDK | `luban -p "..."` 单命令模式（CI 可用）；`@luban/sdk` 可编程调用 |
+| F17 | 非交互模式与 SDK | `modou -p "..."` 单命令模式（CI 可用）；`@modou/sdk` 可编程调用 |
 | F18 | Server 包 | HTTP + SSE 服务化，会话 API，为多端复用打地基；含 MCP Streamable HTTP 传输与管理界面 |
 
 ### 4.3 P2（v0.3+，商业验证期）
@@ -225,7 +225,7 @@
 │  └──────────┘ └──────────┘ └───────────┘ └──────────────┘  │
 │  ┌──────────────────┐ ┌────────────────┐ ┌─────────────┐  │
 │  │ 模型接入层        │ │ 会话存储(JSONL) │ │ checkpoint  │  │
-│  │ AI SDK 薄封装     │ │ ~/.luban/      │ │ (git shadow)│  │
+│  │ AI SDK 薄封装     │ │ ~/.modou/      │ │ (git shadow)│  │
 │  └──────────────────┘ └────────────────┘ └─────────────┘  │
 └────────────────────────────────────────────────────────────┘
          │                        │
@@ -235,7 +235,7 @@
 ### 6.2 Monorepo 结构
 
 ```
-luban/
+modou/
 ├─ packages/
 │  ├─ core/      # 引擎：主循环、工具、权限、上下文、模型接入（零 UI 依赖）
 │  ├─ cli/       # Ink TUI + 命令行入口
@@ -277,9 +277,9 @@ Vercel AI SDK 作为多 provider 底座 + 针对专有能力（prompt cache、re
 
 ### 6.8 数据与存储
 
-- 会话：`~/.luban/sessions/<id>.jsonl`（事件流，天然支持回放与多端同步）。
-- 配置：`~/.luban/settings.json`（全局）+ `<repo>/luban.json`（项目，可选）。
-- Checkpoint：git shadow refs（`refs/luban/*`），不污染用户分支历史。
+- 会话：`~/.modou/sessions/<id>.jsonl`（事件流，天然支持回放与多端同步）。
+- 配置：`~/.modou/settings.json`（全局）+ `<repo>/modou.json`（项目，可选）。
+- Checkpoint：git shadow refs（`refs/modou/*`），不污染用户分支历史。
 
 ---
 
@@ -296,7 +296,7 @@ Vercel AI SDK 作为多 provider 底座 + 针对专有能力（prompt cache、re
 | Server | Hono + SSE | 轻量、跨运行时 | Fastify |
 | 校验 | Zod | 工具参数/配置校验一体 | — |
 | 测试 | vitest + LLM 录制回放（fixture） | 单测/集成统一 | jest |
-| 打包/发布 | tsdown + changesets + npm | 单包安装 `npm i -g luban`，免编译 | — |
+| 打包/发布 | tsdown + changesets + npm | 单包安装 `npm i -g modou`，免编译 | — |
 | CI/CD | GitHub Actions（测试 + eval 回归 + 发布） | 开源标配 | — |
 
 **关键取舍说明**：① 不用 LangGraph/AutoGen 等编排框架——编程 Agent 需要完全控制权限与上下文，自研薄循环已被 mini-swe-agent 证明成本很低；② 不用 Rust/Go——1 人全职下迭代速度是生死线，性能瓶颈（TUI 渲染）可后期局部替换；③ 不建向量索引——中小仓库 grep 路线够用且零基础设施，避免 Cursor 式索引的隐私与维护成本。
@@ -319,7 +319,7 @@ Vercel AI SDK 作为多 provider 底座 + 针对专有能力（prompt cache、re
 | **M0 骨架** | W1–2 | monorepo 脚手架；AI SDK provider 层（≥3 家）；最小主循环 + read/bash/grep 三工具；Ink 流式 TUI；JSONL 会话落盘 | 真实仓库完成"解释代码+一处小修改"任务，全程流式无卡死 |
 | **M1 安全与上下文** | W3–4 | edit/write 工具 + diff 审批；权限模式×白名单；AGENTS.md 分层；compaction；成本仪表（F8）；git checkpoint 回滚 | `default` 模式零越权；长会话不中断；成本误差 <5%；改动可回滚 |
 | **M2 生态与健壮** | W5–6 | MCP client（stdio）；plan mode；`explore` subagent；多模型能力适配（补齐 8 provider）；错误恢复与会话恢复 | 接入 2 个社区 MCP server 实用；杀进程后恢复会话不丢上下文 |
-| **M3 公开发布** | W7–8 | eval harness + 自建评测基线；文档站（英/中）；`npm i -g luban` 发布 v0.1.0（Apache-2.0，GitHub 开源）；build-in-public 宣发（HN/V2EX/掘金/X） | 自建评测通过率基线建立且不回退；从安装到完成任务 < 5 分钟 |
+| **M3 公开发布** | W7–8 | eval harness + 自建评测基线；文档站（英/中）；`npm i -g modou` 发布 v0.1.0（Apache-2.0，GitHub 开源）；build-in-public 宣发（HN/V2EX/掘金/X） | 自建评测通过率基线建立且不回退；从安装到完成任务 < 5 分钟 |
 | **M4 多端与增强** | 第 3 个月 | server 包 + SSE；ACP 兼容（接 Zed）；Skills/hooks/LSP；VS Code 插件 alpha；OS 沙箱增强 | 任一 ACP 编辑器中可用；SDK 可被第三方嵌入 |
 | **M5 商业验证** | 第 4 个月起 | Web 控制台 + 云任务沙箱（收费）；官方模型网关订阅内测 | 首批付费用户验证支付意愿 |
 

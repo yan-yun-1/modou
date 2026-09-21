@@ -5,9 +5,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   loadModelOverrides,
   loadSettings,
+  migrateLegacyDir,
   modelOverridesFile,
   resolveApiKey,
   saveSettings,
+  settingsDir,
   settingsFile,
   type Settings,
 } from "../src/settings.js";
@@ -15,7 +17,7 @@ import {
 let home: string;
 
 beforeEach(async () => {
-  home = await mkdtemp(join(tmpdir(), "luban-home-"));
+  home = await mkdtemp(join(tmpdir(), "modou-home-"));
 });
 
 afterEach(async () => {
@@ -72,6 +74,43 @@ describe("settings", () => {
     await saveSettings({ ...valid, permissionMode: undefined as never }, home);
     const loaded = await loadSettings(home);
     expect(loaded?.permissionMode).toBe("default");
+  });
+});
+
+describe("migrateLegacyDir（~/.luban → ~/.modou，M3 R0）", () => {
+  it("copies the legacy directory when it exists and the new one does not", async () => {
+    const legacy = join(home, ".luban");
+    await mkdir(join(legacy, "sessions"), { recursive: true });
+    await writeFile(
+      join(legacy, "settings.json"),
+      JSON.stringify({ provider: "glm", modelId: "glm-4.5-air" }),
+      "utf8",
+    );
+    await writeFile(join(legacy, "sessions", "s1.jsonl"), '{"type":"user_message"}', "utf8");
+
+    const migrated = await migrateLegacyDir(home);
+
+    expect(migrated).toBe(true);
+    const loaded = await loadSettings(home);
+    expect(loaded?.provider).toBe("glm");
+    expect(loaded?.modelId).toBe("glm-4.5-air");
+    await expect(stat(join(settingsDir(home), "sessions", "s1.jsonl"))).resolves.toBeTruthy();
+    // 旧目录保留不删
+    await expect(stat(join(legacy, "settings.json"))).resolves.toBeTruthy();
+  });
+
+  it("does nothing when the legacy directory is absent", async () => {
+    expect(await migrateLegacyDir(home)).toBe(false);
+    expect(await migrateLegacyDir(home)).toBe(false); // 幂等：再次执行同样无事发生
+  });
+
+  it("does not overwrite an existing new directory", async () => {
+    await mkdir(join(home, ".luban"), { recursive: true });
+    await writeFile(join(home, ".luban", "settings.json"), '{"legacy":true}', "utf8");
+    await saveSettings(valid, home); // 新目录已存在且有内容
+
+    expect(await migrateLegacyDir(home)).toBe(false);
+    expect(await loadSettings(home)).toEqual(valid);
   });
 });
 

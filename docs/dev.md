@@ -17,9 +17,9 @@ packages/
 │  └─ tools/             Tool 接口、注册表、read/grep/glob/bash、walk 共享遍历器
 └─ cli/     终端交互
    ├─ index.tsx          入口：-p 无头 / 交互两路径
-   ├─ settings.ts        ~/.luban/settings.json
+   ├─ settings.ts        ~/.modou/settings.json
    ├─ onboarding.tsx     首次引导
-   ├─ app.tsx            LubanApp 主视图（事件驱动渲染）
+   ├─ app.tsx            ModouApp 主视图（事件驱动渲染）
    ├─ print-mode.ts      无头执行（审批自动拒绝）
    ├─ approval-bridge.ts loop 审批请求 ↔ UI 回答 的异步桥
    └─ components/        MessageList / InputBox / ApprovalPrompt / CostBar
