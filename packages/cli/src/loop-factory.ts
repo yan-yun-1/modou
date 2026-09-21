@@ -18,7 +18,7 @@ import {
   type ToolRegistry,
 } from "@modou/core";
 import { randomUUID } from "node:crypto";
-import { resolveApiKey, type Settings } from "./settings.js";
+import { resolveApiKey, resolveCwd, type Settings } from "./settings.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 
 export interface CreateLoopOptions {
@@ -74,7 +74,14 @@ export interface McpStatus {
  * 交互、无头、/model 切换共用；core 不感知 settings.json。
  */
 export async function createLoopFromSettings(options: CreateLoopOptions): Promise<LoopBundle> {
-  const { settings, cwd, modelOverrides = [], onCostUpdate } = options;
+  const { settings, modelOverrides = [], onCostUpdate } = options;
+  // A2（plan-m3）：settings.cwd 优先于调用方 cwd；目录不存在回退并给出警告
+  const resolved = resolveCwd(settings, options.cwd);
+  const cwd = resolved.cwd;
+  if (resolved.warning) {
+    process.stderr.write(`[modou] ${resolved.warning}
+`);
+  }
   const capabilities = resolveCapabilities(settings.provider, settings.modelId, modelOverrides);
   const model =
     options.model ??

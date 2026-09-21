@@ -23,6 +23,8 @@ export const settingsSchema = z.object({
   baseURL: z.string().optional(),
   permissionMode: z.enum(["plan", "default", "yolo"]).default("default"),
   budgetUsd: z.number().positive().optional(),
+  /** 项目目录覆盖（契约增补 2，plan-m3 A2）：默认 process.cwd()；不存在时报错回退 */
+  cwd: z.string().min(1).optional(),
   /** MCP servers（契约增补：plan-m2 N3） */
   mcpServers: z
     .record(
@@ -147,6 +149,26 @@ export function resolveApiKey(
   env: Record<string, string | undefined> = process.env,
 ): string | undefined {
   return settings.apiKey ?? env.MODOU_API_KEY ?? env.LUBAN_API_KEY;
+}
+
+/**
+ * A2（plan-m3）：解析实际工作目录——settings.cwd 优先，其次 fallback。
+ * 配置的目录不存在时返回回退值与警告（调用方负责展示），不阻断启动。
+ */
+export function resolveCwd(
+  settings: Settings,
+  fallback: string = process.cwd(),
+): { cwd: string; warning?: string } {
+  if (!settings.cwd) {
+    return { cwd: fallback };
+  }
+  if (!existsSync(settings.cwd)) {
+    return {
+      cwd: fallback,
+      warning: `settings.cwd 不存在，已回退到 ${fallback}：${settings.cwd}`,
+    };
+  }
+  return { cwd: settings.cwd };
 }
 
 export function modelOverridesFile(home: string = homedir()): string {

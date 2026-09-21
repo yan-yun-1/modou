@@ -11,6 +11,7 @@ import {
 import { ApprovalBridge } from "./approval-bridge.js";
 import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
+import { initAgentsMd } from "./init.js";
 import { CostBar } from "./components/CostBar.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
@@ -39,6 +40,8 @@ export interface ModouAppProps {
   /** /model 触发：入口层结束当前会话并以新模型重开 */
   onModelSwitch?: () => void;
   budgetUsd?: number;
+  /** 工作目录（/init 生成 AGENTS.md 用；默认 process.cwd()） */
+  cwd?: string;
   onExit?: () => void;
   /** 用量变化回调（入口层用于预算钩子） */
   onUsageChange?: (usage: UsageTotals) => void;
@@ -74,6 +77,7 @@ export function ModouApp({
   mcpStatus,
   onModelSwitch,
   budgetUsd,
+  cwd = process.cwd(),
   onExit,
   onUsageChange,
 }: ModouAppProps) {
@@ -351,13 +355,32 @@ export function ModouApp({
         ]);
         return;
       }
+      if (command.action === "init") {
+        const result = await initAgentsMd(cwd);
+        setItems((prev) => [
+          ...prev,
+          { kind: result.ok ? "assistant" : "error", text: result.message },
+        ]);
+        return;
+      }
       if (command.action === "plan") {
         void runPlan(command.task);
         return;
       }
       void runTask(trimmed);
     },
-    [activeSessionId, checkpointer, exit, onExit, onModelSwitch, runPlan, runTask, store, usage],
+    [
+      activeSessionId,
+      checkpointer,
+      cwd,
+      exit,
+      onExit,
+      onModelSwitch,
+      runPlan,
+      runTask,
+      store,
+      usage,
+    ],
   );
 
   return (

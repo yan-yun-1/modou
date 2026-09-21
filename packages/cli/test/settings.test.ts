@@ -8,6 +8,7 @@ import {
   migrateLegacyDir,
   modelOverridesFile,
   resolveApiKey,
+  resolveCwd,
   saveSettings,
   settingsDir,
   settingsFile,
@@ -111,6 +112,23 @@ describe("migrateLegacyDir（~/.luban → ~/.modou，M3 R0）", () => {
 
     expect(await migrateLegacyDir(home)).toBe(false);
     expect(await loadSettings(home)).toEqual(valid);
+  });
+});
+
+describe("resolveCwd（A2）", () => {
+  it("falls back to the caller cwd when settings.cwd is absent", () => {
+    expect(resolveCwd(valid, "/tmp/fallback")).toEqual({ cwd: "/tmp/fallback" });
+  });
+
+  it("prefers settings.cwd when it exists", async () => {
+    expect(resolveCwd({ ...valid, cwd: home }, "/tmp/fallback")).toEqual({ cwd: home });
+  });
+
+  it("falls back with a warning when settings.cwd does not exist", () => {
+    const result = resolveCwd({ ...valid, cwd: join(home, "nope") }, "/tmp/fallback");
+    expect(result.cwd).toBe("/tmp/fallback");
+    expect(result.warning).toContain("回退");
+    expect(result.warning).toContain(join(home, "nope"));
   });
 });
 
