@@ -17,3 +17,12 @@ export function createBuiltinTools(): ToolRegistry {
   }
   return registry;
 }
+
+/** 只读工具集（子代理用）：无法写文件或执行命令 */
+export function createReadonlyTools(): ToolRegistry {
+  const registry = new ToolRegistry();
+  for (const tool of [readTool, grepTool, globTool]) {
+    registry.register(tool);
+  }
+  return registry;
+}

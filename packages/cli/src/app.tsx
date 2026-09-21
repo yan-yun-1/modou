@@ -186,21 +186,16 @@ export function LubanApp({
       setBusy(true);
       try {
         let lastAssistant = "";
-        for await (const event of loopRef.current.run(
-          buildPlanTaskPrompt(task),
-          activeSessionId,
-          { permissions: new PermissionEngine({ mode: "plan" }) },
-        )) {
+        for await (const event of loopRef.current.run(buildPlanTaskPrompt(task), activeSessionId, {
+          permissions: new PermissionEngine({ mode: "plan" }),
+        })) {
           if (event.type === "assistant_message") {
             lastAssistant = event.text;
           }
           applyEvent(event);
         }
         if (!lastAssistant.trim()) {
-          setItems((prev) => [
-            ...prev,
-            { kind: "error", text: "计划模式未产出计划文本，请重试" },
-          ]);
+          setItems((prev) => [...prev, { kind: "error", text: "计划模式未产出计划文本，请重试" }]);
           return;
         }
         setPendingPlan({ task, plan: lastAssistant.trim() });

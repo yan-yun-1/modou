@@ -57,7 +57,10 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
     case "plan": {
       const task = args.join(" ").trim();
       if (!task) {
-        return { action: "message", text: "用法：/plan <任务描述>。agent 会只读调研并产出实施计划，确认后再执行。" };
+        return {
+          action: "message",
+          text: "用法：/plan <任务描述>。agent 会只读调研并产出实施计划，确认后再执行。",
+        };
       }
       return { action: "plan", task };
     }

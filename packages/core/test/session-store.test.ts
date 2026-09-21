@@ -32,28 +32,32 @@ describe("SessionStore", () => {
     expect(id).toBe("my-session");
   });
 
-  it("round-trips 1000 events in order with args objects preserved", { timeout: 30_000 }, async () => {
-    const store = new SessionStore(dir);
-    const id = await store.create();
-    const events: LubanEvent[] = [];
-    for (let i = 0; i < 1000; i++) {
-      events.push(
-        i % 2 === 0
-          ? ev(i, `msg-${i}`)
-          : {
-              type: "tool_call",
-              id: `t${i}`,
-              name: "read",
-              args: { path: `f${i}.ts`, nested: { deep: [1, 2, i] } },
-              at: i,
-            },
-      );
-    }
-    for (const event of events) {
-      await store.append(id, event);
-    }
-    expect(await store.read(id)).toEqual(events);
-  });
+  it(
+    "round-trips 1000 events in order with args objects preserved",
+    { timeout: 30_000 },
+    async () => {
+      const store = new SessionStore(dir);
+      const id = await store.create();
+      const events: LubanEvent[] = [];
+      for (let i = 0; i < 1000; i++) {
+        events.push(
+          i % 2 === 0
+            ? ev(i, `msg-${i}`)
+            : {
+                type: "tool_call",
+                id: `t${i}`,
+                name: "read",
+                args: { path: `f${i}.ts`, nested: { deep: [1, 2, i] } },
+                at: i,
+              },
+        );
+      }
+      for (const event of events) {
+        await store.append(id, event);
+      }
+      expect(await store.read(id)).toEqual(events);
+    },
+  );
 
   it("serializes concurrent appends without interleaving", { timeout: 30_000 }, async () => {
     const store = new SessionStore(dir);
