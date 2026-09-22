@@ -10,15 +10,24 @@ import { loadSettings, loadModelOverrides, migrateLegacyDir, type Settings } fro
 import { runPrintMode } from "./print-mode.js";
 import { createLoopFromSettings } from "./loop-factory.js";
 import { buildProgram } from "./program.js";
+import { printLogo, shouldPrintLogo } from "./logo.js";
+import { VERSION } from "@modou-dev/core";
 
 interface CliOptions {
   print?: string;
   continue?: boolean;
+  logo?: boolean; // commander 的 --no-logo 映射：未传=true，传了=false
 }
 
 async function main(options: CliOptions): Promise<void> {
   // 更名迁移（M3 R0）：旧 ~/.luban → ~/.modou，失败静默（不影响启动）
   await migrateLegacyDir(homedir());
+  if (shouldPrintLogo(!options.logo)) {
+    printLogo();
+    process.stderr.write(`  墨斗 v${VERSION}
+
+`);
+  }
   if (options.print) {
     await runPrintCommand(options.print);
     return;

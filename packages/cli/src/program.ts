@@ -11,7 +11,8 @@ export function buildProgram(): Command {
     .description("墨斗 Modou —— 开源 Agent 编程引擎（headless 核心 + 终端 CLI）")
     .version(VERSION)
     .option("--continue", "恢复最近一次会话")
-    .option("-p, --print <任务>", "无头模式：单任务执行后退出（CI/脚本可用）");
+    .option("-p, --print <任务>", "无头模式：单任务执行后退出（CI/脚本可用）")
+    .option("--no-logo", "不打印启动 Logo");
 
   program
     .command("model")
