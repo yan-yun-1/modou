@@ -122,6 +122,7 @@ export function ModouApp({
     NonNullable<ModouAppProps["onAssemble"]>
   > | null>(null);
   const effectiveLoop = assembled?.loop ?? loop;
+  loopRef.current = effectiveLoop;
   const effectiveMcpStatus = assembled?.mcpStatus ?? mcpStatus;
   const effectiveCheckpointer = assembled?.checkpointer ?? checkpointer;
   const effectiveContextWindow = assembled?.contextWindow ?? contextWindow;
@@ -502,6 +503,8 @@ export function ModouApp({
       activeSessionId,
       checkpointer,
       cwd,
+      effectiveCheckpointer,
+      effectiveLoop,
       exit,
       onExit,
       onModelSwitch,
@@ -562,8 +565,8 @@ export function ModouApp({
         <InputBox
           busy={busy}
           onSubmit={handleSubmit}
-          disabled={!loop}
-          placeholder={!loop ? "正在装配上下文…" : undefined}
+          disabled={!effectiveLoop}
+          placeholder={!effectiveLoop ? "正在装配上下文…" : undefined}
         />
       )}
     </Box>
