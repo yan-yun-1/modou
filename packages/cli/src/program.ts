@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { Command } from "commander";
-import { VERSION } from "@modou/core";
+import { VERSION } from "@modou-dev/core";
 import { runModelCommand } from "./model-command.js";
 import { initAgentsMd } from "./init.js";
 

@@ -1,5 +1,5 @@
 import { Box, Text, useInput } from "ink";
-import type { ApprovalAnswer, ApprovalRequest } from "@modou/core";
+import type { ApprovalAnswer, ApprovalRequest } from "@modou-dev/core";
 
 export interface ApprovalPromptProps {
   request: ApprovalRequest;

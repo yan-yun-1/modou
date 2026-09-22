@@ -4,7 +4,7 @@ import type {
   ModelCapabilities,
   SessionStore,
   UsageTotals,
-} from "@modou/core";
+} from "@modou-dev/core";
 import type { Settings } from "./settings.js";
 import { createLoopFromSettings } from "./loop-factory.js";
 

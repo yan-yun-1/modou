@@ -7,12 +7,12 @@ import {
   type Checkpointer,
   type ModouEvent,
   type UsageTotals,
-} from "@modou/core";
+} from "@modou-dev/core";
 import { ApprovalBridge } from "./approval-bridge.js";
 import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
-import { loadSkills } from "@modou/core";
+import { loadSkills } from "@modou-dev/core";
 import { CostBar } from "./components/CostBar.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";

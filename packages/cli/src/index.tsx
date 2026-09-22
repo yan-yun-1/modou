@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
 import { Box } from "ink";
-import { GitCheckpointer, SessionStore } from "@modou/core";
+import { GitCheckpointer, SessionStore } from "@modou-dev/core";
 import { ModouApp } from "./app.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 import { runModelCommand } from "./model-command.js";

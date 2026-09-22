@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { modelCapabilitiesSchema, type ModelCapabilities } from "@modou/core";
+import { modelCapabilitiesSchema, type ModelCapabilities } from "@modou-dev/core";
 
 export const providerNames = [
   "anthropic",

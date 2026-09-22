@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CostBar } from "../src/components/CostBar.js";
 import { ApprovalBridge } from "../src/approval-bridge.js";
-import type { ApprovalRequest, UsageTotals } from "@modou/core";
+import type { ApprovalRequest, UsageTotals } from "@modou-dev/core";
 import { renderInk, settle } from "./ink-test-utils.js";
 
 const usage: UsageTotals = {

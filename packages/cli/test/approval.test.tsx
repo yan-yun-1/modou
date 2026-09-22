@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ApprovalRequest } from "@modou/core";
+import type { ApprovalRequest } from "@modou-dev/core";
 import { ApprovalPrompt } from "../src/components/ApprovalPrompt.js";
 import { renderInk, settle } from "./ink-test-utils.js";
 

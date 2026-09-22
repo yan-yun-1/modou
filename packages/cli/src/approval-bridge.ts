@@ -1,4 +1,4 @@
-import type { ApprovalAnswer, ApprovalRequest } from "@modou/core";
+import type { ApprovalAnswer, ApprovalRequest } from "@modou-dev/core";
 
 type Subscriber = (req: ApprovalRequest | null) => void;
 

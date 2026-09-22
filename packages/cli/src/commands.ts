@@ -1,4 +1,4 @@
-import type { UsageTotals } from "@modou/core";
+import type { UsageTotals } from "@modou-dev/core";
 
 export type CommandResult =
   | { action: "none" }

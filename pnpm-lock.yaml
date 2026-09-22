@@ -32,7 +32,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@modou/core':
+      '@modou-dev/core':
         specifier: workspace:*
         version: link:../core
       commander:

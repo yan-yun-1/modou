@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import type { UsageTotals } from "@modou/core";
+import type { UsageTotals } from "@modou-dev/core";
 
 function fmtUsd(cost: number): string {
   if (cost === 0) {

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ModouApp } from "../src/app.js";
 import { renderInk, settle } from "./ink-test-utils.js";
-import type { ModouEvent } from "@modou/core";
+import type { ModouEvent } from "@modou-dev/core";
 
 let dir: string;
 
