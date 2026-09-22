@@ -22,7 +22,8 @@ packages/
    ├─ app.tsx            ModouApp 主视图（事件驱动渲染）
    ├─ print-mode.ts      无头执行（审批自动拒绝）
    ├─ approval-bridge.ts loop 审批请求 ↔ UI 回答 的异步桥
-   └─ components/        MessageList / InputBox / ApprovalPrompt / CostBar
+   └─ components/        MessageItem(Static 冻结) / InputBox(边框+补全) / BusyLine(spinner)
+                         / StatusBar(三段式) / ApprovalPrompt / PlanConfirm
 ```
 
 ## 核心不变量（改代码前必读）
@@ -30,6 +31,7 @@ packages/
 1. **事件先持久化，再上屏**。`AgentLoop` 中所有 `persist(event)` 先 `store.append` 再 `yield`。text_delta 例外：只上屏不落盘，文本的持久化事实只有 `assistant_message`。
 2. **tool-call 必须配对 tool-result**。审批拒绝、计划模式拒绝、未知工具、执行失败四条路径都以 tool_result 文本回注模型（`toolResultMessage`），否则下一次模型调用会因悬空的 tool-call 报 API 错误。
 3. **权限判定在参数校验之前**，用的是原始 args；`kind` 只有三值（read/write/execute），权限引擎只依赖 kind，不感知具体工具。
+5. **TUI 渲染分层（plan-tui）**：消息历史进 Ink `<Static>`（打印后冻结、不重渲）；动态区只有流式文本（60ms 节流）/忙碌行/审批卡/输入卡/状态栏。`ModouApp` 支持 `loop=null` 装配态（TUI 先行、上下文后台装配），内部经 `onAssemble` 接管 bundle——改渲染层前先读 `docs/plan-tui.md`。
 4. **模型消息形状 = AI SDK v7 的 `ModelMessage`**：tool-call 部件带 `input`，tool-result 部件不带 `input`（provider-utils 层类型）。升级 AI SDK 时重点核对这两处。
 
 ## 关键流程：一次工具调用
