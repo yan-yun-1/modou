@@ -13,7 +13,7 @@ import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
 import { loadSkills } from "@modou-dev/core";
-import { CostBar } from "./components/CostBar.js";
+import { StatusBar } from "./components/StatusBar.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
 import { PlanConfirm } from "./components/PlanConfirm.js";
@@ -41,6 +41,11 @@ export interface ModouAppProps {
   /** /model 触发：入口层结束当前会话并以新模型重开 */
   onModelSwitch?: () => void;
   budgetUsd?: number;
+  /** 状态栏展示：模型 ID 与权限模式 */
+  modelId?: string;
+  permissionMode?: string;
+  /** 模型上下文窗口（token 数，ctx% 用） */
+  contextWindow?: number;
   /** 工作目录（/init 生成 AGENTS.md 用；默认 process.cwd()） */
   cwd?: string;
   onExit?: () => void;
@@ -78,6 +83,9 @@ export function ModouApp({
   mcpStatus,
   onModelSwitch,
   budgetUsd,
+  modelId = "…",
+  permissionMode = "default",
+  contextWindow,
   cwd = process.cwd(),
   onExit,
   onUsageChange,
@@ -430,7 +438,14 @@ export function ModouApp({
           }}
         />
       ) : null}
-      <CostBar usage={usage} budgetUsd={budgetUsd} />
+      <StatusBar
+        model={modelId}
+        permissionMode={permissionMode}
+        usage={usage}
+        budgetUsd={budgetUsd}
+        contextWindow={contextWindow}
+        ctxUsedTokens={usage.inputTokens + usage.outputTokens + usage.cacheReadTokens}
+      />
       <InputBox busy={busy} onSubmit={handleSubmit} />
     </Box>
   );

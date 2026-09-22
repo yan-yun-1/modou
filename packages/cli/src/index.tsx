@@ -94,6 +94,9 @@ async function runInteractive(useContinue: boolean): Promise<void> {
       approvals={bundle.approvals}
       checkpointer={bundle.checkpointer}
       budgetUsd={settings.budgetUsd}
+      modelId={settings.modelId}
+      permissionMode={settings.permissionMode}
+      contextWindow={bundle.contextWindow}
       onUsageChange={(usage) => bundle.updateSpent(usage.costUsd)}
       onModelSwitch={() => {
         instance.unmount();

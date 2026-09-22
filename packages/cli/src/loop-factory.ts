@@ -59,6 +59,8 @@ export interface LoopBundle {
   mcpStatus: McpStatus[];
   /** 关闭全部 MCP 连接（结束会话时调用，否则 server 子进程会让进程挂起不退出） */
   closeMcp: () => Promise<void>;
+  /** 模型上下文窗口（token 数，StatusBar ctx% 用） */
+  contextWindow: number;
   /** 预算钩子的写入口：把本会话累计成本喂给 isOverBudget */
   updateSpent: (costUsd: number) => void;
   isOverBudget: () => boolean;
@@ -171,6 +173,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
         await connection.close().catch(() => {});
       }
     },
+    contextWindow: capabilities.contextWindow,
     updateSpent: (costUsd: number) => {
       spent = costUsd;
       onCostUpdate?.(costUsd);
