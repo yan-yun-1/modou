@@ -41,6 +41,24 @@ const glmOverride: ModelCapabilities = {
 };
 
 describe("createLoopFromSettings", () => {
+  it("connects MCP servers in parallel without one failure blocking others (T9)", async () => {
+    // 坏命令 + 好配置混排：坏的标 connected:false 且不抛出，好的正常注册
+    const bundle = await createLoopFromSettings({
+      settings: {
+        ...settings,
+        mcpServers: {
+          broken: { command: "definitely-not-exists-cmd-xyz" },
+          alsobroken: { command: "another-missing-cmd" },
+        },
+      },
+      cwd: dir,
+    });
+    expect(bundle.mcpStatus).toHaveLength(2);
+    expect(bundle.mcpStatus.every((s) => s.connected === false)).toBe(true);
+    expect(bundle.mcpStatus.every((s) => (s.error ?? "").length > 0)).toBe(true);
+    await bundle.closeMcp();
+  });
+
   it("injects discovered skills into the system prompt (D2)", async () => {
     const skillDir = join(dir, ".luban", "skills", "commit-style");
     await mkdir(skillDir, { recursive: true });

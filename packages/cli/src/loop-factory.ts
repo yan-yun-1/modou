@@ -103,25 +103,41 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     options.sessionId ?? `session-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
   await store.create(sessionId);
 
-  // MCP servers（plan-m2 N3）：连接并把工具注册进同一 registry；单个失败不阻断启动
+  // MCP servers（plan-m2 N3；plan-tui T9 并行化）：全部 server 同时连接，
+  // 单个失败不阻断启动（状态标 false）；结果顺序与配置顺序一致
+  const mcpEntries = Object.entries(settings.mcpServers ?? {});
+  const mcpResults = await Promise.all(
+    mcpEntries.map(async ([name, config]) => {
+      try {
+        const connection = new McpConnection(name, config);
+        await connection.connect();
+        const mcpTools = await mcpToolsFromConnection(connection);
+        return { name, connection, mcpTools, error: null as string | null };
+      } catch (error) {
+        return {
+          name,
+          connection: null as McpConnection | null,
+          mcpTools: [],
+          error: (error as Error).message,
+        };
+      }
+    }),
+  );
   const mcpStatus: McpStatus[] = [];
   const mcpConnections: McpConnection[] = [];
-  for (const [name, config] of Object.entries(settings.mcpServers ?? {})) {
-    try {
-      const connection = new McpConnection(name, config);
-      await connection.connect();
-      const mcpTools = await mcpToolsFromConnection(connection);
-      for (const tool of mcpTools) {
+  for (const result of mcpResults) {
+    if (result.connection && result.error === null) {
+      for (const tool of result.mcpTools) {
         tools.register(tool);
       }
-      mcpConnections.push(connection);
-      mcpStatus.push({ name, connected: true, tools: mcpTools.length });
-    } catch (error) {
+      mcpConnections.push(result.connection);
+      mcpStatus.push({ name: result.name, connected: true, tools: result.mcpTools.length });
+    } else {
       mcpStatus.push({
-        name,
+        name: result.name,
         connected: false,
         tools: 0,
-        error: (error as Error).message,
+        error: result.error ?? "unknown",
       });
     }
   }
