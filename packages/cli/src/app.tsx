@@ -119,15 +119,32 @@ export function ModouApp({
     };
   }, [approvals]);
 
+  // T6 流式节流：text_delta 每 token 一次 setState 会拖垮渲染——
+  // delta 先写 ref 缓冲，60ms interval 一次性 flush 到 state（每秒 ≤17 帧）
+  const streamBufferRef = useRef("");
+  const flushStreaming = useCallback(() => {
+    if (streamBufferRef.current !== "") {
+      const buffered = streamBufferRef.current;
+      streamBufferRef.current = "";
+      setStreaming((prev) => prev + buffered);
+    }
+  }, []);
+  useEffect(() => {
+    const id = setInterval(flushStreaming, 60);
+    return () => clearInterval(id);
+  }, [flushStreaming]);
+
   const applyEvent = useCallback((event: ModouEvent) => {
     switch (event.type) {
       case "user_message":
         setItems((prev) => [...prev, { kind: "user", text: event.text }]);
         break;
       case "text_delta":
-        setStreaming((prev) => prev + event.delta);
+        streamBufferRef.current += event.delta;
         break;
       case "assistant_message":
+        // 完整文本到达：flush 残余缓冲后清空流式区（消息以 assistant_message 为准）
+        streamBufferRef.current = "";
         setStreaming("");
         setItems((prev) => [...prev, { kind: "assistant", text: event.text }]);
         break;
