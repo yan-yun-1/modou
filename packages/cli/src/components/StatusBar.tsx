@@ -69,7 +69,7 @@ export function StatusBar({
   contextWindow,
   ctxUsedTokens,
 }: StatusBarProps) {
-  const { style, glyphs } = terminalStyle();
+  const { style } = terminalStyle();
   const ctxRatio =
     contextWindow && ctxUsedTokens !== undefined ? ctxUsedTokens / contextWindow : undefined;
 
