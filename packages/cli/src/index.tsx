@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
-import { Box } from "ink";
+import { useEffect, useState } from "react";
+import { Box, render } from "ink";
 import { GitCheckpointer, SessionStore } from "@modou-dev/core";
 import { ModouApp } from "./app.js";
 import { ApprovalBridge } from "./approval-bridge.js";
@@ -8,8 +9,7 @@ import { runModelCommand } from "./model-command.js";
 import { Onboarding } from "./onboarding.js";
 import { loadSettings, loadModelOverrides, migrateLegacyDir, type Settings } from "./settings.js";
 import { runPrintMode } from "./print-mode.js";
-import { createLoopFromSettings } from "./loop-factory.js";
-import { render } from "ink";
+import { createLoopFromSettings, type LoopBundle } from "./loop-factory.js";
 import { buildProgram } from "./program.js";
 
 interface CliOptions {
@@ -74,7 +74,18 @@ async function runInteractive(useContinue: boolean): Promise<void> {
 
   const approvals = new ApprovalBridge();
   const checkpointer = new GitCheckpointer(process.cwd());
-  const bundle = await createLoopFromSettings({
+
+  // T10：TUI 先行——App 立即渲染（loop=null 装配态），MCP/repo map 后台装配完成后传入 bundle
+  let instance: ReturnType<typeof render> | null = null;
+  const onModelSwitch = () => {
+    instance?.unmount();
+    void (async () => {
+      await runModelCommand(home);
+      await runInteractive(false);
+    })();
+  };
+
+  const promise = createLoopFromSettings({
     settings,
     cwd: process.cwd(),
     modelOverrides: await loadModelOverrides(home),
@@ -84,29 +95,21 @@ async function runInteractive(useContinue: boolean): Promise<void> {
     sessionId: resumeId,
   });
 
-  const instance = render(
-    // exitOnCtrlC=false：Ctrl+C 语义由 App 内部处理（任务中断/双击退出）
+  const app = (
     <ModouApp
-      loop={bundle.loop}
-      sessionId={bundle.sessionId}
-      store={bundle.store}
-      mcpStatus={bundle.mcpStatus}
-      approvals={bundle.approvals}
-      checkpointer={bundle.checkpointer}
+      loop={null}
+      sessionId="boot"
+      store={store}
+      approvals={approvals}
       budgetUsd={settings.budgetUsd}
       modelId={settings.modelId}
       permissionMode={settings.permissionMode}
-      contextWindow={bundle.contextWindow}
-      onUsageChange={(usage) => bundle.updateSpent(usage.costUsd)}
-      onModelSwitch={() => {
-        instance.unmount();
-        void (async () => {
-          await runModelCommand(home);
-          await runInteractive(false);
-        })();
-      }}
-    />,
+      onModelSwitch={onModelSwitch}
+      onAssemble={promise}
+    />
   );
+  instance = render(app);
+  void promise;
   await instance.waitUntilExit();
 }
 

@@ -29,14 +29,25 @@ export interface LoopLike {
 }
 
 export interface ModouAppProps {
-  loop: LoopLike;
+  /** 装配完成前为 null（T10）：欢迎行立即可见，提交被拦截 */
+  loop: LoopLike | null;
   sessionId: string;
+  /** T10：装配 promise——loop 为 null 时 App 内部等待并在完成时切换自身状态 */
+  onAssemble?: Promise<{
+    loop: LoopLike;
+    sessionId: string;
+    store: StoreLike;
+    mcpStatus: McpStatus[];
+    checkpointer?: Checkpointer;
+    contextWindow: number;
+    updateSpent: (costUsd: number) => void;
+  }>;
   /** 审批桥：由入口层创建并接到 AgentLoop 的 approve 上 */
   approvals?: ApprovalBridge;
   /** 回滚点：由入口层创建（非 git 目录自动降级） */
   checkpointer?: Checkpointer;
   /** 会话存储：/sessions 与 /resume 需要 */
-  store?: StoreLike;
+  store?: StoreLike | null;
   /** MCP servers 连接状态（入口层经工厂返回） */
   mcpStatus?: McpStatus[];
   /** /model 触发：入口层结束当前会话并以新模型重开 */
@@ -87,6 +98,7 @@ export function ModouApp({
   modelId = "…",
   permissionMode = "default",
   contextWindow,
+  onAssemble,
   cwd = process.cwd(),
   onExit,
   onUsageChange,
@@ -104,6 +116,35 @@ export function ModouApp({
   const [busySteps, setBusySteps] = useState(0);
   const [busyStartedAt, setBusyStartedAt] = useState(0);
   const loopRef = useRef(loop);
+  loopRef.current = loop;
+  // T10：App 内部接管装配——onAssemble 完成后覆盖 loop/sessionId/mcpStatus/contextWindow
+  const [assembled, setAssembled] = useState<Awaited<
+    NonNullable<ModouAppProps["onAssemble"]>
+  > | null>(null);
+  const effectiveLoop = assembled?.loop ?? loop;
+  const effectiveSessionId = assembled?.sessionId ?? sessionId;
+  const effectiveMcpStatus = assembled?.mcpStatus ?? mcpStatus;
+  const effectiveCheckpointer = assembled?.checkpointer ?? checkpointer;
+  const effectiveContextWindow = assembled?.contextWindow ?? contextWindow;
+  const updateSpentRef = useRef(assembled?.updateSpent);
+  updateSpentRef.current = assembled?.updateSpent;
+  // 装配完成后同步会话 id（resume 场景 sessionId 由 bundle 带回）
+  useEffect(() => {
+    if (assembled) {
+      setActiveSessionId(assembled.sessionId);
+    }
+  }, [assembled]);
+  useEffect(() => {
+    if (onAssemble) {
+      onAssemble.then(setAssembled).catch((error: Error) => {
+        setItems((prev) => [
+          ...prev,
+          { kind: "error", text: `装配失败：${(error as Error).message}` },
+        ]);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首挂载触发一次
+  }, []);
   const running = useRef(false);
   const onUsageChangeRef = useRef(onUsageChange);
   onUsageChangeRef.current = onUsageChange;
@@ -118,6 +159,17 @@ export function ModouApp({
       unsubscribe();
     };
   }, [approvals]);
+
+  // T10：装配完成瞬间（loop 由 null → 可用）追加就绪条目
+  const readyAnnounced = useRef(false);
+  useEffect(() => {
+    if (effectiveLoop && !readyAnnounced.current) {
+      readyAnnounced.current = true;
+      const mcpReady = (effectiveMcpStatus ?? []).filter((s) => s.connected).length;
+      const note = mcpReady > 0 ? `✓ 上下文就绪（MCP ${mcpReady} server 已连接）` : "✓ 上下文就绪";
+      setItems((prev) => [...prev, { kind: "tool", text: note }]);
+    }
+  }, [effectiveLoop, effectiveMcpStatus]);
 
   // T6 流式节流：text_delta 每 token 一次 setState 会拖垮渲染——
   // delta 先写 ref 缓冲，60ms interval 一次性 flush 到 state（每秒 ≤17 帧）
@@ -178,6 +230,7 @@ export function ModouApp({
             costUsd: prev.costUsd + event.costUsd,
           };
           onUsageChangeRef.current?.(next);
+          updateSpentRef.current?.(next.costUsd);
           return next;
         });
         break;
@@ -216,7 +269,16 @@ export function ModouApp({
 
   const runTask = useCallback(
     async (input: string, options?: { permissions?: PermissionEngine }) => {
+      if (!effectiveLoop) {
+        setItems((prev) => [...prev, { kind: "error", text: "上下文装配中，请稍候…" }]);
+        return;
+      }
       if (running.current) {
+        return;
+      }
+      const currentLoop = loopRef.current;
+      if (!currentLoop) {
+        setItems((prev) => [...prev, { kind: "error", text: "上下文装配中，请稍候…" }]);
         return;
       }
       running.current = true;
@@ -227,7 +289,7 @@ export function ModouApp({
       const controller = new AbortController();
       taskAbortRef.current = controller;
       try {
-        for await (const event of loopRef.current.run(input, activeSessionId, {
+        for await (const event of currentLoop.run(input, activeSessionId, {
           ...options,
           signal: controller.signal,
         })) {
@@ -253,11 +315,16 @@ export function ModouApp({
       if (running.current) {
         return;
       }
+      const currentLoop = loopRef.current;
+      if (!currentLoop) {
+        setItems((prev) => [...prev, { kind: "error", text: "上下文装配中，请稍候…" }]);
+        return;
+      }
       running.current = true;
       setBusy(true);
       try {
         let lastAssistant = "";
-        for await (const event of loopRef.current.run(buildPlanTaskPrompt(task), activeSessionId, {
+        for await (const event of currentLoop.run(buildPlanTaskPrompt(task), activeSessionId, {
           permissions: new PermissionEngine({ mode: "plan" }),
         })) {
           if (event.type === "assistant_message") {
@@ -289,6 +356,10 @@ export function ModouApp({
       if (!trimmed) {
         return;
       }
+      if (!effectiveLoop) {
+        setItems((prev) => [...prev, { kind: "error", text: "上下文装配中，请稍候…" }]);
+        return;
+      }
       const command = parseCommand(trimmed, usage);
       if (command.action === "exit") {
         onExit?.();
@@ -300,14 +371,14 @@ export function ModouApp({
         return;
       }
       if (command.action === "checkpoints") {
-        if (!checkpointer?.available) {
+        if (!effectiveCheckpointer?.available) {
           setItems((prev) => [
             ...prev,
             { kind: "error", text: "当前目录不是 git 仓库，回滚点不可用" },
           ]);
           return;
         }
-        const list = await checkpointer.list(activeSessionId);
+        const list = await effectiveCheckpointer.list(activeSessionId);
         setItems((prev) => [
           ...prev,
           {
@@ -321,14 +392,14 @@ export function ModouApp({
         return;
       }
       if (command.action === "rollback") {
-        if (!checkpointer?.available) {
+        if (!effectiveCheckpointer?.available) {
           setItems((prev) => [
             ...prev,
             { kind: "error", text: "当前目录不是 git 仓库，回滚点不可用" },
           ]);
           return;
         }
-        const result = await checkpointer.restore(activeSessionId, command.n);
+        const result = await effectiveCheckpointer.restore(activeSessionId, command.n);
         setItems((prev) => [
           ...prev,
           { kind: result.ok ? "assistant" : "error", text: result.message },
@@ -484,13 +555,18 @@ export function ModouApp({
         permissionMode={permissionMode}
         usage={usage}
         budgetUsd={budgetUsd}
-        contextWindow={contextWindow}
+        contextWindow={effectiveContextWindow}
         ctxUsedTokens={usage.inputTokens + usage.outputTokens + usage.cacheReadTokens}
       />
       {busy ? (
         <BusyLine action={busyAction} startedAt={busyStartedAt} steps={busySteps} />
       ) : (
-        <InputBox busy={busy} onSubmit={handleSubmit} />
+        <InputBox
+          busy={busy}
+          onSubmit={handleSubmit}
+          disabled={!loop}
+          placeholder={!loop ? "正在装配上下文…" : undefined}
+        />
       )}
     </Box>
   );
