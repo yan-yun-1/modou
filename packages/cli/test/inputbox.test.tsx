@@ -60,12 +60,34 @@ describe("slash command completion（T4）", () => {
     expect(matchSlashCommands("/nope")).toEqual([]);
   });
 
-  it("shows matching suggestions when input starts with /", async () => {
+  it("shows command names on one line and only the first hint below", async () => {
     const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
     await settle();
     harness.stdin.write("/pl");
     await settle();
     expect(harness.text).toContain("/plan");
+    expect(harness.text).toContain("只读调研并产出实施计划");
+    // 唯一匹配不显示 Tab 提示
+    expect(harness.text).not.toContain("Tab 补全");
+    harness.unmount();
+  });
+
+  it("hides hints while typing just the slash (trial input)", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/");
+    await settle();
+    expect(harness.text).not.toContain("/plan 只读调研");
+    expect(harness.text).not.toContain("(Tab 补全)");
+    harness.unmount();
+  });
+
+  it("shows Tab hint only when multiple commands match", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/s");
+    await settle();
+    expect(harness.text).toContain("/sessions");
     expect(harness.text).toContain("Tab 补全");
     harness.unmount();
   });
@@ -77,9 +99,10 @@ describe("slash command completion（T4）", () => {
     await settle();
     harness.stdin.write("\t");
     await settle();
-    expect(harness.text).toContain("/plan 只读调研并产出实施计划");
-    // 提示行仍显示（value 以 / 开头）
-    expect(harness.text).toContain("Tab 补全");
+    expect(harness.text).toContain("/plan");
+    expect(harness.text).toContain("只读调研并产出实施计划");
+    // 唯一匹配不再教 Tab
+    expect(harness.text).not.toContain("Tab 补全");
     harness.unmount();
   });
 });

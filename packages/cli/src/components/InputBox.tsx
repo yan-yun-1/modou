@@ -13,9 +13,15 @@ export interface InputBoxProps {
   disabled?: boolean;
 }
 
+/** 提示行最多渲染的命令名数量（80 列内一行放下） */
+const MAX_SUGGESTIONS = 6;
+/** 输入至少几个字符才显示提示行（"/" 单字符视为试探，不显示） */
+const MIN_PREFIX = 2;
+
 /**
- * 输入卡（T3）：round 边框 + placeholder；
- * 输入 `/` 时卡下显示匹配命令提示行，Tab 补全首项（T4）。
+ * 输入卡（T3 + C3 降噪）：round 边框 + placeholder。
+ * 斜杠提示分两层：第一行只有命令名（cyan，一行放下）；第二行只显示首项的说明。
+ * "/" 单字符、无匹配时不显示任何提示。
  */
 export function InputBox({ busy, onSubmit, placeholder, disabled = false }: InputBoxProps) {
   const { style } = terminalStyle();
@@ -25,6 +31,8 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
     () => (value.startsWith("/") ? matchSlashCommands(value) : []),
     [value],
   );
+  // "/" 单字符 = 试探，不出提示
+  const showSuggestions = suggestions.length > 0 && value.trim().length >= MIN_PREFIX;
 
   useInput(
     (input, key) => {
@@ -56,14 +64,22 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
           }}
         />
       </Box>
-      {suggestions.length > 0 ? (
-        <Text dimColor>
-          {suggestions
-            .slice(0, 6)
-            .map((c) => `${c.name} ${c.hint}`)
-            .join("　")}
-          {"　(Tab 补全)"}
-        </Text>
+      {showSuggestions ? (
+        <>
+          <Text>
+            <Text color={style.user}>
+              {suggestions
+                .slice(0, MAX_SUGGESTIONS)
+                .map((c) => c.name)
+                .join("  ")}
+            </Text>
+            <Text color={style.dim}>
+              {suggestions.length > MAX_SUGGESTIONS ? "  …" : ""}
+              {suggestions.length > 1 ? "  (Tab 补全)" : ""}
+            </Text>
+          </Text>
+          <Text color={style.dim}>{suggestions[0]!.hint}</Text>
+        </>
       ) : null}
     </Box>
   );
