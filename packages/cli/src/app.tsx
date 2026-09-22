@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Box, Text, useApp, useInput } from "ink";
+import { Box, Static, Text, useApp, useInput } from "ink";
 import {
   buildPlanTaskPrompt,
   PermissionEngine,
@@ -18,7 +18,7 @@ import { BusyLine } from "./components/BusyLine.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
 import { PlanConfirm } from "./components/PlanConfirm.js";
-import { MessageList, type DisplayItem } from "./components/MessageList.js";
+import { MessageItem, type DisplayItem } from "./components/MessageList.js";
 
 export interface LoopLike {
   run(
@@ -445,10 +445,16 @@ export function ModouApp({
 
   return (
     <Box flexDirection="column" gap={1}>
+      <Static items={items}>
+        {(item, index) => (
+          <Box key={index} flexDirection="column">
+            <MessageItem item={item} />
+          </Box>
+        )}
+      </Static>
       <Text dimColor>
         墨斗 v{VERSION} · {modelId} · {permissionMode}
       </Text>
-      <MessageList items={items} />
       {streaming ? <Text>{streaming}</Text> : null}
       {pendingApproval ? (
         <ApprovalPrompt

@@ -22,14 +22,21 @@ const COLORS: Partial<Record<DisplayItemKind, string>> = {
   error: "red",
 };
 
+/** 单条消息渲染（Static 模式与列表模式共用） */
+export function MessageItem({ item }: { item: DisplayItem }) {
+  return (
+    <Text color={COLORS[item.kind]} dimColor={item.kind === "tool"}>
+      {ICONS[item.kind]}
+      {item.text}
+    </Text>
+  );
+}
+
 export function MessageList({ items }: { items: DisplayItem[] }) {
   return (
     <Box flexDirection="column">
       {items.map((item, index) => (
-        <Text key={index} color={COLORS[item.kind]} dimColor={item.kind === "tool"}>
-          {ICONS[item.kind]}
-          {item.text}
-        </Text>
+        <MessageItem key={index} item={item} />
       ))}
     </Box>
   );

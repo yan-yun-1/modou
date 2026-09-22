@@ -153,3 +153,47 @@ describe("ModouApp sessions", () => {
     harness.unmount();
   }, 30_000);
 });
+
+describe("message history Static（T7）", () => {
+  it("renders completed items once and keeps them frozen", async () => {
+    const { SessionStore } = await import("@modou-dev/core");
+    const store = new SessionStore(join(dir, "sessions-tui"));
+    const sessionId = await store.create("s-tui");
+    const loop = fakeLoop([
+      { type: "session_started", sessionId, model: "test-model", at: 1 },
+      { type: "user_message", text: "", at: 2 },
+      { type: "assistant_message", text: "答案", at: 3 },
+      {
+        type: "usage",
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 0.001,
+        at: 4,
+      },
+    ]);
+    const harness = renderInk(
+      <ModouApp
+        loop={loop}
+        sessionId={sessionId}
+        store={store}
+        modelId="m"
+        permissionMode="default"
+      />,
+    );
+    await settle();
+    harness.stdin.write("你好");
+    await settle();
+    harness.stdin.write("\r");
+    await settle(300);
+    // Static 模式下消息条目在"打印后冻结"：所有帧拼接中每条消息只出现一次
+    expect(harness.text).toContain("❯ 你好");
+    expect(harness.frames.some((f) => f.includes("答案"))).toBe(true);
+    await new Promise((r) => setTimeout(r, 150));
+    await settle();
+    // Static 冻结验证：assistant 消息在全部帧拼接中只出现一次（不随动态区重渲而重复）
+    expect(harness.text.split("答案").length - 1).toBe(1);
+    harness.unmount();
+  });
+});

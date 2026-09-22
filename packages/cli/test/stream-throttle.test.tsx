@@ -30,7 +30,11 @@ function ThrottleProbe({ deltas }: { deltas: string[] }) {
     }
   }, [deltas]);
 
-  return <Text>renders:{renderCount.current}|{rendered}</Text>;
+  return (
+    <Text>
+      renders:{renderCount.current}|{rendered}
+    </Text>
+  );
 }
 
 describe("streaming throttle（T6）", () => {
