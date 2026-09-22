@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { printLogo, shouldPrintLogo } from "../src/logo.js";
 
+// eslint-disable-next-line no-control-regex -- 测试断言 ANSI 转义序列必须写字面控制字符
 const ANSI = /\u001B\[/g;
 
 describe("printLogo（L1）", () => {
