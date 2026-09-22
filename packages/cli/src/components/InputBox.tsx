@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import { matchSlashCommands } from "../commands.js";
+import { terminalStyle } from "../terminal-capability.js";
 
 export interface InputBoxProps {
   busy: boolean;
@@ -17,6 +18,7 @@ export interface InputBoxProps {
  * 输入 `/` 时卡下显示匹配命令提示行，Tab 补全首项（T4）。
  */
 export function InputBox({ busy, onSubmit, placeholder, disabled = false }: InputBoxProps) {
+  const { style } = terminalStyle();
   const [value, setValue] = useState("");
 
   const suggestions = useMemo(
@@ -39,8 +41,8 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
 
   return (
     <Box flexDirection="column" gap={0}>
-      <Box borderStyle="round" borderColor={disabled ? "gray" : "cyan"} paddingX={1}>
-        <Text color={disabled ? "gray" : "cyan"}>❯ </Text>
+      <Box borderStyle="round" borderColor={disabled ? "gray" : style.border} paddingX={1}>
+        <Text color={disabled ? "gray" : style.user}>❯ </Text>
         <TextInput
           value={value}
           placeholder={placeholder ?? "输入任务，/ 开头为命令…"}

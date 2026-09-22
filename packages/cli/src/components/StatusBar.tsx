@@ -1,5 +1,6 @@
 import { Box, Text } from "ink";
 import type { UsageTotals } from "@modou-dev/core";
+import { terminalStyle } from "../terminal-capability.js";
 
 export function fmtUsd(cost: number): string {
   if (cost === 0) {
@@ -24,22 +25,28 @@ export function fmtTokens(n: number): string {
   return `${Math.round(m * 10) / 10}m`;
 }
 
-/** 10 格字符进度条：filled 用 █，剩余用 ░ */
-export function ctxBar(ratio: number): string {
+/** 10 格字符进度条：filled 用 █，剩余按能力降级（░ / ─） */
+export function ctxBar(ratio: number, barEmpty = "░"): string {
   const clamped = Math.max(0, Math.min(1, ratio));
   const filled = Math.round(clamped * 10);
-  return "█".repeat(filled) + "░".repeat(10 - filled);
+  return "█".repeat(filled) + barEmpty.repeat(10 - filled);
 }
 
-/** ctx 使用率分色：<80% 默认 dim，80–95% 黄（compaction 预警），≥95% 红 */
-export function ctxColor(ratio: number): string | undefined {
+/**
+ * ctx 使用率四档色（C2）：颜色只在需要预警时出现——
+ * <70% gray（结构可见不干扰）、70–80% green、80–95% yellow（compaction 预警）、≥95% red。
+ */
+export function ctxColor(ratio: number): "gray" | "green" | "yellow" | "red" {
   if (ratio >= 0.95) {
     return "red";
   }
   if (ratio >= 0.8) {
     return "yellow";
   }
-  return undefined;
+  if (ratio >= 0.7) {
+    return "green";
+  }
+  return "gray";
 }
 
 export interface StatusBarProps {
@@ -49,11 +56,11 @@ export interface StatusBarProps {
   budgetUsd?: number;
   /** 模型上下文窗口（token 数）；缺省时不显示 ctx 段 */
   contextWindow?: number;
-  /** 当前估算已用上下文 token（input+output+cacheRead 与消息估算取大者由调用方决定，这里只管渲染） */
+  /** 当前估算已用上下文 token */
   ctxUsedTokens?: number;
 }
 
-/** 单行三段状态栏：`model · mode │ ↑in ↓out $cost │ ▐█░▌ n% ctx` */
+/** 单行三段状态栏：`model · mode │ ↑in ↓out $cost │ ▐█░▌ n% ctx 已用` */
 export function StatusBar({
   model,
   permissionMode,
@@ -62,26 +69,27 @@ export function StatusBar({
   contextWindow,
   ctxUsedTokens,
 }: StatusBarProps) {
+  const { style, glyphs } = terminalStyle();
   const ctxRatio =
     contextWindow && ctxUsedTokens !== undefined ? ctxUsedTokens / contextWindow : undefined;
 
   return (
     <Box>
-      <Text dimColor>
-        <Text color="cyan">{model}</Text>
+      <Text color={style.dim}>
+        <Text color={style.model}>{model}</Text>
         {" · "}
         {permissionMode}
         {" │ ↑"}
         {fmtTokens(usage.inputTokens)}
         {" ↓"}
-        {fmtTokens(usage.outputTokens)} <Text color="green">{fmtUsd(usage.costUsd)}</Text>
+        {fmtTokens(usage.outputTokens)} <Text color={style.cost}>{fmtUsd(usage.costUsd)}</Text>
         {budgetUsd !== undefined ? `/${fmtUsd(budgetUsd)}` : ""}
       </Text>
       {ctxRatio !== undefined ? (
-        <Text dimColor>
+        <Text color={style.dim}>
           {" │ "}
           <Text color={ctxColor(ctxRatio)}>
-            {ctxBar(ctxRatio)} {Math.round(ctxRatio * 100)}% ctx
+            {ctxBar(ctxRatio, glyphs.barEmpty)} {Math.round(ctxRatio * 100)}% ctx 已用
           </Text>
         </Text>
       ) : null}

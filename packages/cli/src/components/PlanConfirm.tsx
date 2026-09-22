@@ -1,4 +1,5 @@
 import { Box, Text, useInput } from "ink";
+import { terminalStyle } from "../terminal-capability.js";
 
 export interface PlanConfirmProps {
   task: string;
@@ -9,6 +10,7 @@ export interface PlanConfirmProps {
 
 /** 计划确认卡片：y=按计划执行，n=放弃。 */
 export function PlanConfirm({ task, plan, onApprove, onReject }: PlanConfirmProps) {
+  const { glyphs, style } = terminalStyle();
   useInput((input) => {
     const key = input.toLowerCase();
     if (key === "y") {
@@ -19,7 +21,7 @@ export function PlanConfirm({ task, plan, onApprove, onReject }: PlanConfirmProp
   });
 
   return (
-    <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
+    <Box flexDirection="column" borderStyle="round" borderColor={style.border} paddingX={1}>
       <Text color="cyan" bold>
         ⎘ 实施计划（任务：{task}）
       </Text>

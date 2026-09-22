@@ -13,6 +13,7 @@ import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
 import { loadSkills, VERSION } from "@modou-dev/core";
+import { terminalStyle } from "./terminal-capability.js";
 import { StatusBar } from "./components/StatusBar.js";
 import { BusyLine } from "./components/BusyLine.js";
 import { InputBox } from "./components/InputBox.js";
@@ -524,7 +525,7 @@ export function ModouApp({
           </Box>
         )}
       </Static>
-      <Text dimColor>
+      <Text color={terminalStyle().style.dim}>
         墨斗 v{VERSION} · {modelId} · {permissionMode}
       </Text>
       {streaming ? <Text>{streaming}</Text> : null}

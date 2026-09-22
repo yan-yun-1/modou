@@ -29,7 +29,7 @@ describe("StatusBar", () => {
     expect(text).toContain("↑1.2k");
     expect(text).toContain("↓567");
     expect(text).toContain("$0.000315");
-    expect(text).toContain("ctx");
+    expect(text).toContain("ctx 已用");
     expect(text).toContain("░");
     harness.unmount();
   });
@@ -88,10 +88,15 @@ describe("ctx helpers", () => {
     expect(ctxBar(2)).toBe("██████████");
   });
 
-  it("ctxColor warns at 80% and alerts at 95%", () => {
-    expect(ctxColor(0.31)).toBeUndefined();
+  it("ctxColor: gray below 70, green 70-80, yellow 80-95, red 95+", () => {
+    expect(ctxColor(0.31)).toBe("gray");
+    expect(ctxColor(0.7)).toBe("green");
     expect(ctxColor(0.8)).toBe("yellow");
     expect(ctxColor(0.96)).toBe("red");
+  });
+
+  it("ctxBar accepts the degraded empty glyph", () => {
+    expect(ctxBar(0.5, "─")).toBe("█████─────");
   });
 
   it("fmtTokens abbreviates", () => {

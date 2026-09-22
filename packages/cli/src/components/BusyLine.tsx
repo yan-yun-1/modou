@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Box, Text } from "ink";
+import { terminalStyle } from "../terminal-capability.js";
 
-/** 自绘 spinner 帧（Unicode BMP，conhost 兼容） */
-const FRAMES = ["✻", "✽", "✜", "✢", "✣", "✲", "✳"];
 const FRAME_MS = 120;
 
 export interface BusyLineProps {
@@ -18,6 +17,7 @@ export interface BusyLineProps {
 
 /** 忙碌行：`✻ 摘要… (esc 中断 · 12.3s · 第 n 步)`——agent 干活时的常驻状态行 */
 export function BusyLine({ action, startedAt, steps, elapsedSeconds }: BusyLineProps) {
+  const FRAMES = terminalStyle().glyphs.spinner;
   const [frame, setFrame] = useState(0);
   const [, forceTick] = useState(0);
 
@@ -43,7 +43,7 @@ export function BusyLine({ action, startedAt, steps, elapsedSeconds }: BusyLineP
     <Box>
       <Text color="magenta">{FRAMES[frame]}</Text>
       <Text> {action ?? "思考中…"}</Text>
-      <Text dimColor>
+      <Text color={terminalStyle().style.dim}>
         {" (esc 中断 · "}
         {secondsLabel}s{stepLabel}
         {")"}
