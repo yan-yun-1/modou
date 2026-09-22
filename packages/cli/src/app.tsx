@@ -12,7 +12,7 @@ import { ApprovalBridge } from "./approval-bridge.js";
 import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
-import { loadSkills } from "@modou-dev/core";
+import { loadSkills, VERSION } from "@modou-dev/core";
 import { StatusBar } from "./components/StatusBar.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
@@ -413,6 +413,9 @@ export function ModouApp({
 
   return (
     <Box flexDirection="column" gap={1}>
+      <Text dimColor>
+        墨斗 v{VERSION} · {modelId} · {permissionMode}
+      </Text>
       <MessageList items={items} />
       {streaming ? <Text>{streaming}</Text> : null}
       {pendingApproval ? (

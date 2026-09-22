@@ -14,6 +14,31 @@ export type CommandResult =
   | { action: "skills" }
   | { action: "plan"; task: string };
 
+/** 斜杠命令清单（InputCard 补全与提示行共用）；顺序即提示行展示顺序 */
+export const SLASH_COMMANDS: { name: string; hint: string }[] = [
+  { name: "/plan", hint: "只读调研并产出实施计划" },
+  { name: "/init", hint: "生成 AGENTS.md 模板" },
+  { name: "/skills", hint: "查看能力包" },
+  { name: "/mcp", hint: "MCP server 状态" },
+  { name: "/cost", hint: "用量与成本" },
+  { name: "/checkpoints", hint: "回滚点列表" },
+  { name: "/rollback", hint: "恢复回滚点" },
+  { name: "/sessions", hint: "历史会话" },
+  { name: "/resume", hint: "恢复会话" },
+  { name: "/model", hint: "切换模型" },
+  { name: "/exit", hint: "退出" },
+  { name: "/help", hint: "帮助" },
+];
+
+/** 输入前缀匹配的命令（用于补全提示）；prefix 为空时返回全部 */
+export function matchSlashCommands(prefix: string): { name: string; hint: string }[] {
+  const p = prefix.trim().toLowerCase();
+  if (p === "") {
+    return SLASH_COMMANDS;
+  }
+  return SLASH_COMMANDS.filter((c) => c.name.startsWith(p));
+}
+
 /**
  * 解析斜杠命令。返回 action:
  * - none: 普通输入，交给模型
