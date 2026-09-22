@@ -14,6 +14,7 @@ import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
 import { loadSkills, VERSION } from "@modou-dev/core";
 import { StatusBar } from "./components/StatusBar.js";
+import { BusyLine } from "./components/BusyLine.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
 import { PlanConfirm } from "./components/PlanConfirm.js";
@@ -98,6 +99,10 @@ export function ModouApp({
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [activeSessionId, setActiveSessionId] = useState(sessionId);
   const [pendingPlan, setPendingPlan] = useState<{ task: string; plan: string } | null>(null);
+  // T5：忙碌行数据——最近工具动作摘要 / 已完成步数 / busy 起始时间
+  const [busyAction, setBusyAction] = useState<string | undefined>(undefined);
+  const [busySteps, setBusySteps] = useState(0);
+  const [busyStartedAt, setBusyStartedAt] = useState(0);
   const loopRef = useRef(loop);
   const running = useRef(false);
   const onUsageChangeRef = useRef(onUsageChange);
@@ -127,6 +132,8 @@ export function ModouApp({
         setItems((prev) => [...prev, { kind: "assistant", text: event.text }]);
         break;
       case "tool_call":
+        setBusyAction(`${event.name} ${summarizeArgs(event.args)}`);
+        setBusySteps((n) => n + 1);
         setItems((prev) => [
           ...prev,
           { kind: "tool", text: `${event.name} ${summarizeArgs(event.args)}` },
@@ -169,6 +176,11 @@ export function ModouApp({
   const taskAbortRef = useRef<AbortController | null>(null);
   const lastCtrlC = useRef(0);
   useInput((input, key) => {
+    // T5：esc = 中断当前任务（忙碌行提示 esc 中断）
+    if (key.escape && busy) {
+      taskAbortRef.current?.abort();
+      return;
+    }
     if (!key.ctrl || input.toLowerCase() !== "c") {
       return;
     }
@@ -192,6 +204,9 @@ export function ModouApp({
       }
       running.current = true;
       setBusy(true);
+      setBusyAction(undefined);
+      setBusySteps(0);
+      setBusyStartedAt(Date.now());
       const controller = new AbortController();
       taskAbortRef.current = controller;
       try {
@@ -449,7 +464,11 @@ export function ModouApp({
         contextWindow={contextWindow}
         ctxUsedTokens={usage.inputTokens + usage.outputTokens + usage.cacheReadTokens}
       />
-      <InputBox busy={busy} onSubmit={handleSubmit} />
+      {busy ? (
+        <BusyLine action={busyAction} startedAt={busyStartedAt} steps={busySteps} />
+      ) : (
+        <InputBox busy={busy} onSubmit={handleSubmit} />
+      )}
     </Box>
   );
 }
