@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { BusyLine } from "../src/components/BusyLine.js";
 import { renderInk, settle } from "./ink-test-utils.js";
 
