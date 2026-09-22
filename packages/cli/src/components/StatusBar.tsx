@@ -62,7 +62,6 @@ export function StatusBar({
   contextWindow,
   ctxUsedTokens,
 }: StatusBarProps) {
-  const totalTokens = usage.inputTokens + usage.outputTokens + usage.cacheReadTokens;
   const ctxRatio =
     contextWindow && ctxUsedTokens !== undefined ? ctxUsedTokens / contextWindow : undefined;
 
