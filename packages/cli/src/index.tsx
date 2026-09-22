@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { homedir } from "node:os";
-import { useEffect, useState } from "react";
 import { Box, render } from "ink";
 import { GitCheckpointer, SessionStore } from "@modou-dev/core";
 import { ModouApp } from "./app.js";

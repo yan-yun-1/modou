@@ -122,7 +122,6 @@ export function ModouApp({
     NonNullable<ModouAppProps["onAssemble"]>
   > | null>(null);
   const effectiveLoop = assembled?.loop ?? loop;
-  const effectiveSessionId = assembled?.sessionId ?? sessionId;
   const effectiveMcpStatus = assembled?.mcpStatus ?? mcpStatus;
   const effectiveCheckpointer = assembled?.checkpointer ?? checkpointer;
   const effectiveContextWindow = assembled?.contextWindow ?? contextWindow;
@@ -143,7 +142,6 @@ export function ModouApp({
         ]);
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首挂载触发一次
   }, []);
   const running = useRef(false);
   const onUsageChangeRef = useRef(onUsageChange);
