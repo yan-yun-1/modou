@@ -62,7 +62,7 @@ export function ApprovalPrompt({ request, onAnswer, queueCount = 1 }: ApprovalPr
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="yellow" paddingX={1}>
-      <Text color="yellow">
+      <Text color="yellow" bold>
         ⚠ 审批请求：{request.name}
         {queueCount > 1 ? `（队列中还有 ${queueCount - 1} 个待审批）` : ""}
       </Text>

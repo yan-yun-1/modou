@@ -20,7 +20,9 @@ export function PlanConfirm({ task, plan, onApprove, onReject }: PlanConfirmProp
 
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="cyan" paddingX={1}>
-      <Text color="cyan">📋 实施计划（任务：{task}）</Text>
+      <Text color="cyan" bold>
+        ⎘ 实施计划（任务：{task}）
+      </Text>
       <Text>{plan}</Text>
       <Text>
         [<Text color="green">y</Text>=按计划执行] [<Text color="red">n</Text>=放弃]
