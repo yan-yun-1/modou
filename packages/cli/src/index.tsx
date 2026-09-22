@@ -8,7 +8,7 @@ import { runModelCommand } from "./model-command.js";
 import { Onboarding } from "./onboarding.js";
 import { loadSettings, loadModelOverrides, migrateLegacyDir, type Settings } from "./settings.js";
 import { runPrintMode } from "./print-mode.js";
-import { createLoopFromSettings, type LoopBundle } from "./loop-factory.js";
+import { createLoopFromSettings } from "./loop-factory.js";
 import { buildProgram } from "./program.js";
 
 interface CliOptions {
