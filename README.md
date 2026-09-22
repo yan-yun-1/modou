@@ -1,19 +1,24 @@
 # 墨斗 Modou
 
+[![npm](https://img.shields.io/npm/v/modou?color=cb3837&label=npm)](https://www.npmjs.com/package/modou)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A524-green)](https://nodejs.org)
+[![Release](https://img.shields.io/github/v/release/yan-yun-1/modou?include_prereleases&label=release)](https://github.com/yan-yun-1/modou/releases)
+
 > 面向个人开发者的开源 Agent 编程引擎：headless 核心 + 终端 CLI。把任务交给 agent 干，把审批权、回滚能力和账单留在自己手里。
 
 墨斗是木匠弹线定直的工具——先弹线（Plan Mode 定计划），后动锯（确认后再执行）。
 
-**状态**：M3（公开发布准备：Skills / --init / eval harness）。路线图见 [docs/PRD.md](docs/PRD.md)。
+**当前状态**：M3 已发布（[Release v0.4.0-alpha](https://github.com/yan-yun-1/modou/releases/tag/v0.4.0-alpha)）。路线图见 [docs/PRD.md](docs/PRD.md)。
 
-## 30 秒上手（源码）
+## 30 秒上手
 
-要求：Node ≥ 24、pnpm ≥ 10。
+要求：Node ≥ 24。
 
 ```bash
-pnpm install && pnpm build
-node packages/cli/dist/index.js init   # 在当前项目生成 AGENTS.md 模板，填入你的项目约定
-node packages/cli/dist/index.js        # 交互模式（首次运行进入模型引导）
+npm i -g modou
+modou init    # 在当前项目生成 AGENTS.md 模板，填入你的项目约定
+modou         # 交互模式（首次运行进入模型引导）
 ```
 
 然后直接说任务：`把 utils.js 里重复的解析逻辑抽成一个函数`。默认模式下每一次写文件、每一条命令都会先请你审批（可按 `a` 记住选择）。
@@ -21,7 +26,7 @@ node packages/cli/dist/index.js        # 交互模式（首次运行进入模型
 无头模式（CI / 脚本）：
 
 ```bash
-node packages/cli/dist/index.js -p "运行 pnpm test 并总结失败原因"
+modou -p "运行 pnpm test 并总结失败原因"
 ```
 
 ## 核心特性
@@ -69,7 +74,7 @@ node packages/cli/dist/index.js -p "运行 pnpm test 并总结失败原因"
 ## 开发
 
 ```bash
-pnpm test          # 全部测试（240+）
+pnpm test          # 全部测试（253）
 pnpm build         # 构建
 pnpm lint          # eslint
 pnpm format        # prettier
@@ -78,6 +83,13 @@ LUBAN_EVAL=1 pnpm eval     # 14 用例沙箱评测（读/查/写/改/MCP/Skills/
 ```
 
 架构与模块导读见 [docs/dev.md](docs/dev.md)；产品决策与路线图见 [docs/PRD.md](docs/PRD.md)。
+
+## npm 包
+
+| 包 | 说明 |
+|---|---|
+| [`modou`](https://www.npmjs.com/package/modou) | 终端 CLI（bin：`modou`） |
+| [`@modou-dev/core`](https://www.npmjs.com/package/@modou-dev/core) | headless 引擎，可嵌入你自己的前端 |
 
 ## 许可
 

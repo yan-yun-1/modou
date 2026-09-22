@@ -2,10 +2,16 @@
 
 从安装到完成第一个任务。前置要求：Node ≥ 24。
 
-## 1. 安装（源码方式，npm 包发布前）
+## 1. 安装
 
 ```bash
-git clone <仓库地址> modou && cd modou
+npm i -g modou          # 需要 Node ≥ 24
+```
+
+或者从源码运行：
+
+```bash
+git clone https://github.com/yan-yun-1/modou.git && cd modou
 pnpm install && pnpm build
 alias modou="node $(pwd)/packages/cli/dist/index.js"   # Windows PowerShell: Set-Alias
 ```
