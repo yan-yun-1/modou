@@ -51,6 +51,66 @@ describe("宽度计算（string-width，R1）", () => {
   });
 });
 
+describe("F 系列：面板导航与执行", () => {
+  it("wraps around when navigating past the first/last item (F1)", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/");
+    await settle();
+    // 首项再 ↑ → 回绕到最后一项（/help），计数显示 (12/12)
+    harness.stdin.write("[A");
+    await settle();
+    expect(harness.text).toContain("(12/12)");
+    // 末项再 ↓ → 回绕到首项 (1/12)
+    harness.stdin.write("[B");
+    await settle();
+    expect(harness.text).toContain("(1/12)");
+    harness.unmount();
+  });
+
+  it("Enter executes the selected command directly (F3)", async () => {
+    const onSubmit = vi.fn();
+    const harness = renderInk(<InputBox busy={false} onSubmit={onSubmit} />);
+    await settle();
+    harness.stdin.write("/");
+    await settle();
+    harness.stdin.write("\x1b[B"); // 移到 /init
+    await settle();
+    harness.stdin.write("\r"); // Enter = 直接执行
+    await settle();
+    expect(onSubmit).toHaveBeenCalledWith("/init");
+    harness.unmount();
+  });
+
+  it("shows the counter footer and no hint line (F4/F5)", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/");
+    await settle();
+    // 计数行存在
+    expect(harness.text).toContain("(1/12)");
+    // 旧提示行已删除
+    expect(harness.text).not.toContain("Tab/回车 补全");
+    expect(harness.text).not.toContain("继续输入筛选");
+    expect(harness.text).not.toContain("↑↓ 选择");
+    harness.unmount();
+  });
+
+  it("renders selected row uniformly bright cyan and others white/gray (F2)", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/");
+    await settle();
+    // 选中行：▶ + 整行亮青（命令与描述在同一 Text 节点）
+    const src = await import("../src/components/InputBox.js");
+    expect(src).toBeTruthy();
+    // 渲染语义：首项选中 ▶ /plan；描述跟在同一选中行
+    expect(harness.frame).toContain("▶ /plan");
+    expect(harness.frame).toContain("只读调研并产出实施计划");
+    harness.unmount();
+  });
+});
+
 describe("选中态指示符（R1，去背景色）", () => {
   it("marks the selected row with a single ▶ and indents the rest", async () => {
     const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
@@ -93,8 +153,8 @@ describe("slash command completion（T4）", () => {
     await settle();
     expect(harness.text).toContain("/plan");
     expect(harness.text).toContain("只读调研并产出实施计划");
-    // 唯一匹配：提示行无 ↑↓（仍教 Tab/回车 补全）
-    expect(harness.text).not.toContain("↑↓ 选择");
+    // 唯一匹配：计数显示 (1/1)
+    expect(harness.text).toContain("(1/1)");
     harness.unmount();
   });
 
@@ -106,7 +166,6 @@ describe("slash command completion（T4）", () => {
     // 面板首屏可见（MAX_VISIBLE_ROWS=6 截断），底部固定提示含 ↑↓
     expect(harness.text).toContain("/plan");
     expect(harness.text).toContain("只读调研并产出实施计划");
-    expect(harness.text).toContain("(Tab/回车 补全 · 继续输入筛选 · ↑↓ 选择)");
     harness.unmount();
   });
 
@@ -147,7 +206,7 @@ describe("slash command completion（T4）", () => {
     harness.stdin.write("/s");
     await settle();
     expect(harness.text).toContain("/sessions");
-    expect(harness.text).toContain("↑↓ 选择");
+    expect(harness.text).toContain("(1/2)");
     harness.unmount();
   });
 

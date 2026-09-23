@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import stringWidth from "string-width";
@@ -16,8 +16,6 @@ export interface InputBoxProps {
 
 /** 补全面板单列布局的固定宽度（命令名列宽；CJK 按 2 列计） */
 const NAME_COL_WIDTH = 14;
-/** 描述列固定宽度（保证两列对齐不随内容漂移） */
-const HINT_COL_WIDTH = 26;
 /** 上下键导航时面板最多可见行数 */
 const MAX_VISIBLE_ROWS = 6;
 
@@ -27,9 +25,9 @@ function padByWidth(s: string, width: number): string {
 }
 
 /**
- * 输入卡（T3 + C3 降噪 + S 补全面板）：round 边框 + placeholder。
- * 补全面板：单列列表 + 上下键选中（反色高亮）、亮青命令名/灰色描述、固定宽度对齐。
- * 输入 "/" 即展示全部命令，继续输入按前缀收窄；Tab/回车 补全选中项。
+ * 输入卡 + 斜杠命令补全面板。
+ * 面板行为："/" 展示全部命令，↑↓ 循环选择，**Enter 直接执行选中命令**，Tab 补全到输入框。
+ * 选中行整行亮青（命令+描述统一色），非选中行白色命令名 + 灰色描述。
  */
 export function InputBox({ busy, onSubmit, placeholder, disabled = false }: InputBoxProps) {
   const { style } = terminalStyle();
@@ -45,18 +43,35 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
   const clampedIndex = Math.min(selectedIndex, Math.max(0, suggestions.length - 1));
   const selected = suggestions[clampedIndex];
 
-  // 上下键导航：在可见窗口内滚动
+  // 值变化后清空选中索引（由 value 派生列表，索引需要归零避免越界）
+  const prevValueRef = useRef(value);
+  useEffect(() => {
+    if (prevValueRef.current !== value) {
+      prevValueRef.current = value;
+      setSelectedIndex(0);
+    }
+  }, [value]);
+
+  // 面板活跃时接管回车/上下键；命令执行走 onSubmit（与手输命令同一链路）
+  const handleSubmitCommand = onSubmit;
   useInput(
     (_input, key) => {
+      // ↑↓ 循环导航：首尾环绕（第一项往上到最后一项，最后一项往下回第一项）
       if (key.upArrow) {
-        setSelectedIndex((i) => Math.max(0, Math.min(i, suggestions.length - 1) - 1));
+        setSelectedIndex((i) =>
+          suggestions.length === 0 ? 0 : (i - 1 + suggestions.length) % suggestions.length,
+        );
       } else if (key.downArrow) {
-        setSelectedIndex((i) => Math.min(suggestions.length - 1, i + 1));
-      } else if (key.tab || key.return) {
-        if (selected) {
-          setValue(`${selected.name} `);
-          setSelectedIndex(0);
-        }
+        setSelectedIndex((i) => (suggestions.length === 0 ? 0 : (i + 1) % suggestions.length));
+      } else if (key.return && selected) {
+        // Enter = 直接执行选中命令（不做二次确认）
+        const commandText = selected.name;
+        setValue("");
+        setSelectedIndex(0);
+        handleSubmitCommand(commandText);
+      } else if (key.tab && selected) {
+        // Tab = 仅补全到输入框，继续编辑
+        setValue(`${selected.name} `);
       }
     },
     { isActive: !busy && showSuggestions },
@@ -75,7 +90,6 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
     ),
   );
   const visible = suggestions.slice(windowStart, windowStart + MAX_VISIBLE_ROWS);
-  const manyRows = suggestions.length > 1;
 
   return (
     <Box flexDirection="column" gap={0}>
@@ -87,6 +101,13 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
           onChange={setValue}
           onSubmit={(v) => {
             if (disabled || v.trim() === "") {
+              return;
+            }
+            // 面板活跃（有匹配命令）时回车由面板接管（直接执行选中项），
+            // 这里拦截避免双重提交；无匹配的斜杠输入（如 /resume xxx）正常提交
+            if (v.trim().startsWith("/") && showSuggestions) {
+              setValue("");
+              setSelectedIndex(0);
               return;
             }
             setValue("");
@@ -101,23 +122,30 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
             const absoluteIndex = windowStart + i;
             const isSelected = absoluteIndex === clampedIndex;
             // conhost 对背景色重绘有残影（SGR 40 行尾清行不净），
-            // 选中态用「▶ 指示符 + 前景色加粗」表达——纯前景色，无背景重绘
+            // 选中态用「▶ 指示符 + 整行亮青」表达——纯前景色，无背景重绘
             const marker = isSelected ? "▶ " : "  ";
-            const nameColor = isSelected ? "cyanBright" : "cyan";
             return (
               <Text key={c.name}>
                 <Text color={isSelected ? "cyanBright" : style.dim}>{marker}</Text>
-                <Text color={nameColor} bold={isSelected}>
-                  {padByWidth(c.name, NAME_COL_WIDTH)}
-                </Text>
-                <Text color="gray">{padByWidth(c.hint, HINT_COL_WIDTH)}</Text>
+                {isSelected ? (
+                  // 选中行：整行亮青（命令 + 描述统一色）
+                  <Text color="cyanBright" bold>
+                    {padByWidth(c.name, NAME_COL_WIDTH)}
+                    {c.hint}
+                  </Text>
+                ) : (
+                  // 非选中行：白色命令名 + 灰色描述
+                  <Text>
+                    <Text color="white">{padByWidth(c.name, NAME_COL_WIDTH)}</Text>
+                    <Text color="gray">{c.hint}</Text>
+                  </Text>
+                )}
               </Text>
             );
           })}
-          <Text color={style.dim}>
-            {"  (Tab/回车 补全 · 继续输入筛选"}
-            {manyRows ? " · ↑↓ 选择" : ""}
-            {")"}
+          {/* 命令计数（图 2 风格）：面板底部固定显示 */}
+          <Text color="gray">
+            {"  "}({clampedIndex + 1}/{suggestions.length})
           </Text>
         </Box>
       ) : null}
