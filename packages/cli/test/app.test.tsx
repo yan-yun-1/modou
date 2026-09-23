@@ -154,6 +154,72 @@ describe("ModouApp sessions", () => {
   }, 30_000);
 });
 
+describe("logo block（L2 修复）", () => {
+  it("renders the ASCII logo above the welcome line when showLogo", async () => {
+    const { SessionStore } = await import("@modou-dev/core");
+    const store = new SessionStore(join(dir, "sessions-logo"));
+    const sessionId = await store.create("s-logo");
+    const loop = fakeLoop([
+      { type: "session_started", sessionId, model: "test-model", at: 1 },
+      {
+        type: "usage",
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 0.001,
+        at: 2,
+      },
+    ]);
+    const harness = renderInk(
+      <ModouApp
+        loop={loop}
+        sessionId={sessionId}
+        store={store}
+        showLogo
+        modelId="m"
+        permissionMode="default"
+      />,
+    );
+    await settle();
+    expect(harness.text).toContain("███╗");
+    expect(harness.text).toContain("██████╔╝");
+    expect(harness.text).toContain("墨斗 · MODOU");
+    // 版本行仍在 Logo 下方
+    expect(harness.text).toContain("墨斗 v");
+    harness.unmount();
+  });
+
+  it("hides the logo by default", async () => {
+    const { SessionStore } = await import("@modou-dev/core");
+    const store = new SessionStore(join(dir, "sessions-nologo"));
+    const sessionId = await store.create("s-nologo");
+    const loop = fakeLoop([
+      {
+        type: "usage",
+        inputTokens: 1,
+        outputTokens: 1,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 0,
+        costUsd: 0.001,
+        at: 1,
+      },
+    ]);
+    const harness = renderInk(
+      <ModouApp
+        loop={loop}
+        sessionId={sessionId}
+        store={store}
+        modelId="m"
+        permissionMode="default"
+      />,
+    );
+    await settle();
+    expect(harness.text).not.toContain("███╗   ███╗");
+    harness.unmount();
+  });
+});
+
 describe("message history Static（T7）", () => {
   it("renders completed items once and keeps them frozen", async () => {
     const { SessionStore } = await import("@modou-dev/core");

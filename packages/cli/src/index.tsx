@@ -22,17 +22,19 @@ interface CliOptions {
 async function main(options: CliOptions): Promise<void> {
   // 更名迁移（M3 R0）：旧 ~/.luban → ~/.modou，失败静默（不影响启动）
   await migrateLegacyDir(homedir());
-  if (shouldPrintLogo(!options.logo)) {
-    printLogo();
-    process.stderr.write(`  墨斗 v${VERSION}
+  if (options.print) {
+    if (shouldPrintLogo(!options.logo)) {
+      printLogo();
+      process.stderr.write(`  墨斗 v${VERSION}
 
 `);
-  }
-  if (options.print) {
+    }
     await runPrintCommand(options.print);
     return;
   }
-  await runInteractive(options.continue ?? false);
+  await runInteractive(options.continue ?? false, {
+    showLogo: shouldPrintLogo(!options.logo),
+  });
 }
 
 /** 无头模式：modou -p "任务" */
@@ -63,7 +65,10 @@ async function requireSettings(): Promise<Settings> {
 }
 
 /** 交互模式：必要时先跑引导，然后进入 TUI；--continue 恢复最近会话 */
-async function runInteractive(useContinue: boolean): Promise<void> {
+async function runInteractive(
+  useContinue: boolean,
+  options?: { showLogo?: boolean },
+): Promise<void> {
   const home = homedir();
   let settings = await loadSettings(home);
   if (!settings) {
@@ -114,6 +119,7 @@ async function runInteractive(useContinue: boolean): Promise<void> {
       permissionMode={settings.permissionMode}
       onModelSwitch={onModelSwitch}
       onAssemble={promise}
+      showLogo={options?.showLogo ?? false}
     />
   );
   instance = render(app);

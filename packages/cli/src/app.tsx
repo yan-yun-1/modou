@@ -34,6 +34,8 @@ export interface ModouAppProps {
   loop: LoopLike | null;
   sessionId: string;
   /** T10：装配 promise——loop 为 null 时 App 内部等待并在完成时切换自身状态 */
+  /** 交互模式：TUI 顶部渲染 ASCII Logo（Ink 管理重绘坐标，conhost 不再错位） */
+  showLogo?: boolean;
   onAssemble?: Promise<{
     loop: LoopLike;
     sessionId: string;
@@ -78,6 +80,28 @@ const ZERO_USAGE: UsageTotals = {
   costUsd: 0,
 };
 
+/** Ink 版 Logo：作为 TUI 首帧内容由 Ink 管理重绘（避免 stderr 预打印导致 conhost 光标错位） */
+function LogoBlock() {
+  const lines: { text: string; color: string }[] = [
+    { text: "  ███╗   ███╗ ██████╗", color: "blueBright" },
+    { text: "  ████╗ ████║██╔═══██╗", color: "blueBright" },
+    { text: "  ██╔████╔██║██║   ██║", color: "blueBright" },
+    { text: "  ██║╚██╔╝██║██║   ██║", color: "blueBright" },
+    { text: "  ██║ ╚═╝ ██║╚██████╔╝", color: "blueBright" },
+    { text: "  ╚═╝     ╚═╝ ╚═════╝", color: "blueBright" },
+    { text: "  ──────────────────────────────── 墨斗 · MODOU", color: "yellowBright" },
+  ];
+  return (
+    <Box flexDirection="column">
+      {lines.map((line, i) => (
+        <Text key={i} color={line.color}>
+          {line.text}
+        </Text>
+      ))}
+    </Box>
+  );
+}
+
 function summarizeArgs(args: unknown): string {
   const raw = JSON.stringify(args) ?? "";
   return raw.length > 80 ? `${raw.slice(0, 80)}…` : raw;
@@ -100,6 +124,7 @@ export function ModouApp({
   permissionMode = "default",
   contextWindow,
   onAssemble,
+  showLogo = false,
   cwd = process.cwd(),
   onExit,
   onUsageChange,
@@ -525,6 +550,7 @@ export function ModouApp({
           </Box>
         )}
       </Static>
+      {showLogo ? <LogoBlock /> : null}
       <Text color={terminalStyle().style.dim}>
         墨斗 v{VERSION} · {modelId} · {permissionMode}
       </Text>
