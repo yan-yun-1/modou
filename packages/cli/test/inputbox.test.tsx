@@ -82,6 +82,35 @@ describe("F 系列：面板导航与执行", () => {
     harness.unmount();
   });
 
+  it("keeps the selected row visible for an exact match (图3 回归)", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/plan");
+    await settle();
+    // 精确匹配：选中行完整渲染（▶ + 命令 + 完整 hint）
+    expect(harness.frame).toContain("▶ /plan");
+    expect(harness.frame).toContain("只读调研并产出实施计划");
+    expect(harness.text).toContain("(1/1)");
+    harness.unmount();
+  });
+
+  it("keeps every row a fixed visual width (conhost 残影回归)", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/");
+    await settle();
+    // 全部可见行同宽（按显示宽度：标记 3 + 命令 14 + hint 26 + 终止符 2 = 45）
+    const sw = (await import("string-width")).default;
+    const rows = harness.frame
+      .split("\n")
+      .filter((l) => l.includes("/init") || l.includes("/skills") || l.includes("/plan"));
+    const widths = new Set(
+      rows.map((l) => sw(l.replace(new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g"), ""))),
+    );
+    expect(widths.size).toBe(1);
+    harness.unmount();
+  });
+
   it("shows the counter footer and no hint line (F4/F5)", async () => {
     const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
     await settle();

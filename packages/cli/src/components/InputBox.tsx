@@ -16,12 +16,29 @@ export interface InputBoxProps {
 
 /** 补全面板单列布局的固定宽度（命令名列宽；CJK 按 2 列计） */
 const NAME_COL_WIDTH = 14;
+/** 描述列固定宽度：所有行（选中/非选中）统一 pad+截断，行宽恒定（conhost 清行依赖） */
+const HINT_COL_WIDTH = 26;
 /** 上下键导航时面板最多可见行数 */
 const MAX_VISIBLE_ROWS = 6;
 
 /** 按显示宽度右补空格（string-width：CJK/全角按 2 列，emoji 等宽符号也正确计宽） */
 function padByWidth(s: string, width: number): string {
   return s + " ".repeat(Math.max(0, width - stringWidth(s)));
+}
+
+/** 固定显示宽度的单元格：不足补空格、超出按显示宽度截断（行宽恒定的关键） */
+function fixedWidthCell(s: string, width: number): string {
+  let out = "";
+  let w = 0;
+  for (const ch of s) {
+    const cw = ch.charCodeAt(0) > 0xff ? 2 : 1;
+    if (w + cw > width) {
+      break;
+    }
+    out += ch;
+    w += cw;
+  }
+  return out + " ".repeat(width - w);
 }
 
 /**
@@ -123,29 +140,38 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
             const isSelected = absoluteIndex === clampedIndex;
             // conhost 对背景色重绘有残影（SGR 40 行尾清行不净），
             // 选中态用「▶ 指示符 + 整行亮青」表达——纯前景色，无背景重绘
-            const marker = isSelected ? "▶ " : "  ";
+            // ▶ 被 Ink wcwidth 计为 2 列，'▶ ' = 3 列；非选中行用 3 空格对齐
+            const marker = isSelected ? "▶ " : "   ";
             return (
               <Text key={c.name}>
-                <Text color={isSelected ? "cyanBright" : style.dim}>{marker}</Text>
                 {isSelected ? (
-                  // 选中行：整行亮青（命令 + 描述统一色）
-                  <Text color="cyanBright" bold>
-                    {padByWidth(c.name, NAME_COL_WIDTH)}
-                    {c.hint}
-                  </Text>
+                  // 选中行：整行亮青加粗（命令 + 描述统一色）
+                  // 分段结构与非选中行完全一致——保证尾空格裁剪行为相同（行宽恒定）
+                  <>
+                    <Text color="cyanBright" bold>
+                      {marker}
+                      {padByWidth(c.name, NAME_COL_WIDTH)}
+                    </Text>
+                    <Text color="cyanBright" bold>
+                      {fixedWidthCell(c.hint, HINT_COL_WIDTH)}
+                    </Text>
+                  </>
                 ) : (
-                  // 非选中行：白色命令名 + 灰色描述
+                  // 非选中行：白色命令名 + 灰色描述（同宽）
                   <Text>
+                    <Text color={style.dim}>{marker}</Text>
                     <Text color="white">{padByWidth(c.name, NAME_COL_WIDTH)}</Text>
-                    <Text color="gray">{c.hint}</Text>
+                    <Text color="gray">{fixedWidthCell(c.hint, HINT_COL_WIDTH)}</Text>
                   </Text>
                 )}
+                {/* 行尾终止符：行尾永远有真实字符，conhost 清行不再残留上一帧长行尾字 */}
+                <Text color={style.dim}> ·</Text>
               </Text>
             );
           })}
           {/* 命令计数（图 2 风格）：面板底部固定显示 */}
           <Text color="gray">
-            {"  "}({clampedIndex + 1}/{suggestions.length})
+            {"  "}({clampedIndex + 1}/{suggestions.length}) ·
           </Text>
         </Box>
       ) : null}
