@@ -541,8 +541,12 @@ export function ModouApp({
     ],
   );
 
+  // 注意：这里不能用 gap={1}。Ink 的 Static 会绕过主渲染树直接写 stdout，
+  // 而 gap 会在 Static 之后的第一个子元素前插空行——两者叠加时
+  // ink 布局会把该元素的显示区域上移一行，首行内容被截掉
+  // （实测：补全面板选中行整行消失）。用显式空行代替 gap。
   return (
-    <Box flexDirection="column" gap={1}>
+    <Box flexDirection="column">
       <Static items={items}>
         {(item, index) => (
           <Box key={index} flexDirection="column">
@@ -550,10 +554,12 @@ export function ModouApp({
           </Box>
         )}
       </Static>
+      <Text> </Text>
       {showLogo ? <LogoBlock /> : null}
       <Text color={terminalStyle().style.dim}>
         墨斗 v{VERSION} · {modelId} · {permissionMode}
       </Text>
+      <Text> </Text>
       {streaming ? <Text>{streaming}</Text> : null}
       {pendingApproval ? (
         <ApprovalPrompt
