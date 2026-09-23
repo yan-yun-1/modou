@@ -42,12 +42,29 @@ describe("InputBox（T3 输入卡）", () => {
   });
 });
 
-describe("displayWidth（S 固定宽度）", () => {
-  it("counts CJK as 2 columns and ASCII as 1", async () => {
-    const { displayWidth } = await import("../src/components/InputBox.js");
-    expect(displayWidth("/plan")).toBe(5);
-    expect(displayWidth("查看能力包")).toBe(10);
-    expect(displayWidth("")).toBe(0);
+describe("宽度计算（string-width，R1）", () => {
+  it("pads to a stable visual width for mixed CJK/ASCII", async () => {
+    const sw = (await import("string-width")).default;
+    expect(sw("/plan")).toBe(5);
+    expect(sw("查看能力包")).toBe(10);
+    expect(sw("墨斗")).toBe(4);
+  });
+});
+
+describe("选中态指示符（R1，去背景色）", () => {
+  it("marks the selected row with a single ▶ and indents the rest", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/");
+    await settle();
+    // 首屏可见 6 行：恰好 1 个 ▶（选中行）+ 5 个双空格占位（非选中行）
+    expect(harness.frame.split("▶ ").length - 1).toBe(1);
+    expect(harness.frame).toContain("  /init");
+    // 渲染源码层面不使用 backgroundColor（conhost 残影根因）
+    const { readFile } = await import("node:fs/promises");
+    const src = await readFile("src/components/InputBox.tsx", "utf8");
+    expect(src).not.toContain("backgroundColor");
+    harness.unmount();
   });
 });
 

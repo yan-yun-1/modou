@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
+import stringWidth from "string-width";
 import { matchSlashCommands } from "../commands.js";
 import { terminalStyle } from "../terminal-capability.js";
 
@@ -20,18 +21,9 @@ const HINT_COL_WIDTH = 26;
 /** 上下键导航时面板最多可见行数 */
 const MAX_VISIBLE_ROWS = 6;
 
-/** 显示宽度：CJK（>0xff）按 2 列计，ASCII 按 1 列 */
-export function displayWidth(s: string): number {
-  let w = 0;
-  for (const ch of s) {
-    w += ch.charCodeAt(0) > 0xff ? 2 : 1;
-  }
-  return w;
-}
-
-/** 按显示宽度右补空格（中英文混合对齐） */
+/** 按显示宽度右补空格（string-width：CJK/全角按 2 列，emoji 等宽符号也正确计宽） */
 function padByWidth(s: string, width: number): string {
-  return s + " ".repeat(Math.max(0, width - displayWidth(s)));
+  return s + " ".repeat(Math.max(0, width - stringWidth(s)));
 }
 
 /**
@@ -108,19 +100,17 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
           {visible.map((c, i) => {
             const absoluteIndex = windowStart + i;
             const isSelected = absoluteIndex === clampedIndex;
+            // conhost 对背景色重绘有残影（SGR 40 行尾清行不净），
+            // 选中态用「▶ 指示符 + 前景色加粗」表达——纯前景色，无背景重绘
+            const marker = isSelected ? "▶ " : "  ";
+            const nameColor = isSelected ? "cyanBright" : "cyan";
             return (
               <Text key={c.name}>
-                {isSelected ? (
-                  // 选中项：反色（蓝底白字）
-                  <Text backgroundColor="blue" color="white" bold>
-                    {` ${padByWidth(c.name, NAME_COL_WIDTH)}${padByWidth(c.hint, HINT_COL_WIDTH)} `}
-                  </Text>
-                ) : (
-                  <Text>
-                    <Text color="cyanBright">{` ${padByWidth(c.name, NAME_COL_WIDTH)}`}</Text>
-                    <Text color={style.dim}>{padByWidth(c.hint, HINT_COL_WIDTH)}</Text>
-                  </Text>
-                )}
+                <Text color={isSelected ? "cyanBright" : style.dim}>{marker}</Text>
+                <Text color={nameColor} bold={isSelected}>
+                  {padByWidth(c.name, NAME_COL_WIDTH)}
+                </Text>
+                <Text color="gray">{padByWidth(c.hint, HINT_COL_WIDTH)}</Text>
               </Text>
             );
           })}
