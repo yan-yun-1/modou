@@ -15,8 +15,15 @@ export interface InputBoxProps {
 
 /** 提示行最多渲染的命令名数量（80 列内一行放下） */
 const MAX_SUGGESTIONS = 6;
-/** 输入至少几个字符才显示提示行（"/" 单字符视为试探，不显示） */
-const MIN_PREFIX = 2;
+
+/** 把列表按 n 个一组切分（全量命令网格用） */
+function chunk<T>(list: T[], n: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < list.length; i += n) {
+    out.push(list.slice(i, i + n));
+  }
+  return out;
+}
 
 /**
  * 输入卡（T3 + C3 降噪）：round 边框 + placeholder。
@@ -31,8 +38,8 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
     () => (value.startsWith("/") ? matchSlashCommands(value) : []),
     [value],
   );
-  // "/" 单字符 = 试探，不出提示
-  const showSuggestions = suggestions.length > 0 && value.trim().length >= MIN_PREFIX;
+  // 输入 "/" 即展示全部命令（继续输入按前缀收窄）
+  const showSuggestions = suggestions.length > 0;
 
   useInput(
     (input, key) => {
@@ -65,21 +72,31 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
         />
       </Box>
       {showSuggestions ? (
-        <>
-          <Text>
-            <Text color={style.user}>
-              {suggestions
-                .slice(0, MAX_SUGGESTIONS)
-                .map((c) => c.name)
-                .join("  ")}
+        value.trim() === "/" ? (
+          // 全量视图：两列网格（命令名 + hint），12 条放下且不折行
+          <Box flexDirection="column">
+            {chunk(suggestions, 2).map((pair, i) => (
+              <Text key={i}>{pair.map((c) => `${c.name.padEnd(14)}${c.hint}`).join("  ")}</Text>
+            ))}
+            <Text color={style.dim}> (Tab 补全 · 继续输入筛选)</Text>
+          </Box>
+        ) : (
+          <>
+            <Text>
+              <Text color={style.user}>
+                {suggestions
+                  .slice(0, MAX_SUGGESTIONS)
+                  .map((c) => c.name)
+                  .join("  ")}
+              </Text>
+              <Text color={style.dim}>
+                {suggestions.length > MAX_SUGGESTIONS ? "  …" : ""}
+                {suggestions.length > 1 ? "  (Tab 补全)" : ""}
+              </Text>
             </Text>
-            <Text color={style.dim}>
-              {suggestions.length > MAX_SUGGESTIONS ? "  …" : ""}
-              {suggestions.length > 1 ? "  (Tab 补全)" : ""}
-            </Text>
-          </Text>
-          <Text color={style.dim}>{suggestions[0]!.hint}</Text>
-        </>
+            <Text color={style.dim}>{suggestions[0]!.hint}</Text>
+          </>
+        )
       ) : null}
     </Box>
   );

@@ -72,13 +72,16 @@ describe("slash command completion（T4）", () => {
     harness.unmount();
   });
 
-  it("hides hints while typing just the slash (trial input)", async () => {
+  it("shows all commands as a grid when typing just the slash", async () => {
     const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
     await settle();
     harness.stdin.write("/");
     await settle();
-    expect(harness.text).not.toContain("/plan 只读调研");
-    expect(harness.text).not.toContain("(Tab 补全)");
+    // 全量：12 条命令全部可见（网格两列）
+    expect(harness.text).toContain("/plan");
+    expect(harness.text).toContain("/exit");
+    expect(harness.text).toContain("/model");
+    expect(harness.text).toContain("(Tab 补全 · 继续输入筛选)");
     harness.unmount();
   });
 
