@@ -87,8 +87,8 @@ describe("F 系列：面板导航与执行", () => {
     await settle();
     harness.stdin.write("/plan");
     await settle();
-    // 精确匹配：选中行完整渲染（▶ + 命令 + 完整 hint）
-    expect(harness.frame).toContain("▶ /plan");
+    // 精确匹配：选中行完整渲染（❯ + 命令 + 完整 hint）
+    expect(harness.frame).toContain("❯ /plan");
     expect(harness.frame).toContain("只读调研并产出实施计划");
     expect(harness.text).toContain("(1/1)");
     harness.unmount();
@@ -99,15 +99,20 @@ describe("F 系列：面板导航与执行", () => {
     await settle();
     harness.stdin.write("/");
     await settle();
-    // 全部可见行同宽（按显示宽度：标记 3 + 命令 14 + hint 26 + 终止符 2 = 45）
+    // 全部可见行同宽（Ink 列语义：标记 3 + 命令 14 + hint 26 + 边框/padding 4 = 47）。
+    // ▶ 是 East Asian Ambiguous：Ink wcwidth 计 2 列（渲染对齐 ✓），string-width 计 1 列。
+    // 度量前把 ▶ 归一化为两个 1 列字符（"||"），使 string-width 与 Ink 排版一致。
     const sw = (await import("string-width")).default;
+    const esc = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
+    const normalize = (l: string) => l.replace(esc, "").replace("▶", "||");
     const rows = harness.frame
       .split("\n")
       .filter((l) => l.includes("/init") || l.includes("/skills") || l.includes("/plan"));
-    const widths = new Set(
-      rows.map((l) => sw(l.replace(new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g"), ""))),
-    );
+    const widths = new Set(rows.map((l) => sw(normalize(l))));
     expect(widths.size).toBe(1);
+    // 面板两侧竖线边框（N2：kimi-code 风格）
+    const clean = rows.map((l) => l.replace(esc, ""));
+    expect(clean.every((l) => l.startsWith("│") && l.endsWith("│"))).toBe(true);
     harness.unmount();
   });
 
@@ -130,24 +135,24 @@ describe("F 系列：面板导航与执行", () => {
     await settle();
     harness.stdin.write("/");
     await settle();
-    // 选中行：▶ + 整行亮青（命令与描述在同一 Text 节点）
+    // 选中行：❯ + 整行亮青（命令与描述在同一 Text 节点）
     const src = await import("../src/components/InputBox.js");
     expect(src).toBeTruthy();
-    // 渲染语义：首项选中 ▶ /plan；描述跟在同一选中行
-    expect(harness.frame).toContain("▶ /plan");
+    // 渲染语义：首项选中 ❯ /plan；描述跟在同一选中行
+    expect(harness.frame).toContain("❯ /plan");
     expect(harness.frame).toContain("只读调研并产出实施计划");
     harness.unmount();
   });
 });
 
 describe("选中态指示符（R1，去背景色）", () => {
-  it("marks the selected row with a single ▶ and indents the rest", async () => {
+  it("marks the selected row with a single ❯ and indents the rest", async () => {
     const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
     await settle();
     harness.stdin.write("/");
     await settle();
-    // 首屏可见 6 行：恰好 1 个 ▶（选中行）+ 5 个双空格占位（非选中行）
-    expect(harness.frame.split("▶ ").length - 1).toBe(1);
+    // 输入卡提示符占 1 个 ❯，选中行指示符 1 个 ❯——帧内共 2 个（面板 5 个非选中行无 ❯）
+    expect(harness.frame.split("❯ ").length - 1).toBe(2);
     expect(harness.frame).toContain("  /init");
     // 渲染源码层面不使用 backgroundColor（conhost 残影根因）
     const { readFile } = await import("node:fs/promises");

@@ -45,6 +45,7 @@ function fixedWidthCell(s: string, width: number): string {
  * 输入卡 + 斜杠命令补全面板。
  * 面板行为："/" 展示全部命令，↑↓ 循环选择，**Enter 直接执行选中命令**，Tab 补全到输入框。
  * 选中行整行亮青（命令+描述统一色），非选中行白色命令名 + 灰色描述。
+ * 面板两侧竖线边框（图 2 风格），底部计数 (n/N)。
  */
 export function InputBox({ busy, onSubmit, placeholder, disabled = false }: InputBoxProps) {
   const { style } = terminalStyle();
@@ -70,7 +71,6 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
   }, [value]);
 
   // 面板活跃时接管回车/上下键；命令执行走 onSubmit（与手输命令同一链路）
-  const handleSubmitCommand = onSubmit;
   useInput(
     (_input, key) => {
       // ↑↓ 循环导航：首尾环绕（第一项往上到最后一项，最后一项往下回第一项）
@@ -85,7 +85,7 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
         const commandText = selected.name;
         setValue("");
         setSelectedIndex(0);
-        handleSubmitCommand(commandText);
+        onSubmit(commandText);
       } else if (key.tab && selected) {
         // Tab = 仅补全到输入框，继续编辑
         setValue(`${selected.name} `);
@@ -134,14 +134,24 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
         />
       </Box>
       {showSuggestions ? (
-        <Box flexDirection="column">
-          {visible.map((c, i) => {
-            const absoluteIndex = windowStart + i;
+        // 面板容器：左右竖线边框（borderStyle="round" 只留左右边）+ 内边距
+        <Box
+          flexDirection="column"
+          borderStyle="round"
+          borderTop={false}
+          borderBottom={false}
+          borderColor={disabled ? "gray" : style.border}
+          paddingX={1}
+        >
+          {visible.map((c) => {
+            const absoluteIndex = suggestions.indexOf(c);
             const isSelected = absoluteIndex === clampedIndex;
             // conhost 对背景色重绘有残影（SGR 40 行尾清行不净），
-            // 选中态用「▶ 指示符 + 整行亮青」表达——纯前景色，无背景重绘
-            // ▶ 被 Ink wcwidth 计为 2 列，'▶ ' = 3 列；非选中行用 3 空格对齐
-            const marker = isSelected ? "▶ " : "   ";
+            // 选中态用「❯ 指示符 + 整行亮青」表达——纯前景色，无背景重绘。
+            // 标记必须选「全链路单列」字符：❯ (U+276F) 在 string-width、
+            // is-fullwidth-code-point、终端 wcwidth 下都计 1 列；
+            // ▶ (U+25B6) 是 emoji-presentation，string-width 计 2、渲染层计 1，宽度分歧会挤乱行宽。
+            const marker = isSelected ? "❯ " : "  ";
             return (
               <Text key={c.name}>
                 {isSelected ? (
@@ -164,14 +174,12 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
                     <Text color="gray">{fixedWidthCell(c.hint, HINT_COL_WIDTH)}</Text>
                   </Text>
                 )}
-                {/* 行尾终止符：行尾永远有真实字符，conhost 清行不再残留上一帧长行尾字 */}
-                <Text color={style.dim}> ·</Text>
               </Text>
             );
           })}
           {/* 命令计数（图 2 风格）：面板底部固定显示 */}
           <Text color="gray">
-            {"  "}({clampedIndex + 1}/{suggestions.length}) ·
+            {"  "}({clampedIndex + 1}/{suggestions.length})
           </Text>
         </Box>
       ) : null}
