@@ -12,8 +12,7 @@ import { ApprovalBridge } from "./approval-bridge.js";
 import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
-import { loadSkills, VERSION } from "@modou-dev/core";
-import { terminalStyle } from "./terminal-capability.js";
+import { loadSkills } from "@modou-dev/core";
 import { StatusBar } from "./components/StatusBar.js";
 import { BusyLine } from "./components/BusyLine.js";
 import { InputBox } from "./components/InputBox.js";
@@ -89,7 +88,6 @@ function LogoBlock() {
     { text: "  ██║╚██╔╝██║██║   ██║", color: "blueBright" },
     { text: "  ██║ ╚═╝ ██║╚██████╔╝", color: "blueBright" },
     { text: "  ╚═╝     ╚═╝ ╚═════╝", color: "blueBright" },
-    { text: "  ──────────────────────────────── 墨斗 · MODOU", color: "yellowBright" },
   ];
   return (
     <Box flexDirection="column">
@@ -185,14 +183,15 @@ export function ModouApp({
     };
   }, [approvals]);
 
-  // T10：装配完成瞬间（loop 由 null → 可用）追加就绪条目
+  // T10：装配完成瞬间（loop 由 null → 可用）追加就绪条目。
+  // 用 kind:"assistant" 纯文本（无 ⚙ 工具图标），只是启动期的一次性状态通报
   const readyAnnounced = useRef(false);
   useEffect(() => {
     if (effectiveLoop && !readyAnnounced.current) {
       readyAnnounced.current = true;
       const mcpReady = (effectiveMcpStatus ?? []).filter((s) => s.connected).length;
       const note = mcpReady > 0 ? `✓ 上下文就绪（MCP ${mcpReady} server 已连接）` : "✓ 上下文就绪";
-      setItems((prev) => [...prev, { kind: "tool", text: note }]);
+      setItems((prev) => [...prev, { kind: "assistant", text: note }]);
     }
   }, [effectiveLoop, effectiveMcpStatus]);
 
@@ -556,9 +555,6 @@ export function ModouApp({
       </Static>
       <Text> </Text>
       {showLogo ? <LogoBlock /> : null}
-      <Text color={terminalStyle().style.dim}>
-        墨斗 v{VERSION} · {modelId} · {permissionMode}
-      </Text>
       <Text> </Text>
       {streaming ? <Text>{streaming}</Text> : null}
       {pendingApproval ? (
@@ -584,14 +580,6 @@ export function ModouApp({
           }}
         />
       ) : null}
-      <StatusBar
-        model={modelId}
-        permissionMode={permissionMode}
-        usage={usage}
-        budgetUsd={budgetUsd}
-        contextWindow={effectiveContextWindow}
-        ctxUsedTokens={usage.inputTokens + usage.outputTokens + usage.cacheReadTokens}
-      />
       {busy ? (
         <BusyLine action={busyAction} startedAt={busyStartedAt} steps={busySteps} />
       ) : (
@@ -602,6 +590,14 @@ export function ModouApp({
           placeholder={!effectiveLoop ? "正在装配上下文…" : undefined}
         />
       )}
+      <StatusBar
+        model={modelId}
+        permissionMode={permissionMode}
+        usage={usage}
+        budgetUsd={budgetUsd}
+        contextWindow={effectiveContextWindow}
+        ctxUsedTokens={usage.inputTokens + usage.outputTokens + usage.cacheReadTokens}
+      />
     </Box>
   );
 }

@@ -1,6 +1,6 @@
 import { detectColorLevel, type ColorLevel } from "./terminal-capability.js";
 
-/** ASCII Logo（墨斗 MODOU），逐行带色：字母 94 / 分隔线 90 / 文字 93，行尾 \x1b[0m 复位 */
+/** ASCII Logo（墨斗 MODOU）：仅 "MO" 字样，亮蓝 94，行尾 \x1b[0m 复位 */
 const LOGO_LINES: { text: string; code: string }[] = [
   { text: "  ███╗   ███╗ ██████╗", code: "94" },
   { text: "  ████╗ ████║██╔═══██╗", code: "94" },
@@ -8,7 +8,6 @@ const LOGO_LINES: { text: string; code: string }[] = [
   { text: "  ██║╚██╔╝██║██║   ██║", code: "94" },
   { text: "  ██║ ╚═╝ ██║╚██████╔╝", code: "94" },
   { text: "  ╚═╝     ╚═╝ ╚═════╝", code: "94" },
-  { text: "  ──────────────────────────────── 墨斗 · MODOU", code: "93" },
 ];
 
 export interface LogoOptions {
@@ -27,7 +26,7 @@ function colorize(line: { text: string; code: string }, level: ColorLevel): stri
 }
 
 /**
- * 打印 ASCII Logo（L1）：字母亮蓝（94）、分隔线+文字亮黄（93，按素材"墨斗 · MODOU"行整体 93）。
+ * 打印 ASCII Logo（仅 "MO" 字样，亮蓝 94）。
  * 颜色不支持时回退纯文本。写入 stderr（交互模式 Ink 接管 stdout，stderr 不干扰 TUI；无头模式不污染管道输出）。
  */
 export function printLogo(options: LogoOptions = {}): void {

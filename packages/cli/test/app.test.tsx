@@ -184,9 +184,9 @@ describe("logo block（L2 修复）", () => {
     await settle();
     expect(harness.text).toContain("███╗");
     expect(harness.text).toContain("██████╔╝");
-    expect(harness.text).toContain("墨斗 · MODOU");
-    // 版本行仍在 Logo 下方
-    expect(harness.text).toContain("墨斗 v");
+    // Logo 只保留 MO 字样（无分隔线/品牌行），版本排版行已去掉
+    expect(harness.text).not.toContain("墨斗 · MODOU");
+    expect(harness.text).not.toContain("墨斗 v");
     harness.unmount();
   });
 

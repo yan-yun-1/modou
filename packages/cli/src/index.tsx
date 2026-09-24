@@ -11,7 +11,6 @@ import { runPrintMode } from "./print-mode.js";
 import { createLoopFromSettings } from "./loop-factory.js";
 import { buildProgram } from "./program.js";
 import { printLogo, shouldPrintLogo } from "./logo.js";
-import { VERSION } from "@modou-dev/core";
 
 interface CliOptions {
   print?: string;
@@ -25,9 +24,6 @@ async function main(options: CliOptions): Promise<void> {
   if (options.print) {
     if (shouldPrintLogo(!options.logo)) {
       printLogo();
-      process.stderr.write(`  墨斗 v${VERSION}
-
-`);
     }
     await runPrintCommand(options.print);
     return;

@@ -5,17 +5,33 @@ import { renderInk, settle } from "./ink-test-utils.js";
 describe("App 层补全面板回归（Static+gap 吞行 bug）", () => {
   it("keeps the selected /plan row visible in the app tree", async () => {
     const harness = renderInk(
-      <ModouApp loop={null as never} sessionId="s" onSubmitTask={() => {}} showLogo />,
+      <ModouApp
+        loop={null as never}
+        sessionId="s"
+        onSubmitTask={() => {}}
+        showLogo
+        contextWindow={100000}
+      />,
     );
     await settle();
     harness.stdin.write("/");
     await settle();
-    const esc = new RegExp(String.fromCharCode(27) + "\[[0-9;]*m", "g");
+    const esc = new RegExp(String.fromCharCode(27) + "\\[[0-9;]*m", "g");
     const clean = harness.frame.replace(esc, "");
     // 曾因外层 gap 与 Static 叠加导致选中行整行消失（真机 conhost 复现）
     expect(clean).toContain("❯ /plan");
     expect(clean).toContain("只读调研并产出实施计划");
     expect(clean).toContain("(1/12)");
+    // 状态栏在输入框/面板下方（U1）：在最后一帧内比较行序
+    const last = harness.frame.replace(esc, "");
+    const lastLines = last.split("\n");
+    const panelIdx = lastLines.findIndex((l) => l.includes("(1/12)"));
+    const statusIdx = lastLines.findIndex((l) => l.includes("ctx 已用"));
+    expect(panelIdx).toBeGreaterThan(-1);
+    expect(statusIdx).toBeGreaterThan(panelIdx);
+    // Logo 只保留 MO、无版本排版行（U2/U3）
+    expect(last).not.toContain("墨斗 · MODOU");
+    expect(last).not.toContain("墨斗 v");
     harness.unmount();
   });
 });
