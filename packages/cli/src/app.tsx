@@ -52,8 +52,10 @@ export interface ModouAppProps {
   store?: StoreLike | null;
   /** MCP servers 连接状态（入口层经工厂返回） */
   mcpStatus?: McpStatus[];
-  /** /model 触发：入口层结束当前会话并以新模型重开 */
+  /** /model 触发：入口层结束当前会话并以新模型重开（同供应商） */
   onModelSwitch?: () => void;
+  /** /provider 触发：入口层结束当前会话并重跑供应商+模型引导 */
+  onProviderSwitch?: () => void;
   budgetUsd?: number;
   /** 状态栏展示：模型 ID 与权限模式 */
   modelId?: string;
@@ -117,6 +119,7 @@ export function ModouApp({
   store,
   mcpStatus,
   onModelSwitch,
+  onProviderSwitch,
   budgetUsd,
   modelId = "…",
   permissionMode = "default",
@@ -182,18 +185,6 @@ export function ModouApp({
       unsubscribe();
     };
   }, [approvals]);
-
-  // T10：装配完成瞬间（loop 由 null → 可用）追加就绪条目。
-  // 用 kind:"assistant" 纯文本（无 ⚙ 工具图标），只是启动期的一次性状态通报
-  const readyAnnounced = useRef(false);
-  useEffect(() => {
-    if (effectiveLoop && !readyAnnounced.current) {
-      readyAnnounced.current = true;
-      const mcpReady = (effectiveMcpStatus ?? []).filter((s) => s.connected).length;
-      const note = mcpReady > 0 ? `✓ 上下文就绪（MCP ${mcpReady} server 已连接）` : "✓ 上下文就绪";
-      setItems((prev) => [...prev, { kind: "assistant", text: note }]);
-    }
-  }, [effectiveLoop, effectiveMcpStatus]);
 
   // T6 流式节流：text_delta 每 token 一次 setState 会拖垮渲染——
   // delta 先写 ref 缓冲，60ms interval 一次性 flush 到 state（每秒 ≤17 帧）
@@ -472,8 +463,12 @@ export function ModouApp({
         onModelSwitch?.();
         return;
       }
+      if (command.action === "provider") {
+        onProviderSwitch?.();
+        return;
+      }
       if (command.action === "mcp") {
-        const servers = mcpStatus ?? [];
+        const servers = effectiveMcpStatus ?? [];
         setItems((prev) => [
           ...prev,
           {
@@ -530,9 +525,11 @@ export function ModouApp({
       cwd,
       effectiveCheckpointer,
       effectiveLoop,
+      effectiveMcpStatus,
       exit,
       onExit,
       onModelSwitch,
+      onProviderSwitch,
       runPlan,
       runTask,
       store,

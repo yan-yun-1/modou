@@ -2,7 +2,7 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { VERSION } from "@modou-dev/core";
-import { runModelCommand } from "./model-command.js";
+import { runModelCommand, runProviderCommand } from "./model-command.js";
 import { initAgentsMd } from "./init.js";
 
 export function buildProgram(): Command {
@@ -16,9 +16,16 @@ export function buildProgram(): Command {
 
   program
     .command("model")
-    .description("重新选择模型提供商与模型（写入 settings.json，重启后生效）")
+    .description("重新选择当前供应商下的模型（写入 settings.json，重启后生效）")
     .action(async () => {
       await runModelCommand(homedir());
+    });
+
+  program
+    .command("provider")
+    .description("切换模型供应商（含 API Key 与模型选择，写入 settings.json）")
+    .action(async () => {
+      await runProviderCommand(homedir());
     });
 
   program

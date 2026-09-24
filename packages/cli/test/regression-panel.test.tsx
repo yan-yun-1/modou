@@ -21,11 +21,11 @@ describe("App 层补全面板回归（Static+gap 吞行 bug）", () => {
     // 曾因外层 gap 与 Static 叠加导致选中行整行消失（真机 conhost 复现）
     expect(clean).toContain("❯ /plan");
     expect(clean).toContain("只读调研并产出实施计划");
-    expect(clean).toContain("(1/12)");
+    expect(clean).toContain("(1/13)");
     // 状态栏在输入框/面板下方（U1）：在最后一帧内比较行序
     const last = harness.frame.replace(esc, "");
     const lastLines = last.split("\n");
-    const panelIdx = lastLines.findIndex((l) => l.includes("(1/12)"));
+    const panelIdx = lastLines.findIndex((l) => l.includes("(1/13)"));
     const statusIdx = lastLines.findIndex((l) => l.includes("ctx 已用"));
     expect(panelIdx).toBeGreaterThan(-1);
     expect(statusIdx).toBeGreaterThan(panelIdx);

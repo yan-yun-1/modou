@@ -9,6 +9,7 @@ export type CommandResult =
   | { action: "sessions" }
   | { action: "resume"; id: string }
   | { action: "model" }
+  | { action: "provider" }
   | { action: "mcp" }
   | { action: "init" }
   | { action: "skills" }
@@ -25,7 +26,8 @@ export const SLASH_COMMANDS: { name: string; hint: string }[] = [
   { name: "/rollback", hint: "恢复回滚点" },
   { name: "/sessions", hint: "历史会话" },
   { name: "/resume", hint: "恢复会话" },
-  { name: "/model", hint: "切换模型" },
+  { name: "/model", hint: "切换模型（当前供应商）" },
+  { name: "/provider", hint: "切换模型供应商" },
   { name: "/exit", hint: "退出" },
   { name: "/help", hint: "帮助" },
 ];
@@ -79,6 +81,8 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
     }
     case "model":
       return { action: "model" };
+    case "provider":
+      return { action: "provider" };
     case "mcp":
       return { action: "mcp" };
     case "init":
@@ -108,12 +112,12 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
     case "help":
       return {
         action: "message",
-        text: "可用命令：/cost（用量与成本）、/checkpoints（回滚点列表）、/rollback <n>（恢复）、/sessions（会话列表）、/resume <id>（恢复会话）、/model（切换模型）、/exit（退出）。",
+        text: "可用命令：/cost（用量与成本）、/checkpoints（回滚点列表）、/rollback <n>（恢复）、/sessions（会话列表）、/resume <id>（恢复会话）、/model（切换模型）、/provider（切换供应商）、/exit（退出）。",
       };
     default:
       return {
         action: "message",
-        text: `未知命令 "${input.trim()}"。可用命令：/cost、/checkpoints、/rollback <n>、/sessions、/resume <id>、/model、/exit、/help`,
+        text: `未知命令 "${input.trim()}"。可用命令：/cost、/checkpoints、/rollback <n>、/sessions、/resume <id>、/model、/provider、/exit、/help`,
       };
   }
 }

@@ -4,7 +4,7 @@ import { Box, render } from "ink";
 import { GitCheckpointer, SessionStore } from "@modou-dev/core";
 import { ModouApp } from "./app.js";
 import { ApprovalBridge } from "./approval-bridge.js";
-import { runModelCommand } from "./model-command.js";
+import { runModelCommand, runProviderCommand } from "./model-command.js";
 import { Onboarding } from "./onboarding.js";
 import { loadSettings, loadModelOverrides, migrateLegacyDir, type Settings } from "./settings.js";
 import { runPrintMode } from "./print-mode.js";
@@ -94,6 +94,15 @@ async function runInteractive(
     })();
   };
 
+  // /provider：换供应商（含 Key）——同一重开链路，跑完整引导
+  const onProviderSwitch = () => {
+    instance?.unmount();
+    void (async () => {
+      await runProviderCommand(home);
+      await runInteractive(false);
+    })();
+  };
+
   const promise = createLoopFromSettings({
     settings,
     cwd: process.cwd(),
@@ -114,6 +123,7 @@ async function runInteractive(
       modelId={settings.modelId}
       permissionMode={settings.permissionMode}
       onModelSwitch={onModelSwitch}
+      onProviderSwitch={onProviderSwitch}
       onAssemble={promise}
       showLogo={options?.showLogo ?? false}
     />
