@@ -213,7 +213,20 @@ export function ModouApp({
         // 完整文本到达：flush 残余缓冲后清空流式区（消息以 assistant_message 为准）
         streamBufferRef.current = "";
         setStreaming("");
-        setItems((prev) => [...prev, { kind: "assistant", text: event.text }]);
+        {
+          const text = event.text.trim();
+          // 多步循环中模型每步都会产出一条 assistant_message：
+          // 纯空白（如 GLM 工具步的 "\n"）不渲染；与上一条相邻完全相同（模型复述）去重
+          if (text !== "") {
+            setItems((prev) => {
+              const last = prev[prev.length - 1];
+              if (last?.kind === "assistant" && last.text.trim() === text) {
+                return prev;
+              }
+              return [...prev, { kind: "assistant", text: event.text }];
+            });
+          }
+        }
         break;
       case "tool_call":
         setBusyAction(`${event.name} ${summarizeArgs(event.args)}`);
