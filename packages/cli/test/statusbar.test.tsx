@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { StatusBar, ctxBar, ctxColor, fmtTokens, fmtUsd } from "../src/components/StatusBar.js";
+import { StatusBar, ctxColor, displayCwd, fmtTokens, fmtUsd } from "../src/components/StatusBar.js";
 import { ApprovalBridge } from "../src/approval-bridge.js";
 import type { ApprovalRequest, UsageTotals } from "@modou-dev/core";
 import { renderInk, settle } from "./ink-test-utils.js";
@@ -13,7 +13,7 @@ const usage: UsageTotals = {
 };
 
 describe("StatusBar", () => {
-  it("renders three segments: model·mode, tokens·cost, ctx bar", async () => {
+  it("renders segments: model·mode, tokens·cost, ctx numbers, cwd", async () => {
     const harness = renderInk(
       <StatusBar
         model="glm-4.5-air"
@@ -21,6 +21,7 @@ describe("StatusBar", () => {
         usage={usage}
         contextWindow={128_000}
         ctxUsedTokens={1234 + 567 + 89}
+        cwd={"E:\\Agent Code"}
       />,
     );
     await settle();
@@ -29,17 +30,20 @@ describe("StatusBar", () => {
     expect(text).toContain("↑1.2k");
     expect(text).toContain("↓567");
     expect(text).toContain("$0.000315");
-    expect(text).toContain("ctx 已用");
-    expect(text).toContain("░");
+    // ctx 数字格式（图 2）：百分比 + (已用/总量)
+    expect(text).toContain("ctx 1% (1.9k/128k)");
+    // 第四段：当前目录
+    expect(text).toContain("E:\\Agent Code");
     harness.unmount();
   });
 
-  it("hides the ctx segment when contextWindow is absent", async () => {
+  it("hides the ctx segment when contextWindow is absent but keeps cwd", async () => {
     const harness = renderInk(
-      <StatusBar model="glm-4.5-air" permissionMode="default" usage={usage} />,
+      <StatusBar model="glm-4.5-air" permissionMode="default" usage={usage} cwd="/tmp/x" />,
     );
     await settle();
-    expect(harness.text).not.toContain("ctx");
+    expect(harness.text).not.toContain("ctx ");
+    expect(harness.text).toContain("/tmp/x");
     harness.unmount();
   });
 
@@ -80,14 +84,6 @@ describe("StatusBar", () => {
 });
 
 describe("ctx helpers", () => {
-  it("ctxBar fills proportionally (10 cells)", () => {
-    expect(ctxBar(0)).toBe("░░░░░░░░░░");
-    expect(ctxBar(0.31)).toBe("███░░░░░░░");
-    expect(ctxBar(1)).toBe("██████████");
-    expect(ctxBar(-1)).toBe("░░░░░░░░░░");
-    expect(ctxBar(2)).toBe("██████████");
-  });
-
   it("ctxColor: gray below 70, green 70-80, yellow 80-95, red 95+", () => {
     expect(ctxColor(0.31)).toBe("gray");
     expect(ctxColor(0.7)).toBe("green");
@@ -95,8 +91,11 @@ describe("ctx helpers", () => {
     expect(ctxColor(0.96)).toBe("red");
   });
 
-  it("ctxBar accepts the degraded empty glyph", () => {
-    expect(ctxBar(0.5, "─")).toBe("█████─────");
+  it("displayCwd abbreviates the home prefix to ~", () => {
+    expect(displayCwd("/home/u/proj", "/home/u")).toBe("~/proj");
+    expect(displayCwd("/home/u", "/home/u")).toBe("~");
+    expect(displayCwd("/opt/other", "/home/u")).toBe("/opt/other");
+    expect(displayCwd("C:\\Users\\u\\proj", "C:\\Users\\u")).toBe("~\\proj");
   });
 
   it("fmtTokens abbreviates", () => {

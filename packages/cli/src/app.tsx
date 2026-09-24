@@ -620,6 +620,7 @@ export function ModouApp({
         budgetUsd={budgetUsd}
         contextWindow={effectiveContextWindow}
         ctxUsedTokens={usage.inputTokens + usage.outputTokens + usage.cacheReadTokens}
+        cwd={cwd}
       />
     </Box>
   );

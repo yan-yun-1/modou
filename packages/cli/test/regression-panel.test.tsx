@@ -26,7 +26,7 @@ describe("App 层补全面板回归（Static+gap 吞行 bug）", () => {
     const last = harness.frame.replace(esc, "");
     const lastLines = last.split("\n");
     const panelIdx = lastLines.findIndex((l) => l.includes("(1/13)"));
-    const statusIdx = lastLines.findIndex((l) => l.includes("ctx 已用"));
+    const statusIdx = lastLines.findIndex((l) => l.includes("ctx 0% (0/100k)"));
     expect(panelIdx).toBeGreaterThan(-1);
     expect(statusIdx).toBeGreaterThan(panelIdx);
     // Logo 在 Static 首条（顶部横幅），历史消息在它下面；无品牌残留（U2/U3）

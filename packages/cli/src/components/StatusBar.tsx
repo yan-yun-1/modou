@@ -1,4 +1,5 @@
 import { Box, Text } from "ink";
+import { homedir } from "node:os";
 import type { UsageTotals } from "@modou-dev/core";
 import { terminalStyle } from "../terminal-capability.js";
 
@@ -25,13 +26,6 @@ export function fmtTokens(n: number): string {
   return `${Math.round(m * 10) / 10}m`;
 }
 
-/** 10 格字符进度条：filled 用 █，剩余按能力降级（░ / ─） */
-export function ctxBar(ratio: number, barEmpty = "░"): string {
-  const clamped = Math.max(0, Math.min(1, ratio));
-  const filled = Math.round(clamped * 10);
-  return "█".repeat(filled) + barEmpty.repeat(10 - filled);
-}
-
 /**
  * ctx 使用率四档色（C2）：颜色只在需要预警时出现——
  * <70% gray（结构可见不干扰）、70–80% green、80–95% yellow（compaction 预警）、≥95% red。
@@ -49,6 +43,14 @@ export function ctxColor(ratio: number): "gray" | "green" | "yellow" | "red" {
   return "gray";
 }
 
+/** 状态栏目录显示：主目录前缀缩写为 ~（其余原样） */
+export function displayCwd(cwd: string, home: string = homedir()): string {
+  if (home && (cwd === home || cwd.startsWith(home + "\\") || cwd.startsWith(home + "/"))) {
+    return `~${cwd.slice(home.length)}`;
+  }
+  return cwd;
+}
+
 export interface StatusBarProps {
   model: string;
   permissionMode: string;
@@ -58,9 +60,11 @@ export interface StatusBarProps {
   contextWindow?: number;
   /** 当前估算已用上下文 token */
   ctxUsedTokens?: number;
+  /** 当前工作目录（第四段显示） */
+  cwd?: string;
 }
 
-/** 单行三段状态栏：`model · mode │ ↑in ↓out $cost │ ▐█░▌ n% ctx 已用` */
+/** 单行四段状态栏：`model · mode │ ↑in ↓out $cost │ ctx n% (used/total) │ 目录` */
 export function StatusBar({
   model,
   permissionMode,
@@ -68,10 +72,11 @@ export function StatusBar({
   budgetUsd,
   contextWindow,
   ctxUsedTokens,
+  cwd,
 }: StatusBarProps) {
-  const { style, glyphs } = terminalStyle();
-  const ctxRatio =
-    contextWindow && ctxUsedTokens !== undefined ? ctxUsedTokens / contextWindow : undefined;
+  const { style } = terminalStyle();
+  const hasCtx = contextWindow !== undefined && ctxUsedTokens !== undefined;
+  const ctxRatio = hasCtx ? ctxUsedTokens! / contextWindow! : undefined;
 
   return (
     <Box>
@@ -89,8 +94,14 @@ export function StatusBar({
         <Text color={style.dim}>
           {" │ "}
           <Text color={ctxColor(ctxRatio)}>
-            {ctxBar(ctxRatio, glyphs.barEmpty)} {Math.round(ctxRatio * 100)}% ctx 已用
+            {`ctx ${Math.round(ctxRatio * 100)}% (${fmtTokens(ctxUsedTokens ?? 0)}/${fmtTokens(contextWindow ?? 0)})`}
           </Text>
+        </Text>
+      ) : null}
+      {cwd ? (
+        <Text color={style.dim}>
+          {" │ "}
+          {displayCwd(cwd)}
         </Text>
       ) : null}
     </Box>
