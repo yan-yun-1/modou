@@ -81,6 +81,10 @@ const ZERO_USAGE: UsageTotals = {
   costUsd: 0,
 };
 
+/** Static 区条目：logo 哨兵（首条，打印一次冻结在顶部）或消息 */
+type StaticItem = { kind: "logo" } | DisplayItem;
+const LOGO_STATIC_ITEM: StaticItem = { kind: "logo" };
+
 /** Ink 版 Logo：作为 TUI 首帧内容由 Ink 管理重绘（避免 stderr 预打印导致 conhost 光标错位） */
 function LogoBlock() {
   const lines: { text: string; color: string }[] = [
@@ -554,17 +558,26 @@ export function ModouApp({
   // 而 gap 会在 Static 之后的第一个子元素前插空行——两者叠加时
   // ink 布局会把该元素的显示区域上移一行，首行内容被截掉
   // （实测：补全面板选中行整行消失）。用显式空行代替 gap。
+  // Logo 放在 Static 的第一条：Static 的新条目打印在动态区之上，
+  // logo 若放动态区，每条新消息都会压在它上面（真机截图 bug）。
+  // 作为 Static 首条打印一次后冻结在顶部，历史消息依次排在它下面。
+  const staticItems: StaticItem[] = showLogo ? [LOGO_STATIC_ITEM, ...items] : items;
   return (
     <Box flexDirection="column">
-      <Static items={items}>
-        {(item, index) => (
-          <Box key={index} flexDirection="column">
-            <MessageItem item={item} />
-          </Box>
-        )}
+      <Static items={staticItems}>
+        {(item, index) =>
+          item.kind === "logo" ? (
+            <Box key={index} flexDirection="column">
+              <LogoBlock />
+              <Text> </Text>
+            </Box>
+          ) : (
+            <Box key={index} flexDirection="column">
+              <MessageItem item={item} />
+            </Box>
+          )
+        }
       </Static>
-      <Text> </Text>
-      {showLogo ? <LogoBlock /> : null}
       <Text> </Text>
       {streaming ? <Text>{streaming}</Text> : null}
       {pendingApproval ? (

@@ -29,9 +29,16 @@ describe("App 层补全面板回归（Static+gap 吞行 bug）", () => {
     const statusIdx = lastLines.findIndex((l) => l.includes("ctx 已用"));
     expect(panelIdx).toBeGreaterThan(-1);
     expect(statusIdx).toBeGreaterThan(panelIdx);
-    // Logo 只保留 MO、无版本排版行（U2/U3）
+    // Logo 在 Static 首条（顶部横幅），历史消息在它下面；无品牌残留（U2/U3）
     expect(last).not.toContain("墨斗 · MODOU");
     expect(last).not.toContain("墨斗 v");
+    // 新消息渲染在 logo 之下（Static 首条 = logo）
+    const all = harness.frames.join("").replace(esc, "");
+    const allLines = all.split("\n").filter((l) => l.trim() !== "");
+    const logoLine = allLines.findIndex((l) => l.includes("███╗"));
+    const msgLine = allLines.findIndex((l) => l.includes("❯ /"));
+    expect(logoLine).toBeGreaterThanOrEqual(0);
+    expect(msgLine).toBeGreaterThan(logoLine);
     harness.unmount();
   });
 });
