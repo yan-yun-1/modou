@@ -53,6 +53,8 @@ export function displayCwd(cwd: string, home: string = homedir()): string {
 
 export interface StatusBarProps {
   model: string;
+  /** 思考强度（off/low/medium/high）；未设置=跟随模型默认，不显示 */
+  thinking?: "off" | "low" | "medium" | "high";
   permissionMode: string;
   usage: UsageTotals;
   budgetUsd?: number;
@@ -67,6 +69,7 @@ export interface StatusBarProps {
 /** 单行四段状态栏：`model · mode │ ↑in ↓out $cost │ ctx n% (used/total) │ 目录` */
 export function StatusBar({
   model,
+  thinking,
   permissionMode,
   usage,
   budgetUsd,
@@ -82,6 +85,7 @@ export function StatusBar({
     <Box>
       <Text color={style.dim}>
         <Text color={style.model}>{model}</Text>
+        {thinking ? ` · 思考${thinking}` : ""}
         {" · "}
         {permissionMode}
         {" │ ↑"}

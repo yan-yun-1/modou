@@ -108,4 +108,27 @@ export function isKnownProvider(p: string | undefined): p is ProviderName {
   return providerNames.includes(p as ProviderName);
 }
 
+/**
+ * 思考强度 → 请求体映射（X 系列）。返回 undefined 表示该供应商没有标准请求参数
+ * （DeepSeek/Kimi 由模型本身决定推理与否，Ollama 本地模型同理），设置将被忽略。
+ * - glm：thinking.type enabled/disabled
+ * - qwen：enable_thinking 布尔
+ * - openrouter：reasoning.effort（off = enabled:false）
+ */
+export function thinkingToExtraBody(
+  provider: ProviderName,
+  level: "off" | "low" | "medium" | "high",
+): Record<string, unknown> | undefined {
+  switch (provider) {
+    case "glm":
+      return { thinking: { type: level === "off" ? "disabled" : "enabled" } };
+    case "qwen":
+      return { enable_thinking: level !== "off" };
+    case "openrouter":
+      return level === "off" ? { reasoning: { enabled: false } } : { reasoning: { effort: level } };
+    default:
+      return undefined;
+  }
+}
+
 export type { Settings };

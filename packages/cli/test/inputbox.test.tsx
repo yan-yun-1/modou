@@ -57,14 +57,14 @@ describe("F 系列：面板导航与执行", () => {
     await settle();
     harness.stdin.write("/");
     await settle();
-    // 首项再 ↑ → 回绕到最后一项（/help），计数显示 (13/13)
+    // 首项再 ↑ → 回绕到最后一项（/help），计数显示 (14/14)
     harness.stdin.write("[A");
     await settle();
-    expect(harness.text).toContain("(13/13)");
-    // 末项再 ↓ → 回绕到首项 (1/13)
+    expect(harness.text).toContain("(14/14)");
+    // 末项再 ↓ → 回绕到首项 (1/14)
     harness.stdin.write("[B");
     await settle();
-    expect(harness.text).toContain("(1/13)");
+    expect(harness.text).toContain("(1/14)");
     harness.unmount();
   });
 
@@ -122,7 +122,7 @@ describe("F 系列：面板导航与执行", () => {
     harness.stdin.write("/");
     await settle();
     // 计数行存在
-    expect(harness.text).toContain("(1/13)");
+    expect(harness.text).toContain("(1/14)");
     // 旧提示行已删除
     expect(harness.text).not.toContain("Tab/回车 补全");
     expect(harness.text).not.toContain("继续输入筛选");

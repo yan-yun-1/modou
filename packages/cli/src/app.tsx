@@ -13,6 +13,7 @@ import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
 import { loadSkills } from "@modou-dev/core";
+import { loadSettings, saveSettings, type Settings, type ThinkingLevel } from "./settings.js";
 import { StatusBar } from "./components/StatusBar.js";
 import { BusyLine } from "./components/BusyLine.js";
 import { InputBox } from "./components/InputBox.js";
@@ -56,6 +57,8 @@ export interface ModouAppProps {
   onModelSwitch?: () => void;
   /** /provider 触发：入口层结束当前会话并重跑供应商+模型引导 */
   onProviderSwitch?: () => void;
+  /** 思考强度设置（状态栏显示；未设置=跟随模型默认） */
+  thinking?: ThinkingLevel;
   budgetUsd?: number;
   /** 状态栏展示：模型 ID 与权限模式 */
   modelId?: string;
@@ -124,6 +127,7 @@ export function ModouApp({
   mcpStatus,
   onModelSwitch,
   onProviderSwitch,
+  thinking,
   budgetUsd,
   modelId = "…",
   permissionMode = "default",
@@ -484,6 +488,43 @@ export function ModouApp({
         onProviderSwitch?.();
         return;
       }
+      if (command.action === "thinking") {
+        if (!command.level) {
+          setItems((prev) => [
+            ...prev,
+            {
+              kind: "assistant",
+              text: `当前思考强度：${thinking ?? "未设置（跟随模型默认）"}。用法：/thinking off|low|medium|high`,
+            },
+          ]);
+          return;
+        }
+        // 写回 settings.json（模型对象在启动时构建，需重启生效）
+        void (async () => {
+          try {
+            const existing = await loadSettings();
+            const next: Settings = existing
+              ? { ...existing, thinking: command.level }
+              : {
+                  provider: "glm",
+                  modelId: "",
+                  permissionMode: "default",
+                  thinking: command.level,
+                };
+            await saveSettings(next);
+            setItems((prev) => [
+              ...prev,
+              { kind: "assistant", text: `思考强度已设为 ${command.level}，重启 modou 后生效。` },
+            ]);
+          } catch (error) {
+            setItems((prev) => [
+              ...prev,
+              { kind: "error", text: `保存思考强度失败：${(error as Error).message}` },
+            ]);
+          }
+        })();
+        return;
+      }
       if (command.action === "mcp") {
         const servers = effectiveMcpStatus ?? [];
         setItems((prev) => [
@@ -615,6 +656,7 @@ export function ModouApp({
       )}
       <StatusBar
         model={modelId}
+        thinking={thinking}
         permissionMode={permissionMode}
         usage={usage}
         budgetUsd={budgetUsd}

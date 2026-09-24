@@ -18,6 +18,8 @@ export const modelConfigSchema = z.object({
   modelId: z.string().min(1),
   apiKey: z.string().optional(),
   baseURL: z.string().optional(),
+  /** 附加请求体字段（如思考强度 thinking/reasoning）；合并进每次请求的 JSON body */
+  extraBody: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type ModelConfig = z.infer<typeof modelConfigSchema>;
@@ -40,7 +42,7 @@ const DEFAULT_BASE_URLS: Record<
  * API key 缺失不在工厂阶段报错——由 provider 在真正发请求时给出可读错误。
  */
 export function createLanguageModel(config: ModelConfig): LanguageModel {
-  const { provider, modelId, apiKey, baseURL } = modelConfigSchema.parse(config);
+  const { provider, modelId, apiKey, baseURL, extraBody } = modelConfigSchema.parse(config);
 
   switch (provider) {
     case "anthropic": {
@@ -61,6 +63,11 @@ export function createLanguageModel(config: ModelConfig): LanguageModel {
         name: provider,
         baseURL: baseURL ?? DEFAULT_BASE_URLS[provider],
         apiKey: apiKey ?? (provider === "ollama" ? "ollama" : undefined),
+        // 思考强度等厂商私有参数：合并进每次请求体（AI SDK 的 openai-compatible 透传点）
+        transformRequestBody:
+          extraBody && Object.keys(extraBody).length > 0
+            ? (body) => ({ ...body, ...extraBody })
+            : undefined,
       });
       return compatible.chatModel(modelId);
     }

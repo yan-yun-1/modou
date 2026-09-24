@@ -121,6 +121,7 @@ async function runInteractive(
       approvals={approvals}
       budgetUsd={settings.budgetUsd}
       modelId={settings.modelId}
+      thinking={settings.thinking}
       permissionMode={settings.permissionMode}
       onModelSwitch={onModelSwitch}
       onProviderSwitch={onProviderSwitch}

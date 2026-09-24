@@ -21,6 +21,7 @@ import {
 } from "@modou-dev/core";
 import { randomUUID } from "node:crypto";
 import { resolveApiKey, resolveCwd, type Settings } from "./settings.js";
+import { thinkingToExtraBody } from "./provider-models.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 
 export interface CreateLoopOptions {
@@ -94,6 +95,10 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       modelId: settings.modelId,
       apiKey: resolveApiKey(settings),
       baseURL: settings.baseURL,
+      // 思考强度（X）：映射为厂商私有请求体参数（glm/qwen/openrouter；其余忽略）
+      extraBody: settings.thinking
+        ? thinkingToExtraBody(settings.provider, settings.thinking)
+        : undefined,
     });
   const tools = options.tools ?? createBuiltinTools();
   const store = options.store ?? new SessionStore();

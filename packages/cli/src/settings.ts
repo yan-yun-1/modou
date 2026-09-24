@@ -25,6 +25,8 @@ export const settingsSchema = z.object({
   budgetUsd: z.number().positive().optional(),
   /** 项目目录覆盖（契约增补 2，plan-m3 A2）：默认 process.cwd()；不存在时报错回退 */
   cwd: z.string().min(1).optional(),
+  /** 思考强度（X）：off 关闭推理，low/medium/high 按供应商映射；缺省=跟随模型默认 */
+  thinking: z.enum(["off", "low", "medium", "high"]).optional(),
   /** MCP servers（契约增补：plan-m2 N3） */
   mcpServers: z
     .record(
@@ -46,6 +48,7 @@ export const settingsSchema = z.object({
 
 export type Settings = z.infer<typeof settingsSchema>;
 export type ProviderName = (typeof providerNames)[number];
+export type ThinkingLevel = NonNullable<Settings["thinking"]>;
 
 export function settingsDir(home: string = homedir()): string {
   return join(home, ".modou");
