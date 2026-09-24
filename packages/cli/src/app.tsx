@@ -15,6 +15,8 @@ import { initAgentsMd } from "./init.js";
 import { loadSkills } from "@modou-dev/core";
 import { loadSettings, saveSettings, type Settings, type ThinkingLevel } from "./settings.js";
 import { StatusBar } from "./components/StatusBar.js";
+import { OptionPicker } from "./components/OptionPicker.js";
+import { homedir } from "node:os";
 import { BusyLine } from "./components/BusyLine.js";
 import { InputBox } from "./components/InputBox.js";
 import { ApprovalPrompt } from "./components/ApprovalPrompt.js";
@@ -59,6 +61,8 @@ export interface ModouAppProps {
   onProviderSwitch?: () => void;
   /** 思考强度设置（状态栏显示；未设置=跟随模型默认） */
   thinking?: ThinkingLevel;
+  /** 配置目录（/thinking、/permission 写 settings.json 用；默认用户主目录，测试注入临时目录） */
+  home?: string;
   budgetUsd?: number;
   /** 状态栏展示：模型 ID 与权限模式 */
   modelId?: string;
@@ -83,6 +87,23 @@ const ZERO_USAGE: UsageTotals = {
   cacheWriteTokens: 0,
   costUsd: 0,
 };
+
+/** 思考强度档位与选项（/thinking 选择器） */
+const THINKING_LEVELS = ["off", "low", "medium", "high"] as const;
+const THINKING_OPTIONS = [
+  { value: "off", label: "off — 关闭思考（最快最省）" },
+  { value: "low", label: "low — 低强度" },
+  { value: "medium", label: "medium — 中等强度" },
+  { value: "high", label: "high — 高强度（最深最慢）" },
+];
+
+/** 权限模式档位与选项（/permission 选择器） */
+const PERMISSION_MODES = ["plan", "default", "yolo"] as const;
+const PERMISSION_OPTIONS = [
+  { value: "plan", label: "plan — 只读调研（禁止写入/执行）" },
+  { value: "default", label: "default — 默认（写文件/执行命令前询问）" },
+  { value: "yolo", label: "yolo — 全自动（不再询问）" },
+];
 
 /** Static 区条目：logo 哨兵（首条，打印一次冻结在顶部）或消息 */
 type StaticItem = { kind: "logo" } | DisplayItem;
@@ -128,6 +149,7 @@ export function ModouApp({
   onModelSwitch,
   onProviderSwitch,
   thinking,
+  home = homedir(),
   budgetUsd,
   modelId = "…",
   permissionMode = "default",
@@ -146,6 +168,9 @@ export function ModouApp({
   const [pendingApproval, setPendingApproval] = useState<ApprovalRequest | null>(null);
   const [activeSessionId, setActiveSessionId] = useState(sessionId);
   const [pendingPlan, setPendingPlan] = useState<{ task: string; plan: string } | null>(null);
+  // 选择器态：/thinking、/permission 无参时打开（替代输入框捕获按键）
+  const [pendingThinkingPicker, setPendingThinkingPicker] = useState(false);
+  const [pendingPermissionPicker, setPendingPermissionPicker] = useState(false);
   // T5：忙碌行数据——最近工具动作摘要 / 已完成步数 / busy 起始时间
   const [busyAction, setBusyAction] = useState<string | undefined>(undefined);
   const [busySteps, setBusySteps] = useState(0);
@@ -208,6 +233,26 @@ export function ModouApp({
     const id = setInterval(flushStreaming, 60);
     return () => clearInterval(id);
   }, [flushStreaming]);
+
+  /** 写回 settings.json 的一个字段（模型对象启动时构建，需重启生效） */
+  const saveSettingField = useCallback(
+    async (patch: Partial<Settings>, message: string) => {
+      try {
+        const existing = await loadSettings(home);
+        const next: Settings = existing
+          ? { ...existing, ...patch }
+          : { provider: "glm", modelId: "glm-4.6", permissionMode: "default", ...patch };
+        await saveSettings(next, home);
+        setItems((prev) => [...prev, { kind: "assistant", text: `${message}，重启 modou 后生效。` }]);
+      } catch (error) {
+        setItems((prev) => [
+          ...prev,
+          { kind: "error", text: `保存设置失败：${(error as Error).message}` },
+        ]);
+      }
+    },
+    [home],
+  );
 
   const applyEvent = useCallback((event: ModouEvent) => {
     switch (event.type) {
@@ -489,40 +534,24 @@ export function ModouApp({
         return;
       }
       if (command.action === "thinking") {
-        if (!command.level) {
-          setItems((prev) => [
-            ...prev,
-            {
-              kind: "assistant",
-              text: `当前思考强度：${thinking ?? "未设置（跟随模型默认）"}。用法：/thinking off|low|medium|high`,
-            },
-          ]);
-          return;
+        if (command.level) {
+          // 直接参数：/thinking high
+          void saveSettingField({ thinking: command.level }, `思考强度已设为 ${command.level}`);
+        } else {
+          setPendingThinkingPicker(true);
         }
-        // 写回 settings.json（模型对象在启动时构建，需重启生效）
-        void (async () => {
-          try {
-            const existing = await loadSettings();
-            const next: Settings = existing
-              ? { ...existing, thinking: command.level }
-              : {
-                  provider: "glm",
-                  modelId: "",
-                  permissionMode: "default",
-                  thinking: command.level,
-                };
-            await saveSettings(next);
-            setItems((prev) => [
-              ...prev,
-              { kind: "assistant", text: `思考强度已设为 ${command.level}，重启 modou 后生效。` },
-            ]);
-          } catch (error) {
-            setItems((prev) => [
-              ...prev,
-              { kind: "error", text: `保存思考强度失败：${(error as Error).message}` },
-            ]);
-          }
-        })();
+        return;
+      }
+      if (command.action === "permission") {
+        if (command.level) {
+          // 直接参数：/permission yolo
+          void saveSettingField(
+            { permissionMode: command.level },
+            `权限模式已设为 ${command.level}`,
+          );
+        } else {
+          setPendingPermissionPicker(true);
+        }
         return;
       }
       if (command.action === "mcp") {
@@ -590,6 +619,7 @@ export function ModouApp({
       onProviderSwitch,
       runPlan,
       runTask,
+      saveSettingField,
       store,
       usage,
     ],
@@ -646,6 +676,34 @@ export function ModouApp({
       ) : null}
       {busy ? (
         <BusyLine action={busyAction} startedAt={busyStartedAt} steps={busySteps} />
+      ) : pendingThinkingPicker ? (
+        <OptionPicker
+          title={`选择思考强度（当前：${thinking ?? "跟随模型默认"}）`}
+          options={THINKING_OPTIONS}
+          initialIndex={Math.max(0, THINKING_LEVELS.indexOf(thinking ?? "off"))}
+          onConfirm={(value) => {
+            setPendingThinkingPicker(false);
+            void saveSettingField(
+              { thinking: value as (typeof THINKING_LEVELS)[number] },
+              `思考强度已设为 ${value}`,
+            );
+          }}
+          onCancel={() => setPendingThinkingPicker(false)}
+        />
+      ) : pendingPermissionPicker ? (
+        <OptionPicker
+          title={`选择权限模式（当前：${permissionMode}）`}
+          options={PERMISSION_OPTIONS}
+          initialIndex={Math.max(0, PERMISSION_MODES.indexOf(permissionMode as (typeof PERMISSION_MODES)[number]))}
+          onConfirm={(value) => {
+            setPendingPermissionPicker(false);
+            void saveSettingField(
+              { permissionMode: value as (typeof PERMISSION_MODES)[number] },
+              `权限模式已设为 ${value}`,
+            );
+          }}
+          onCancel={() => setPendingPermissionPicker(false)}
+        />
       ) : (
         <InputBox
           busy={busy}

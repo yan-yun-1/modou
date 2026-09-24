@@ -1,6 +1,11 @@
+import { mkdtemp, rm, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { thinkingToExtraBody } from "../src/provider-models.js";
 import { parseCommand } from "../src/commands.js";
+import { OptionPicker } from "../src/components/OptionPicker.js";
+import { ModouApp } from "../src/app.js";
 import type { UsageTotals } from "@modou-dev/core";
 import { StatusBar, displayCwd } from "../src/components/StatusBar.js";
 import { renderInk, settle } from "./ink-test-utils.js";
@@ -80,4 +85,96 @@ describe("StatusBar 思考强度显示", () => {
     expect(harness.text).not.toContain("思考");
     harness.unmount();
   });
+});
+
+describe("/permission 命令", () => {
+  it("no argument → picker action", () => {
+    expect(parseCommand("/permission", usage)).toEqual({ action: "permission" });
+  });
+
+  it("valid mode → permission action", () => {
+    expect(parseCommand("/permission yolo", usage)).toEqual({ action: "permission", level: "yolo" });
+    expect(parseCommand("/permission default", usage)).toEqual({
+      action: "permission",
+      level: "default",
+    });
+  });
+
+  it("invalid mode → usage message", () => {
+    expect(parseCommand("/permission sudo", usage).action).toBe("message");
+  });
+});
+
+describe("OptionPicker（通用选择器）", () => {
+  it("arrows move selection, enter confirms", async () => {
+    const confirmed: string[] = [];
+    const harness = renderInk(
+      <OptionPicker
+        title="选择思考强度"
+        options={[
+          { value: "off", label: "off" },
+          { value: "low", label: "low" },
+          { value: "high", label: "high" },
+        ]}
+        onConfirm={(v) => confirmed.push(v)}
+        onCancel={() => {}}
+      />,
+    );
+    await settle();
+    expect(harness.text).toContain("off");
+    expect(harness.text).toContain("↑/↓ 移动");
+    harness.stdin.write("\u001b[B"); // down → low
+    await settle();
+    harness.stdin.write("\r");
+    await settle();
+    expect(confirmed).toEqual(["low"]);
+    harness.unmount();
+  });
+
+  it("esc cancels", async () => {
+    let cancelled = 0;
+    const harness = renderInk(
+      <OptionPicker
+        title="t"
+        options={[{ value: "a", label: "a" }]}
+        onConfirm={() => {}}
+        onCancel={() => cancelled++}
+      />,
+    );
+    await settle();
+    harness.stdin.write("\u001b");
+    await settle();
+    expect(cancelled).toBe(1);
+    harness.unmount();
+  });
+});
+
+describe("/thinking 选择器（App 集成）", () => {
+  it("opens the picker on /thinking and saves the picked level", async () => {
+    const homeDir = await mkdtemp(join(tmpdir(), "thinking-home-"));
+    try {
+      const loop = { run: async function* () {} } as never;
+      const harness = renderInk(
+        <ModouApp loop={loop} sessionId="s" onSubmitTask={() => {}} showLogo={false} home={homeDir} />,
+      );
+      await settle();
+      harness.stdin.write("/thinking");
+      await settle();
+      harness.stdin.write("\r"); // 提交 → 打开选择器
+      await settle();
+      expect(harness.text).toContain("选择思考强度");
+      harness.stdin.write("\u001b[B"); // down → low
+      await settle();
+      harness.stdin.write("\r"); // 确认
+      await settle(300);
+      expect(harness.text).toContain("思考强度已设为 low");
+      const saved = JSON.parse(
+        await readFile(join(homeDir, ".modou", "settings.json"), "utf8"),
+      ) as { thinking?: string };
+      expect(saved.thinking).toBe("low");
+      harness.unmount();
+    } finally {
+      await rm(homeDir, { recursive: true, force: true });
+    }
+  }, 15_000);
 });

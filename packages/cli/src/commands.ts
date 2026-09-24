@@ -11,6 +11,7 @@ export type CommandResult =
   | { action: "model" }
   | { action: "provider" }
   | { action: "thinking"; level?: "off" | "low" | "medium" | "high" }
+  | { action: "permission"; level?: "plan" | "default" | "yolo" }
   | { action: "mcp" }
   | { action: "init" }
   | { action: "skills" }
@@ -29,7 +30,8 @@ export const SLASH_COMMANDS: { name: string; hint: string }[] = [
   { name: "/resume", hint: "恢复会话" },
   { name: "/model", hint: "切换模型（当前供应商）" },
   { name: "/provider", hint: "切换模型供应商" },
-  { name: "/thinking", hint: "思考强度 off/low/medium/high" },
+  { name: "/thinking", hint: "思考强度选择" },
+  { name: "/permission", hint: "权限模式 plan/default/yolo" },
   { name: "/exit", hint: "退出" },
   { name: "/help", hint: "帮助" },
 ];
@@ -98,6 +100,19 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
       }
       return { action: "thinking", level };
     }
+    case "permission": {
+      const level = arg.toLowerCase();
+      if (level === "") {
+        return { action: "permission" };
+      }
+      if (level !== "plan" && level !== "default" && level !== "yolo") {
+        return {
+          action: "message",
+          text: "用法：/permission plan|default|yolo。plan=只读调研，default=默认审批，yolo=全自动。",
+        };
+      }
+      return { action: "permission", level };
+    }
     case "mcp":
       return { action: "mcp" };
     case "init":
@@ -127,12 +142,12 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
     case "help":
       return {
         action: "message",
-        text: "可用命令：/cost（用量与成本）、/checkpoints（回滚点列表）、/rollback <n>（恢复）、/sessions（会话列表）、/resume <id>（恢复会话）、/model（切换模型）、/provider（切换供应商）、/thinking（思考强度）、/exit（退出）。",
+        text: "可用命令：/cost（用量与成本）、/checkpoints（回滚点列表）、/rollback <n>（恢复）、/sessions（会话列表）、/resume <id>（恢复会话）、/model（切换模型）、/provider（切换供应商）、/thinking（思考强度）、/permission（权限模式）、/exit（退出）。",
       };
     default:
       return {
         action: "message",
-        text: `未知命令 "${input.trim()}"。可用命令：/cost、/checkpoints、/rollback <n>、/sessions、/resume <id>、/model、/provider、/thinking、/exit、/help`,
+        text: `未知命令 "${input.trim()}"。可用命令：/cost、/checkpoints、/rollback <n>、/sessions、/resume <id>、/model、/provider、/thinking、/permission、/exit、/help`,
       };
   }
 }
