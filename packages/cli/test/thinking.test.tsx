@@ -72,7 +72,7 @@ describe("StatusBar 思考强度显示", () => {
       />,
     );
     await settle();
-    expect(harness.text).toContain("glm-4.5-air · 思考high · default");
+    expect(harness.text).toContain("default · glm-4.5-air · 思考high");
     harness.unmount();
   });
 
@@ -81,7 +81,7 @@ describe("StatusBar 思考强度显示", () => {
       <StatusBar model="glm-4.5-air" permissionMode="default" usage={usage} />,
     );
     await settle();
-    expect(harness.text).toContain("glm-4.5-air · default");
+    expect(harness.text).toContain("default · glm-4.5-air");
     expect(harness.text).not.toContain("思考");
     harness.unmount();
   });
@@ -167,9 +167,8 @@ describe("/thinking 选择器（App 集成）", () => {
       await settle();
       harness.stdin.write("\r"); // 确认
       await settle(300);
-      expect(harness.text).toContain("思考强度已设为 low");
-      // 装配未完成（无 bundle）：提示装配完成后生效
-      expect(harness.text).toContain("装配完成后生效");
+      // 静默保存：不追加任何提示条目
+      expect(harness.text).not.toContain("思考强度已设为");
       const saved = JSON.parse(
         await readFile(join(homeDir, ".modou", "settings.json"), "utf8"),
       ) as { thinking?: string };

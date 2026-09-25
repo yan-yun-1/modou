@@ -26,7 +26,7 @@ describe("StatusBar", () => {
     );
     await settle();
     const text = harness.text;
-    expect(text).toContain("glm-4.5-air · default");
+    expect(text).toContain("default · glm-4.5-air");
     expect(text).toContain("↑1.2k");
     expect(text).toContain("↓567");
     expect(text).toContain("$0.000315");

@@ -66,7 +66,7 @@ export interface StatusBarProps {
   cwd?: string;
 }
 
-/** 单行四段状态栏：`model · mode │ ↑in ↓out $cost │ ctx n% (used/total) │ 目录` */
+/** 单行四段状态栏：`mode · model · 思考X │ ↑in ↓out $cost │ ctx n% (used/total) │ 目录` */
 export function StatusBar({
   model,
   thinking,
@@ -84,10 +84,10 @@ export function StatusBar({
   return (
     <Box>
       <Text color={style.dim}>
+        {permissionMode}
+        {" · "}
         <Text color={style.model}>{model}</Text>
         {thinking ? ` · 思考${thinking}` : ""}
-        {" · "}
-        {permissionMode}
         {" │ ↑"}
         {fmtTokens(usage.inputTokens)}
         {" ↓"}

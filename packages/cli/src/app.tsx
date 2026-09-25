@@ -242,14 +242,16 @@ export function ModouApp({
 
   /** 写回 settings.json 的一个字段（模型对象启动时构建，需重启生效） */
   const saveSettingField = useCallback(
-    async (patch: Partial<Settings>, message: string) => {
+    async (patch: Partial<Settings>, message?: string) => {
       try {
         const existing = await loadSettings(home);
         const next: Settings = existing
           ? { ...existing, ...patch }
           : { provider: "glm", modelId: "glm-4.6", permissionMode: "default", ...patch };
         await saveSettings(next, home);
-        setItems((prev) => [...prev, { kind: "assistant", text: message }]);
+        if (message !== undefined) {
+          setItems((prev) => [...prev, { kind: "assistant", text: message }]);
+        }
       } catch (error) {
         setItems((prev) => [
           ...prev,
@@ -547,10 +549,7 @@ export function ModouApp({
           if (hot) {
             hot(level);
           }
-          void saveSettingField(
-            { thinking: level },
-            `思考强度已设为 ${level}，${hot ? "立即生效" : "装配完成后生效"}`,
-          );
+          void saveSettingField({ thinking: level });
         };
         if (command.level) {
           // 直接参数：/thinking high
@@ -717,10 +716,7 @@ export function ModouApp({
             if (hot) {
               hot(value as (typeof THINKING_LEVELS)[number]);
             }
-            void saveSettingField(
-              { thinking: value as (typeof THINKING_LEVELS)[number] },
-              `思考强度已设为 ${value}，${hot ? "立即生效" : "装配完成后生效"}`,
-            );
+            void saveSettingField({ thinking: value as (typeof THINKING_LEVELS)[number] });
           }}
           onCancel={() => setPendingThinkingPicker(false)}
         />
