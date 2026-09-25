@@ -110,7 +110,7 @@ export function StatusBar({
       </Text>
       {ctxRatio !== undefined ? (
         <Text color={ctxColor(ctxRatio)}>
-          {`context ${Math.round(ctxRatio * 100)}% (${fmtTokens(ctxUsedTokens ?? 0)}/${fmtTokens(contextWindow ?? 0)})`}
+          {`context: ${Math.round(ctxRatio * 100)}% (${fmtTokens(ctxUsedTokens ?? 0)}/${fmtTokens(contextWindow ?? 0)})`}
         </Text>
       ) : null}
     </Box>

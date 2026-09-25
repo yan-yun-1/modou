@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Box, Static, Text, useApp, useInput } from "ink";
+import { Box, Static, Text, useApp, useInput, useStdout } from "ink";
+import stringWidth from "string-width";
 import {
   buildPlanTaskPrompt,
   PermissionEngine,
@@ -112,6 +113,7 @@ const LOGO_STATIC_ITEM: StaticItem = { kind: "logo" };
 
 /** Ink 版 Logo：作为 TUI 首帧内容由 Ink 管理重绘（避免 stderr 预打印导致 conhost 光标错位） */
 function LogoBlock() {
+  const { stdout } = useStdout();
   const lines: { text: string; color: string }[] = [
     { text: "  ███╗   ███╗ ██████╗", color: "blueBright" },
     { text: "  ████╗ ████║██╔═══██╗", color: "blueBright" },
@@ -120,10 +122,15 @@ function LogoBlock() {
     { text: "  ██║ ╚═╝ ██║╚██████╔╝", color: "blueBright" },
     { text: "  ╚═╝     ╚═╝ ╚═════╝", color: "blueBright" },
   ];
+  // 水平居中：整块按最宽行计算，左侧补空格（Static 内 width="100%" 不生效）
+  const blockWidth = Math.max(...lines.map((l) => stringWidth(l.text)));
+  const columns = stdout?.columns ?? 80;
+  const pad = " ".repeat(Math.max(0, Math.floor((columns - blockWidth) / 2)));
   return (
     <Box flexDirection="column">
       {lines.map((line, i) => (
         <Text key={i} color={line.color}>
+          {pad}
           {line.text}
         </Text>
       ))}

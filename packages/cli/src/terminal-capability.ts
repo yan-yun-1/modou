@@ -84,7 +84,7 @@ const STYLE_RICH: StyleTable = {
   dim: undefined, // 用原生 dimColor
   border: "cyan",
   model: "cyan",
-  permission: "magentaBright",
+  permission: "yellowBright",
   cost: "green",
   user: "cyan",
   plan: "cyan",
@@ -94,7 +94,7 @@ const STYLE_PLAIN: StyleTable = {
   dim: "gray", // ANSI 90 亮黑，conhost 下可读不糊块
   border: "blue",
   model: "blue",
-  permission: "magenta", // conhost 安全色
+  permission: "yellow", // conhost 安全色
   cost: "green",
   user: "cyan",
   plan: "blue",

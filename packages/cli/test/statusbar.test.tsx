@@ -39,7 +39,7 @@ describe("StatusBar", () => {
     expect(text).toContain("↓567");
     expect(text).toContain("$0.000315");
     // ctx 数字格式（图 2）：百分比 + (已用/总量)
-    expect(text).toContain("context 1% (1.9k/128k)");
+    expect(text).toContain("context: 1% (1.9k/128k)");
     // 第四段：当前目录
     expect(text).toContain("E:\\Agent Code");
     harness.unmount();
