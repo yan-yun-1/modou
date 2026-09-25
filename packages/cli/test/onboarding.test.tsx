@@ -1,8 +1,9 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Onboarding } from "../src/onboarding.js";
+import { ModouApp } from "../src/app.js";
 import { loadSettings, type Settings } from "../src/settings.js";
 import { renderInk, settle } from "./ink-test-utils.js";
 
@@ -224,4 +225,38 @@ describe("Onboarding（V3：先 Key 后模型列表）", () => {
     });
     harness.unmount();
   }, 30_000);
+});
+
+describe("/model App 内浮层（AG 回归：不再残留旧帧与取消提示）", () => {
+  it("opens in-app and esc returns cleanly without cancel message", async () => {
+    const home2 = await mkdtemp(join(tmpdir(), "model-overlay-"));
+    try {
+      await mkdir(join(home2, ".modou"), { recursive: true });
+      await writeFile(
+        join(home2, ".modou", "settings.json"),
+        JSON.stringify({ provider: "glm", modelId: "glm-4.5-air", apiKey: "sk-test", permissionMode: "default" }),
+        "utf8",
+      );
+      const loop = { run: async function* () {} } as never;
+      const harness = renderInk(
+        <ModouApp loop={loop} sessionId="s" onSubmitTask={() => {}} showLogo={false} home={home2} />,
+      );
+      await settle();
+      harness.stdin.write("/model");
+      await settle();
+      harness.stdin.write("\r");
+      await settle(300);
+      expect(harness.frame).toContain("选择");
+      expect(harness.frame).toContain("remote-model-a");
+      harness.stdin.write("\u001b");
+      await settle(150);
+      // 旧实现：卸载 TUI 另起 render，屏幕残留模型列表帧和「已取消」提示
+      expect(harness.frame).not.toContain("remote-model-a");
+      expect(harness.frame).not.toContain("已取消");
+      expect(harness.frame).toContain("❯");
+      harness.unmount();
+    } finally {
+      await rm(home2, { recursive: true, force: true });
+    }
+  }, 15_000);
 });

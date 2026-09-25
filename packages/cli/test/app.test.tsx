@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ModouApp } from "../src/app.js";
 import { renderInk, settle } from "./ink-test-utils.js";
 import type { ModouEvent } from "@modou-dev/core";
@@ -136,20 +136,20 @@ describe("ModouApp sessions", () => {
     harness.unmount();
   }, 30_000);
 
-  it("notifies via onModelSwitch for /model", async () => {
-    const onModelSwitch = vi.fn();
+  it("opens the in-app model setup overlay for /model (no settings → hint)", async () => {
     const loop = {
       run: async function* (): AsyncIterable<ModouEvent> {
         yield { type: "assistant_message", text: "ok", at: 1 };
       },
     };
-    const harness = renderInk(<ModouApp loop={loop} sessionId="s" onModelSwitch={onModelSwitch} />);
+    const harness = renderInk(<ModouApp loop={loop} sessionId="s" home={dir} />);
     await settle();
     harness.stdin.write("/model");
     await settle();
     harness.stdin.write("\r");
     await settle(150);
-    expect(onModelSwitch).toHaveBeenCalledTimes(1);
+    // 无配置：提示先完成供应商配置（不再卸载 TUI 重开，旧帧/取消提示不残留）
+    expect(harness.text).toContain("尚未配置供应商");
     harness.unmount();
   }, 30_000);
 });

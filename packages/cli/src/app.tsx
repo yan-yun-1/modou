@@ -14,7 +14,14 @@ import type { McpStatus } from "./loop-factory.js";
 import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
 import { loadSkills } from "@modou-dev/core";
-import { loadSettings, saveSettings, type Settings, type ThinkingLevel } from "./settings.js";
+import {
+  loadSettings,
+  saveSettings,
+  type ProviderName,
+  type Settings,
+  type ThinkingLevel,
+} from "./settings.js";
+import { Onboarding } from "./onboarding.js";
 import { StatusBar, permissionLabel } from "./components/StatusBar.js";
 import { OptionPicker } from "./components/OptionPicker.js";
 import { HelpPanel } from "./components/HelpPanel.js";
@@ -58,10 +65,6 @@ export interface ModouAppProps {
   store?: StoreLike | null;
   /** MCP servers 连接状态（入口层经工厂返回） */
   mcpStatus?: McpStatus[];
-  /** /model 触发：入口层结束当前会话并以新模型重开（同供应商） */
-  onModelSwitch?: () => void;
-  /** /provider 触发：入口层结束当前会话并重跑供应商+模型引导 */
-  onProviderSwitch?: () => void;
   /** 思考强度设置（状态栏显示；未设置=跟随模型默认） */
   thinking?: ThinkingLevel;
   /** 配置目录（/thinking、/permission 写 settings.json 用；默认用户主目录，测试注入临时目录） */
@@ -156,8 +159,6 @@ export function ModouApp({
   checkpointer,
   store,
   mcpStatus,
-  onModelSwitch,
-  onProviderSwitch,
   thinking,
   home = homedir(),
   budgetUsd,
@@ -183,6 +184,12 @@ export function ModouApp({
   const [pendingPermissionPicker, setPendingPermissionPicker] = useState(false);
   // /help：临时帮助面板（不进会话历史，esc 关闭）
   const [pendingHelp, setPendingHelp] = useState(false);
+  // /model、/provider：引导作为 App 内浮层运行（旧实现卸载 TUI 另起 render，
+  // 会在屏幕上留下残帧和取消提示——与 /help 同类问题）
+  const [setup, setSetup] = useState<{
+    base?: Settings;
+    initialProvider?: ProviderName;
+  } | null>(null);
   // 思考强度/权限模式的热切换值（状态栏实时显示；设置同时持久化到 settings.json）
   const [liveThinking, setLiveThinking] = useState(thinking);
   const [permissionOverride, setPermissionOverride] = useState<Settings["permissionMode"] | null>(
@@ -544,12 +551,22 @@ export function ModouApp({
         ]);
         return;
       }
-      if (command.action === "model") {
-        onModelSwitch?.();
-        return;
-      }
-      if (command.action === "provider") {
-        onProviderSwitch?.();
+      if (command.action === "model" || command.action === "provider") {
+        void (async () => {
+          const existing = await loadSettings(home);
+          if (!existing) {
+            setItems((prev) => [
+              ...prev,
+              { kind: "error", text: "尚未配置供应商，请先运行 modou provider 完成配置。" },
+            ]);
+            return;
+          }
+          setSetup(
+            command.action === "model"
+              ? { base: existing, initialProvider: existing.provider as ProviderName }
+              : { base: existing },
+          );
+        })();
         return;
       }
       if (command.action === "thinking") {
@@ -654,8 +671,6 @@ export function ModouApp({
       effectiveMcpStatus,
       exit,
       onExit,
-      onModelSwitch,
-      onProviderSwitch,
       permissionOverride,
       runPlan,
       runTask,
@@ -731,6 +746,27 @@ export function ModouApp({
             void saveSettingField({ thinking: value as (typeof THINKING_LEVELS)[number] });
           }}
           onCancel={() => setPendingThinkingPicker(false)}
+        />
+      ) : setup ? (
+        <Onboarding
+          home={home}
+          base={setup.base}
+          initialProvider={setup.initialProvider}
+          onDone={(done) => {
+            setSetup(null);
+            setItems((prev) => [
+              ...prev,
+              {
+                kind: "assistant",
+                text: `已保存：${done.provider} / ${done.modelId}，重启 modou 后生效。`,
+              },
+            ]);
+          }}
+          onCancel={() => setSetup(null)}
+          onError={(message) => {
+            setSetup(null);
+            setItems((prev) => [...prev, { kind: "error", text: `保存设置失败：${message}` }]);
+          }}
         />
       ) : pendingHelp ? (
         <HelpPanel onClose={() => setPendingHelp(false)} />

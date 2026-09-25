@@ -4,7 +4,6 @@ import { Box, render } from "ink";
 import { GitCheckpointer, SessionStore } from "@modou-dev/core";
 import { ModouApp } from "./app.js";
 import { ApprovalBridge } from "./approval-bridge.js";
-import { runModelCommand, runProviderCommand } from "./model-command.js";
 import { Onboarding } from "./onboarding.js";
 import { loadSettings, loadModelOverrides, migrateLegacyDir, type Settings } from "./settings.js";
 import { runPrintMode } from "./print-mode.js";
@@ -85,24 +84,6 @@ async function runInteractive(
   const checkpointer = new GitCheckpointer(process.cwd());
 
   // T10：TUI 先行——App 立即渲染（loop=null 装配态），MCP/repo map 后台装配完成后传入 bundle
-  let instance: ReturnType<typeof render> | null = null;
-  const onModelSwitch = () => {
-    instance?.unmount();
-    void (async () => {
-      await runModelCommand(home);
-      await runInteractive(false);
-    })();
-  };
-
-  // /provider：换供应商（含 Key）——同一重开链路，跑完整引导
-  const onProviderSwitch = () => {
-    instance?.unmount();
-    void (async () => {
-      await runProviderCommand(home);
-      await runInteractive(false);
-    })();
-  };
-
   const promise = createLoopFromSettings({
     settings,
     cwd: process.cwd(),
@@ -123,13 +104,13 @@ async function runInteractive(
       modelId={settings.modelId}
       thinking={settings.thinking}
       permissionMode={settings.permissionMode}
-      onModelSwitch={onModelSwitch}
-      onProviderSwitch={onProviderSwitch}
       onAssemble={promise}
       showLogo={options?.showLogo ?? false}
     />
   );
-  instance = render(app);
+
+  const instance = render(app);
+
   void promise;
   await instance.waitUntilExit();
 }
