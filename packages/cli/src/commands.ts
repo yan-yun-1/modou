@@ -12,6 +12,7 @@ export type CommandResult =
   | { action: "provider" }
   | { action: "thinking"; level?: "off" | "low" | "medium" | "high" }
   | { action: "permission"; level?: "plan" | "default" | "yolo" }
+  | { action: "help" }
   | { action: "mcp" }
   | { action: "init" }
   | { action: "skills" }
@@ -142,23 +143,8 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
       return { action: "rollback", n };
     }
     case "help":
-      return {
-        action: "message",
-        text: [
-          "可用命令：",
-          "  /cost — 用量与成本",
-          "  /checkpoints — 回滚点列表",
-          "  /rollback <n> — 恢复回滚点",
-          "  /sessions — 会话列表",
-          "  /resume <id> — 恢复会话",
-          "  /model — 切换模型",
-          "  /provider — 切换供应商",
-          "  /thinking — 思考强度",
-          "  /permission — 权限模式",
-          "  /exit — 退出",
-          "  /help — 帮助",
-        ].join("\n"),
-      };
+      // 帮助走临时面板（HelpPanel），不进会话历史
+      return { action: "help" };
     default:
       return {
         action: "message",

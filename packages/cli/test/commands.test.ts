@@ -27,14 +27,8 @@ describe("parseCommand", () => {
     expect(parseCommand("/quit", usage)).toEqual({ action: "exit" });
   });
 
-  it("lists available commands vertically for /help, points unknown to /help", () => {
-    const help = parseCommand("/help", usage);
-    expect(help).toMatchObject({ action: "message" });
-    const text = (help as { text: string }).text;
-    // 竖排：每行一条命令
-    expect(text).toContain("/cost — 用量与成本");
-    expect(text).toContain("/permission — 权限模式");
-    expect((text.match(/\n/g) ?? []).length).toBeGreaterThanOrEqual(10);
+  it("/help opens the help overlay (no history message)", () => {
+    expect(parseCommand("/help", usage)).toEqual({ action: "help" });
     // 未知命令精简为指引
     const unknown = parseCommand("/whatever", usage);
     expect(unknown).toMatchObject({ action: "message" });

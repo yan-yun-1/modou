@@ -17,6 +17,7 @@ import { loadSkills } from "@modou-dev/core";
 import { loadSettings, saveSettings, type Settings, type ThinkingLevel } from "./settings.js";
 import { StatusBar, permissionLabel } from "./components/StatusBar.js";
 import { OptionPicker } from "./components/OptionPicker.js";
+import { HelpPanel } from "./components/HelpPanel.js";
 import { homedir } from "node:os";
 import { BusyLine } from "./components/BusyLine.js";
 import { InputBox } from "./components/InputBox.js";
@@ -180,6 +181,8 @@ export function ModouApp({
   // 选择器态：/thinking、/permission 无参时打开（替代输入框捕获按键）
   const [pendingThinkingPicker, setPendingThinkingPicker] = useState(false);
   const [pendingPermissionPicker, setPendingPermissionPicker] = useState(false);
+  // /help：临时帮助面板（不进会话历史，esc 关闭）
+  const [pendingHelp, setPendingHelp] = useState(false);
   // 思考强度/权限模式的热切换值（状态栏实时显示；设置同时持久化到 settings.json）
   const [liveThinking, setLiveThinking] = useState(thinking);
   const [permissionOverride, setPermissionOverride] = useState<Settings["permissionMode"] | null>(
@@ -580,6 +583,10 @@ export function ModouApp({
         }
         return;
       }
+      if (command.action === "help") {
+        setPendingHelp(true);
+        return;
+      }
       if (command.action === "mcp") {
         const servers = effectiveMcpStatus ?? [];
         setItems((prev) => [
@@ -725,6 +732,8 @@ export function ModouApp({
           }}
           onCancel={() => setPendingThinkingPicker(false)}
         />
+      ) : pendingHelp ? (
+        <HelpPanel onClose={() => setPendingHelp(false)} />
       ) : pendingPermissionPicker ? (
         <OptionPicker
           title={`选择权限模式（当前：${permissionLabel(permissionOverride ?? permissionMode)}）`}
