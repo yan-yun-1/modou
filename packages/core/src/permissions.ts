@@ -72,6 +72,9 @@ export class PermissionEngine {
   mode: PermissionMode;
   #rules: PermissionRule[];
 
+  /** M4 A3：remember 新增规则时回调（宿主据此持久化 always-allow 白名单） */
+  onRemember?: (rule: PermissionRule) => void;
+
   constructor(snapshot?: Partial<PermissionSnapshot>) {
     const parsed = permissionSnapshotSchema.parse(snapshot ?? {});
     this.mode = parsed.mode;
@@ -101,6 +104,8 @@ export class PermissionEngine {
     const parsed = permissionRuleSchema.parse(rule);
     if (!this.#rules.some((r) => r.type === parsed.type && r.value === parsed.value)) {
       this.#rules.push(parsed);
+      // M4 A3：宿主（sdk 装配层）设置此回调以持久化 always-allow 白名单
+      this.onRemember?.(parsed);
     }
   }
 

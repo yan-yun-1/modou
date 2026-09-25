@@ -3,7 +3,12 @@ import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { modelCapabilitiesSchema, type ModelCapabilities } from "@modou-dev/core";
+import {
+  modelCapabilitiesSchema,
+  permissionRuleSchema,
+  type ModelCapabilities,
+  type PermissionRule,
+} from "@modou-dev/core";
 
 export const providerNames = [
   "anthropic",
@@ -23,6 +28,8 @@ export const settingsSchema = z.object({
   baseURL: z.string().optional(),
   permissionMode: z.enum(["plan", "default", "yolo"]).default("default"),
   budgetUsd: z.number().positive().optional(),
+  /** always-allow 白名单（M4 A3）：PermissionEngine.remember 后持久化，装配时读回 */
+  permissionRules: z.array(permissionRuleSchema).optional(),
   /** 项目目录覆盖（契约增补 2，plan-m3 A2）：默认 process.cwd()；不存在时报错回退 */
   cwd: z.string().min(1).optional(),
   /** 思考强度（X）：off 关闭推理，low/medium/high 按供应商映射；缺省=跟随模型默认 */
@@ -172,6 +179,21 @@ export function resolveCwd(
     };
   }
   return { cwd: settings.cwd };
+}
+
+/**
+ * M4 A3：把一条 always-allow 规则持久化到 settings.json（去重）。
+ * 由 loop-factory 在 PermissionEngine.onRemember 回调里调用。
+ */
+export async function savePermissionRule(rule: PermissionRule, home: string = homedir()): Promise<void> {
+  const existing = await loadSettings(home);
+  const base: Settings = existing ?? { provider: "glm", modelId: "glm-4.6", permissionMode: "default" };
+  const rules = base.permissionRules ?? [];
+  const duplicate = rules.some((r) => r.type === rule.type && r.value === rule.value);
+  if (duplicate) {
+    return;
+  }
+  await saveSettings({ ...base, permissionRules: [...rules, rule] }, home);
 }
 
 export function modelOverridesFile(home: string = homedir()): string {

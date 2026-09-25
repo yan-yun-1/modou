@@ -168,4 +168,33 @@ describe("ApprovalBridge", () => {
     await expect(second).resolves.toEqual({ granted: false, remembered: false });
     expect(seen.at(-1)).toBeNull();
   });
+
+  it("answerById routes by id regardless of queue order (M4 A2)", async () => {
+    const bridge = new ApprovalBridge();
+    const first = bridge.request({ ...req, id: "r1" });
+    const second = bridge.request({ ...req, id: "r2" });
+    const third = bridge.request({ ...req, id: "r3" });
+
+    // 跳过队首，直接应答 r2
+    expect(bridge.answerById("r2", { granted: true, remembered: false })).toBe(true);
+    await expect(second).resolves.toEqual({ granted: true, remembered: false });
+    // 未知 id 返回 false（调用方可 404）
+    expect(bridge.answerById("r2", { granted: true, remembered: false })).toBe(false);
+    // 其余仍可按 id 应答
+    expect(bridge.answerById("r3", { granted: false, remembered: false })).toBe(true);
+    expect(bridge.answerById("r1", { granted: true, remembered: false })).toBe(true);
+    await expect(first).resolves.toEqual({ granted: true, remembered: false });
+    await expect(third).resolves.toEqual({ granted: false, remembered: false });
+    expect(bridge.pendingCount).toBe(0);
+  });
+
+  it("pendingRequests returns a snapshot of all pending requests", async () => {
+    const bridge = new ApprovalBridge();
+    const p1 = bridge.request({ ...req, id: "r1" });
+    bridge.request({ ...req, id: "r2" });
+    expect(bridge.pendingRequests().map((r) => r.id)).toEqual(["r1", "r2"]);
+    bridge.answerById("r1", { granted: true, remembered: false });
+    await expect(p1).resolves.toBeTruthy();
+    expect(bridge.pendingRequests().map((r) => r.id)).toEqual(["r2"]);
+  });
 });

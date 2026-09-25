@@ -20,7 +20,7 @@ import {
   type ToolRegistry,
 } from "@modou-dev/core";
 import { randomUUID } from "node:crypto";
-import { resolveApiKey, resolveCwd, type Settings } from "./settings.js";
+import { resolveApiKey, resolveCwd, savePermissionRule, type Settings } from "./settings.js";
 import { thinkingToExtraBody } from "./provider-models.js";
 import { ApprovalBridge } from "./approval-bridge.js";
 
@@ -180,7 +180,21 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     capabilities,
     tools,
     store,
-    permissions: new PermissionEngine({ mode: settings.permissionMode ?? "default" }),
+    permissions: (() => {
+      // M4 A3：读回持久化的 always-allow 白名单；remember 新增规则时落盘
+      const engine = new PermissionEngine({
+        mode: settings.permissionMode ?? "default",
+        rules: settings.permissionRules ?? [],
+      });
+      if (options.home) {
+        engine.onRemember = (rule) => {
+          void savePermissionRule(rule, options.home).catch(() => {
+            // 持久化失败不阻断任务（规则仍在内存生效）
+          });
+        };
+      }
+      return engine;
+    })(),
     approve: (req) =>
       options.approvals
         ? options.approvals.request(req)
