@@ -51,6 +51,12 @@ async function collectSubdirs(root: string, depth: number): Promise<string[]> {
  * 全局（~/.modou/AGENTS.md）→ 项目（<cwd>/AGENTS.md）→ 一二级子目录的 AGENTS.md。
  * 总字符数受 maxTotalChars 预算约束，超出截断并注记。
  */
+/** init 模板的占位符形如 <一到三句话说明…>；出现 2 个以上视为未填写 */
+export function isUnfilledTemplate(content: string): boolean {
+  const matches = content.match(/<[^<>\n]{2,60}>/g) ?? [];
+  return matches.length >= 2;
+}
+
 export async function loadAgreements(options: {
   cwd: string;
   home?: string;

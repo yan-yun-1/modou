@@ -264,6 +264,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       options.approvals
         ? options.approvals.request(req)
         : Promise.resolve({ granted: false, remembered: false }),
+    headless: !options.approvals,
     systemPrompt,
     cwd,
     isOverBudget: () => settings.budgetUsd !== undefined && spent > settings.budgetUsd,

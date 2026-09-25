@@ -31,6 +31,14 @@ export async function mcpToolsFromConnection(connection: McpConnection): Promise
       async run(args, ctx) {
         // 连接失败与 isError 都向上抛出：主循环会转为非致命 error 事件 + tool_result 回注
         void ctx;
+        // M4 E1（dogfood#2）：必填参数缺失时提前给出参数清单，
+        // 避免无头调用产生一串远程错误、模型反复重试空耗轮次
+        const record = (args ?? {}) as Record<string, unknown>;
+        const required = (info.inputSchema as { required?: string[] } | undefined)?.required ?? [];
+        const missing = required.filter((key) => record[key] === undefined);
+        if (missing.length > 0) {
+          return { output: `[参数缺失] 工具 ${info.name} 需要必填参数：${required.join(", ")}（当前缺少 ${missing.join(", ")}）。请补齐参数后重试。` };
+        }
         const text = await connection.callTool(info.name, args);
         return tail(text);
       },

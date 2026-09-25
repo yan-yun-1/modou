@@ -46,6 +46,8 @@ export interface AgentLoopDeps {
   checkpointer?: Checkpointer;
   /** M4 D1（PRD F14）：工具生命周期钩子（对所有子代理同样生效） */
   hooks?: AgentHooks;
+  /** M4 E1：无头模式标记——审批被自动拒绝时，拒绝文案附带 always-allow 配置建议 */
+  headless?: boolean;
 }
 
 /** 工具生命周期钩子（F14） */
@@ -386,10 +388,15 @@ export class AgentLoop {
         at: at(),
       });
       if (!answer.granted) {
+        // M4 E1（dogfood#1）：无头模式（未接审批桥）时给出可操作的配置建议
+        const denialText =
+          this.#deps.headless === true
+            ? "操作被自动拒绝（无头模式无审批入口）。如需自动化：在 settings.json 配置 \"permissionMode\": \"yolo\"，或添加 permissionRules 白名单（如 {\"type\":\"execute-prefix\",\"value\":\"npm test\"}）。"
+            : "用户拒绝执行此操作";
         yield await persist({
           type: "tool_result",
           id: event.id,
-          output: "用户拒绝执行此操作",
+          output: denialText,
           truncated: false,
           at: at(),
         });
