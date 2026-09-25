@@ -99,6 +99,11 @@ describe("/permission 命令", () => {
       action: "permission",
       level: "default",
     });
+    // standard 是 default 的展示别名
+    expect(parseCommand("/permission standard", usage)).toEqual({
+      action: "permission",
+      level: "default",
+    });
   });
 
   it("invalid mode → usage message", () => {

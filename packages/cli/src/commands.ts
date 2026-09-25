@@ -101,14 +101,16 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
       return { action: "thinking", level };
     }
     case "permission": {
-      const level = arg.toLowerCase();
-      if (level === "") {
+      const raw = arg.toLowerCase();
+      if (raw === "") {
         return { action: "permission" };
       }
+      // standard 是 default 的展示别名（与状态栏/选择器命名一致）
+      const level = raw === "standard" ? "default" : raw;
       if (level !== "plan" && level !== "default" && level !== "yolo") {
         return {
           action: "message",
-          text: "用法：/permission plan|default|yolo。plan=只读调研，default=默认审批，yolo=全自动。",
+          text: "用法：/permission plan|standard|yolo（standard 即 default）。plan=只读调研，standard=默认审批，yolo=全自动。",
         };
       }
       return { action: "permission", level };

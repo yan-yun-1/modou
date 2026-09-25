@@ -15,7 +15,7 @@ import { parseCommand } from "./commands.js";
 import { initAgentsMd } from "./init.js";
 import { loadSkills } from "@modou-dev/core";
 import { loadSettings, saveSettings, type Settings, type ThinkingLevel } from "./settings.js";
-import { StatusBar } from "./components/StatusBar.js";
+import { StatusBar, permissionLabel } from "./components/StatusBar.js";
 import { OptionPicker } from "./components/OptionPicker.js";
 import { homedir } from "node:os";
 import { BusyLine } from "./components/BusyLine.js";
@@ -102,8 +102,9 @@ const THINKING_OPTIONS = [
 /** 权限模式档位与选项（/permission 选择器） */
 const PERMISSION_MODES = ["plan", "default", "yolo"] as const;
 const PERMISSION_OPTIONS = [
+  // 标签与状态栏展示名一致（default 展示为 standard）
   { value: "plan", label: "plan — 只读调研（禁止写入/执行）" },
-  { value: "default", label: "default — 默认（写文件/执行命令前询问）" },
+  { value: "default", label: "standard — 默认（写文件/执行命令前询问）" },
   { value: "yolo", label: "yolo — 全自动（不再询问）" },
 ];
 
@@ -568,12 +569,9 @@ export function ModouApp({
       }
       if (command.action === "permission") {
         const applyPermission = (level: Settings["permissionMode"]) => {
-          // 热生效：App 级覆盖引擎，下一个任务开始用新模式；同时持久化
+          // 热生效：App 级覆盖引擎，下一个任务开始用新模式；静默持久化（状态栏已实时反映）
           setPermissionOverride(level);
-          void saveSettingField(
-            { permissionMode: level },
-            `权限模式已设为 ${level}，下一个任务开始生效`,
-          );
+          void saveSettingField({ permissionMode: level });
         };
         if (command.level) {
           applyPermission(command.level);
@@ -729,16 +727,13 @@ export function ModouApp({
         />
       ) : pendingPermissionPicker ? (
         <OptionPicker
-          title={`选择权限模式（当前：${permissionOverride ?? permissionMode}）`}
+          title={`选择权限模式（当前：${permissionLabel(permissionOverride ?? permissionMode)}）`}
           options={PERMISSION_OPTIONS}
           initialIndex={Math.max(0, PERMISSION_MODES.indexOf((permissionOverride ?? permissionMode) as (typeof PERMISSION_MODES)[number]))}
           onConfirm={(value) => {
             setPendingPermissionPicker(false);
             setPermissionOverride(value as Settings["permissionMode"]);
-            void saveSettingField(
-              { permissionMode: value as Settings["permissionMode"] },
-              `权限模式已设为 ${value}，下一个任务开始生效`,
-            );
+            void saveSettingField({ permissionMode: value as Settings["permissionMode"] });
           }}
           onCancel={() => setPendingPermissionPicker(false)}
         />
