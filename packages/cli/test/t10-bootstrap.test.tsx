@@ -28,6 +28,7 @@ describe("T10 装配切换", () => {
             mcpStatus: [{ name: "fs", connected: true, tools: 3 }],
             contextWindow: 128_000,
             updateSpent: () => {},
+            setThinking: () => {},
           }),
         300,
       );

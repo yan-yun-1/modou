@@ -168,6 +168,8 @@ describe("/thinking 选择器（App 集成）", () => {
       harness.stdin.write("\r"); // 确认
       await settle(300);
       expect(harness.text).toContain("思考强度已设为 low");
+      // 装配未完成（无 bundle）：提示装配完成后生效
+      expect(harness.text).toContain("装配完成后生效");
       const saved = JSON.parse(
         await readFile(join(homeDir, ".modou", "settings.json"), "utf8"),
       ) as { thinking?: string };

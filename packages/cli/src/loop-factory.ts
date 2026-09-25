@@ -65,6 +65,8 @@ export interface LoopBundle {
   /** 预算钩子的写入口：把本会话累计成本喂给 isOverBudget */
   updateSpent: (costUsd: number) => void;
   isOverBudget: () => boolean;
+  /** 热切换思考强度（改请求体引用，下一条消息立即生效）；/thinking 用 */
+  setThinking: (level: "off" | "low" | "medium" | "high") => void;
 }
 
 export interface McpStatus {
@@ -88,6 +90,15 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
 `);
   }
   const capabilities = resolveCapabilities(settings.provider, settings.modelId, modelOverrides);
+  // 思考强度可变引用：setThinking 改 current，下一次模型请求立即生效（无需重启）
+  const thinkingRef: { current: Record<string, unknown> | undefined } = {
+    current: settings.thinking
+      ? thinkingToExtraBody(settings.provider, settings.thinking)
+      : undefined,
+  };
+  const setThinking = (level: "off" | "low" | "medium" | "high") => {
+    thinkingRef.current = thinkingToExtraBody(settings.provider, level);
+  };
   const model =
     options.model ??
     createLanguageModel({
@@ -95,10 +106,9 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       modelId: settings.modelId,
       apiKey: resolveApiKey(settings),
       baseURL: settings.baseURL,
-      // 思考强度（X）：映射为厂商私有请求体参数（glm/qwen/openrouter；其余忽略）
-      extraBody: settings.thinking
-        ? thinkingToExtraBody(settings.provider, settings.thinking)
-        : undefined,
+      // 思考强度（X）：映射为厂商私有请求体参数（glm/qwen/openrouter；其余忽略）。
+      // 用可变引用持有，/thinking 改 current 即热切换，无需重启
+      extraBodyRef: thinkingRef,
     });
   const tools = options.tools ?? createBuiltinTools();
   const store = options.store ?? new SessionStore();
@@ -200,5 +210,6 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       onCostUpdate?.(costUsd);
     },
     isOverBudget: () => settings.budgetUsd !== undefined && spent > settings.budgetUsd,
+    setThinking,
   };
 }
