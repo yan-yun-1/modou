@@ -33,9 +33,8 @@ describe("StatusBar", () => {
     );
     await settle();
     const text = harness.text;
-    // default 不显示（裸词易与思考档位混淆），模型名成为首段
-    expect(text).toContain("glm-4.5-air");
-    expect(text).not.toContain("default");
+    // default 展示为 standard（避免与思考档位混淆）
+    expect(text).toContain("standard · glm-4.5-air");
     expect(text).toContain("↑1.2k");
     expect(text).toContain("↓567");
     expect(text).toContain("$0.000315");
@@ -100,18 +99,18 @@ describe("ctx helpers", () => {
     expect(ctxColor(0.96)).toBe("red");
   });
 
-  it("permissionLabel: plan/yolo get Chinese names, default hidden", () => {
-    expect(permissionLabel("plan")).toBe("只读");
-    expect(permissionLabel("yolo")).toBe("全自动");
-    expect(permissionLabel("default")).toBeNull();
+  it("permissionLabel maps to unambiguous English display names", () => {
+    expect(permissionLabel("plan")).toBe("readonly");
+    expect(permissionLabel("default")).toBe("standard");
+    expect(permissionLabel("yolo")).toBe("auto");
   });
 
-  it("shows 只读 for plan mode", async () => {
+  it("shows readonly for plan mode", async () => {
     const harness = renderInk(
       <StatusBar model="glm-4.5-air" permissionMode="plan" usage={usage} />,
     );
     await settle();
-    expect(harness.text).toContain("只读 · glm-4.5-air");
+    expect(harness.text).toContain("readonly · glm-4.5-air");
     harness.unmount();
   });
 
