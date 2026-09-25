@@ -1,6 +1,6 @@
 {
   "name": "@modou-dev/core",
-  "version": "0.4.4",
+  "version": "0.5.0-alpha",
   "description": "墨斗 Modou 核心：headless Agent 编程引擎（事件溯源、权限、工具、MCP）",
   "type": "module",
   "main": "./dist/index.js",

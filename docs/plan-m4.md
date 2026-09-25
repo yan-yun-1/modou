@@ -101,4 +101,18 @@ LSP（F16）、VS Code 插件（F20）、OS 沙箱落地（补三平台评估文
 
 ## 六、验收记录
 
-（执行完成后回填）
+| 项 | 结果 | 日期 |
+|---|---|---|
+| A1 装配下沉（@modou-dev/sdk） | ✅ 55dc3f9，333 测试零回归 | 2026-09-25 |
+| A2 ApprovalBridge answerById | ✅ 按 id 路由 + FIFO 兼容测试 | 2026-09-25 |
+| A3 白名单持久化（permissionRules） | ✅ remember 落盘 + 装配读回 | 2026-09-25 |
+| A4 createSession 高层 API | ✅ 10 行嵌入测试通过 | 2026-09-25 |
+| B1-B4 server 包（node:http） | ✅ 5 例集成测试（SSE/审批/历史/409/400） | 2026-09-25 |
+| C1-C3 ACP 适配（modou acp） | ✅ 回环测试 initialize→prompt→end_turn 1.6s | 2026-09-25 |
+| C4 Zed 实测 | ⏳ 待用户环境安装 Zed 联调 | — |
+| D1-D3 Hooks | ✅ deny/改写 args/附加输出 + 命令式钩子端到端 | 2026-09-25 |
+| E1-E2 dogfood/backlog 清偿 | ✅ 摩擦点 1/2/4 + backlog #8/#12 | 2026-09-25 |
+| E3 eval 回归 | ⏳ 发布前执行 | — |
+| E5 v0.5.0-alpha 发布 | ⏳ | — |
+
+版本升级：0.4.4 → 0.5.0-alpha（新增 sdk/server 两包）。

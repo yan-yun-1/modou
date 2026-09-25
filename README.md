@@ -9,7 +9,26 @@
 
 墨斗是木匠弹线定直的工具——先弹线（Plan Mode 定计划），后动锯（确认后再执行）。
 
-**当前状态**：M3 已发布（[Release v0.4.0-alpha](https://github.com/yan-yun-1/modou/releases/tag/v0.4.0-alpha)）。路线图见 [docs/PRD.md](docs/PRD.md)。
+**当前状态**：M4 开发中（server/SDK/ACP/Hooks 已落地；Zed 实测与 v0.5.0-alpha 发布收尾中）。路线图见 [docs/PRD.md](docs/PRD.md)。
+
+## 多端（M4）
+
+```bash
+modou serve --port 4711   # HTTP+SSE 会话 API（POST /sessions → POST /sessions/:id/messages → GET /sessions/:id/events）
+modou acp                 # ACP agent 模式（stdio JSON-RPC），Zed/JetBrains 接入
+```
+
+SDK 嵌入（`@modou-dev/sdk`）：
+
+```js
+import { createSession } from "@modou-dev/sdk";
+const session = await createSession();            // 读 ~/.modou/settings.json
+for await (const event of session.run("任务")) {
+  if (event.type === "approval_request") await session.approvals.answerById(event.id, { granted: true, remembered: false });
+  if (event.type === "text_delta") process.stdout.write(event.delta);
+}
+await session.close();
+```
 
 ## 30 秒上手
 

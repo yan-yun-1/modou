@@ -1,6 +1,6 @@
 {
   "name": "modou",
-  "version": "0.4.4",
+  "version": "0.5.0-alpha",
   "description": "墨斗 Modou 终端 CLI：Agent 编程引擎的交互界面",
   "type": "module",
   "bin": {

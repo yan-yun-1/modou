@@ -320,7 +320,7 @@ Vercel AI SDK 作为多 provider 底座 + 针对专有能力（prompt cache、re
 | **M1 安全与上下文** | W3–4 | edit/write 工具 + diff 审批；权限模式×白名单；AGENTS.md 分层；compaction；成本仪表（F8）；git checkpoint 回滚 | `default` 模式零越权；长会话不中断；成本误差 <5%；改动可回滚 |
 | **M2 生态与健壮** | W5–6 | MCP client（stdio）；plan mode；`explore` subagent；多模型能力适配（补齐 8 provider）；错误恢复与会话恢复 | 接入 2 个社区 MCP server 实用；杀进程后恢复会话不丢上下文 |
 | **M3 公开发布** | W7–8 | eval harness + 自建评测基线；文档站（英/中）；`npm i -g modou` 发布 v0.1.0（Apache-2.0，GitHub 开源）；build-in-public 宣发（HN/V2EX/掘金/X） | 自建评测通过率基线建立且不回退；从安装到完成任务 < 5 分钟 |
-| **M4 多端与增强** | 第 3 个月 | server 包 + SSE；ACP 兼容（接 Zed）；Skills/hooks/LSP；VS Code 插件 alpha；OS 沙箱增强 | 任一 ACP 编辑器中可用；SDK 可被第三方嵌入 |
+| **M4 多端与增强** | 第 3 个月 | server 包 + SSE；ACP 兼容（接 Zed）；Hooks；Skills 已随 M3 交付；~~VS Code 插件 alpha~~（顺延 M5）；OS 沙箱增强（评估文档） | 任一 ACP 编辑器中可用；SDK 可被第三方嵌入 |
 | **M5 商业验证** | 第 4 个月起 | Web 控制台 + 云任务沙箱（收费）；官方模型网关订阅内测 | 首批付费用户验证支付意愿 |
 
 > 节奏原则：每个里程碑结束时产品都处于"自己每天在用"的状态（dogfooding 优先于功能堆叠）。
@@ -361,7 +361,7 @@ Vercel AI SDK 作为多 provider 底座 + 针对专有能力（prompt cache、re
 |---|---|---|
 | AGENTS.md | M1 | 分层加载（全局→项目→子目录） |
 | MCP | M2 | stdio 先行，Streamable HTTP 随后 |
-| Agent Skills (SKILL.md) | M4 | 与 AGENTS.md 同理念，按需加载 |
+| Agent Skills (SKILL.md) | M4（已提前随 M3 交付） | 与 AGENTS.md 同理念，按需加载 |
 | ACP | M4 | 作为 agent 接入 Zed/JetBrains |
 
 ### B. 本 PRD 的信息来源

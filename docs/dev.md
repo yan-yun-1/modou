@@ -67,7 +67,9 @@ npm 发布（仓库公开后执行）：
    核对 unpacked 内容只含 dist/、README、LICENSE、package.json。
 4. 全新目录安装实测（演练已通过）：
    ```bash
-   npm install -g ./packages/cli/pkgs/modou-0.4.0.tgz ./packages/core/pkgs/modou-core-0.4.0.tgz
+   npm install -g ./packages/sdk（M4：装配层 @modou-dev/sdk——settings/loop-factory/approval-bridge/print-mode/acp）
+packages/server（M4：@modou-dev/server——node:http HTTP+SSE 会话 API，`modou serve`）
+packages/cli/pkgs/modou-0.4.0.tgz ./packages/core/pkgs/modou-core-0.4.0.tgz
    modou --version && modou init && modou -p "1+1"
    ```
 5. 正式发布（按依赖序）：

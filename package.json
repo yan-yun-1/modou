@@ -1,6 +1,6 @@
 {
   "name": "modou",
-  "version": "0.0.0",
+  "version": "0.5.0-alpha",
   "private": true,
   "description": "墨斗 Modou —— 面向个人开发者的开源 Agent 编程引擎（headless 核心 + 终端 CLI）",
   "packageManager": "pnpm@11.17.0",

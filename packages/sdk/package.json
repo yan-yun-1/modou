@@ -1,6 +1,6 @@
 {
   "name": "@modou-dev/sdk",
-  "version": "0.4.4",
+  "version": "0.5.0-alpha",
   "description": "墨斗 Modou SDK——可编程嵌入的 Agent 装配层（settings/loop 装配/审批桥/无头运行）",
   "type": "module",
   "main": "./dist/index.js",
