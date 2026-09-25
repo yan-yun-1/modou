@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { StatusBar, ctxColor, displayCwd, fmtTokens, fmtUsd } from "../src/components/StatusBar.js";
+import {
+  StatusBar,
+  ctxColor,
+  displayCwd,
+  fmtTokens,
+  fmtUsd,
+  permissionLabel,
+} from "../src/components/StatusBar.js";
 import { ApprovalBridge } from "../src/approval-bridge.js";
 import type { ApprovalRequest, UsageTotals } from "@modou-dev/core";
 import { renderInk, settle } from "./ink-test-utils.js";
@@ -26,7 +33,9 @@ describe("StatusBar", () => {
     );
     await settle();
     const text = harness.text;
-    expect(text).toContain("default · glm-4.5-air");
+    // default 不显示（裸词易与思考档位混淆），模型名成为首段
+    expect(text).toContain("glm-4.5-air");
+    expect(text).not.toContain("default");
     expect(text).toContain("↑1.2k");
     expect(text).toContain("↓567");
     expect(text).toContain("$0.000315");
@@ -89,6 +98,21 @@ describe("ctx helpers", () => {
     expect(ctxColor(0.7)).toBe("green");
     expect(ctxColor(0.8)).toBe("yellow");
     expect(ctxColor(0.96)).toBe("red");
+  });
+
+  it("permissionLabel: plan/yolo get Chinese names, default hidden", () => {
+    expect(permissionLabel("plan")).toBe("只读");
+    expect(permissionLabel("yolo")).toBe("全自动");
+    expect(permissionLabel("default")).toBeNull();
+  });
+
+  it("shows 只读 for plan mode", async () => {
+    const harness = renderInk(
+      <StatusBar model="glm-4.5-air" permissionMode="plan" usage={usage} />,
+    );
+    await settle();
+    expect(harness.text).toContain("只读 · glm-4.5-air");
+    harness.unmount();
   });
 
   it("displayCwd abbreviates the home prefix to ~", () => {

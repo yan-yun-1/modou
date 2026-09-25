@@ -66,13 +66,13 @@ describe("StatusBar 思考强度显示", () => {
       <StatusBar
         model="glm-4.5-air"
         thinking="high"
-        permissionMode="default"
+        permissionMode="yolo"
         usage={usage}
         cwd={displayCwd("E:\\Agent")}
       />,
     );
     await settle();
-    expect(harness.text).toContain("default · glm-4.5-air · 思考high");
+    expect(harness.text).toContain("全自动 · glm-4.5-air · 思考high");
     harness.unmount();
   });
 
@@ -81,7 +81,8 @@ describe("StatusBar 思考强度显示", () => {
       <StatusBar model="glm-4.5-air" permissionMode="default" usage={usage} />,
     );
     await settle();
-    expect(harness.text).toContain("default · glm-4.5-air");
+    expect(harness.text).toContain("glm-4.5-air");
+    expect(harness.text).not.toContain("default");
     expect(harness.text).not.toContain("思考");
     harness.unmount();
   });

@@ -66,7 +66,18 @@ export interface StatusBarProps {
   cwd?: string;
 }
 
-/** 单行四段状态栏：`mode · model · 思考X │ ↑in ↓out $cost │ ctx n% (used/total) │ 目录` */
+/** 权限模式在状态栏的显示名：default 不显示（裸词 "default" 易与思考档位混淆） */
+export function permissionLabel(mode: string): string | null {
+  if (mode === "plan") {
+    return "只读";
+  }
+  if (mode === "yolo") {
+    return "全自动";
+  }
+  return null;
+}
+
+/** 单行四段状态栏：`[只读|全自动] · model · 思考X │ ↑in ↓out $cost │ ctx n% (used/total) │ 目录` */
 export function StatusBar({
   model,
   thinking,
@@ -84,8 +95,7 @@ export function StatusBar({
   return (
     <Box>
       <Text color={style.dim}>
-        {permissionMode}
-        {" · "}
+        {permissionLabel(permissionMode) ? `${permissionLabel(permissionMode)} · ` : ""}
         <Text color={style.model}>{model}</Text>
         {thinking ? ` · 思考${thinking}` : ""}
         {" │ ↑"}
