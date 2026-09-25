@@ -20,9 +20,11 @@ import {
   type ToolRegistry,
 } from "@modou-dev/core";
 import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
 import { resolveApiKey, resolveCwd, savePermissionRule, type Settings } from "./settings.js";
 import { thinkingToExtraBody } from "./provider-models.js";
 import { ApprovalBridge } from "./approval-bridge.js";
+import type { AgentHooks } from "@modou-dev/core";
 
 export interface CreateLoopOptions {
   settings: Settings;
@@ -80,6 +82,67 @@ export interface McpStatus {
  * cli 内唯一的 loop 装配点：settings → capabilities → model → tools → permissions → loop。
  * 交互、无头、/model 切换共用；core 不感知 settings.json。
  */
+/** 把 settings.hooks 的 shell 命令包装成 core 钩子（stdin JSON 事件 → stdout JSON 决策；出错 fail-open） */
+function commandHook(command: string): (ctx: unknown) => Promise<Record<string, unknown> | void> {
+  return (ctx) =>
+    new Promise((resolve) => {
+      let settled = false;
+      const finish = (value: Record<string, unknown> | void) => {
+        if (!settled) {
+          settled = true;
+          resolve(value);
+        }
+      };
+      let child;
+      try {
+        child = spawn(command, { shell: true, stdio: ["pipe", "pipe", "pipe"] });
+      } catch {
+        finish();
+        return;
+      }
+      let out = "";
+      const timer = setTimeout(() => {
+        child.kill();
+        finish();
+      }, 15_000);
+      child.stdout?.on("data", (chunk: Buffer) => (out += chunk.toString("utf8")));
+      child.on("error", () => {
+        clearTimeout(timer);
+        finish();
+      });
+      child.on("close", () => {
+        clearTimeout(timer);
+        try {
+          const lastLine = out.trim().split("\n").at(-1) ?? "";
+          finish(lastLine ? (JSON.parse(lastLine) as Record<string, unknown>) : undefined);
+        } catch {
+          finish();
+        }
+      });
+      child.stdin?.write(JSON.stringify(ctx) + "\n");
+      child.stdin?.end();
+    });
+}
+
+function buildHooks(settings: Settings): AgentHooks | undefined {
+  const preToolUse = settings.hooks?.preToolUse ? commandHook(settings.hooks.preToolUse) : undefined;
+  const postToolUse = settings.hooks?.postToolUse
+    ? async (ctx: { name: string; output: string }) => {
+        const result = (await commandHook(settings.hooks!.postToolUse!)(ctx)) as
+          | { output?: string }
+          | void;
+        return result?.output;
+      }
+    : undefined;
+  if (!preToolUse && !postToolUse) {
+    return undefined;
+  }
+  return {
+    ...(preToolUse ? { preToolUse: preToolUse as AgentHooks["preToolUse"] } : {}),
+    ...(postToolUse ? { postToolUse: postToolUse as AgentHooks["postToolUse"] } : {}),
+  };
+}
+
 export async function createLoopFromSettings(options: CreateLoopOptions): Promise<LoopBundle> {
   const { settings, modelOverrides = [], onCostUpdate } = options;
   // A2（plan-m3）：settings.cwd 优先于调用方 cwd；目录不存在回退并给出警告
@@ -180,6 +243,8 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     capabilities,
     tools,
     store,
+    // M4 D2：settings.hooks 的 shell 命令 → core 生命周期钩子
+    hooks: buildHooks(settings),
     permissions: (() => {
       // M4 A3：读回持久化的 always-allow 白名单；remember 新增规则时落盘
       const engine = new PermissionEngine({

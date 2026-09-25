@@ -30,6 +30,13 @@ export const settingsSchema = z.object({
   budgetUsd: z.number().positive().optional(),
   /** always-allow 白名单（M4 A3）：PermissionEngine.remember 后持久化，装配时读回 */
   permissionRules: z.array(permissionRuleSchema).optional(),
+  /** 生命周期钩子（M4 D2 / PRD F14）：shell 命令，stdin 收 JSON 事件，stdout 出 JSON 决策 */
+  hooks: z
+    .object({
+      preToolUse: z.string().min(1).optional(),
+      postToolUse: z.string().min(1).optional(),
+    })
+    .optional(),
   /** 项目目录覆盖（契约增补 2，plan-m3 A2）：默认 process.cwd()；不存在时报错回退 */
   cwd: z.string().min(1).optional(),
   /** 思考强度（X）：off 关闭推理，low/medium/high 按供应商映射；缺省=跟随模型默认 */

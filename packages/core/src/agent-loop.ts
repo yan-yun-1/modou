@@ -44,6 +44,21 @@ export interface AgentLoopDeps {
   isOverBudget?: () => boolean;
   /** 可选回滚点：write 类工具执行前自动快照（git 影子引用实现见 checkpoints.ts） */
   checkpointer?: Checkpointer;
+  /** M4 D1（PRD F14）：工具生命周期钩子（对所有子代理同样生效） */
+  hooks?: AgentHooks;
+}
+
+/** 工具生命周期钩子（F14） */
+export interface AgentHooks {
+  /**
+   * PreToolUse：权限判定之前调用。返回 decision 可短路权限流程（allow 跳过审批、
+   * deny 阻断执行），返回 args 可改写工具入参；返回 void 走正常权限流程。
+   */
+  preToolUse?: (ctx: { name: string; kind: ToolKind; args: unknown }) => Promise<
+    { decision?: "allow" | "deny" | "ask"; args?: unknown; reason?: string } | void
+  >;
+  /** PostToolUse：工具执行之后调用。返回 string 则附加到工具输出（失败时 error 非空） */
+  postToolUse?: (ctx: { name: string; args: unknown; output: string; error?: string }) => Promise<string | void>;
 }
 
 type ToolCallEvent = Extract<ModouEvent, { type: "tool_call" }>;
@@ -290,7 +305,37 @@ export class AgentLoop {
       return;
     }
 
-    const decision = permissions.decide({ name: event.name, kind: tool.kind, args: event.args });
+    // F14 PreToolUse：可改写入参 / 短路权限流程
+    let hookDecision: "allow" | "ask" | undefined;
+    let hookArgs: unknown = event.args;
+    const preHook = this.#deps.hooks?.preToolUse;
+    if (preHook) {
+      const hookResult = await preHook({ name: event.name, kind: tool.kind, args: event.args });
+      if (hookResult?.args !== undefined) {
+        hookArgs = hookResult.args;
+      }
+      if (hookResult?.decision === "deny") {
+        const denial = `Hook 拒绝：${hookResult.reason ?? "PreToolUse 钩子否决"}`;
+        yield await persist({
+          type: "tool_result",
+          id: event.id,
+          output: denial,
+          truncated: false,
+          at: at(),
+        });
+        messages.push(toolResultMessage(event.id, event.name, denial));
+        return;
+      }
+      if (hookResult?.decision === "allow" || hookResult?.decision === "ask") {
+        hookDecision = hookResult.decision;
+      }
+    }
+
+    let decision = permissions.decide({ name: event.name, kind: tool.kind, args: hookArgs });
+    if (hookDecision) {
+      // 钩子显式决策覆盖引擎判定（deny 已在上方短路）
+      decision = hookDecision;
+    }
 
     if (decision === "deny") {
       const denial = `权限拒绝：plan 模式为只读，禁止${tool.kind === "execute" ? "执行命令" : "写入文件"}`;
@@ -310,7 +355,7 @@ export class AgentLoop {
       // write/edit 实现了 preview 时，把 unified diff 附到审批请求上供人工审阅
       const diff = tool.preview
         ? await tool
-            .preview(event.args, {
+            .preview(hookArgs, {
               cwd,
               signal: signal ?? new AbortController().signal,
               sessionId,
@@ -370,8 +415,9 @@ export class AgentLoop {
 
     let output: string;
     let truncated = false;
+    let toolError: string | undefined;
     try {
-      const result = await tools.validateAndRun(event.name, event.args, {
+      const result = await tools.validateAndRun(event.name, hookArgs, {
         cwd,
         signal: signal ?? new AbortController().signal,
         sessionId,
@@ -379,8 +425,17 @@ export class AgentLoop {
       output = result.output;
       truncated = result.truncated ?? false;
     } catch (error) {
-      output = `工具执行失败：${(error as Error).message}`;
+      toolError = (error as Error).message;
+      output = `工具执行失败：${toolError}`;
       yield await persist({ type: "error", message: output, fatal: false, at: at() });
+    }
+    // F14 PostToolUse：可附加输出（成功与失败路径都触发）
+    const postHook = this.#deps.hooks?.postToolUse;
+    if (postHook) {
+      const extra = await postHook({ name: event.name, args: hookArgs, output, error: toolError });
+      if (typeof extra === "string" && extra !== "") {
+        output = `${output}\n${extra}`;
+      }
     }
     output += checkpointNote;
     yield await persist({

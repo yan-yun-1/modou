@@ -7,6 +7,8 @@ import type { LanguageModel } from "ai";
 import type { ModelCapabilities } from "./models/catalog.js";
 
 export interface SubagentOptions {
+  /** M4 D1：继承父 loop 的生命周期钩子 */
+  hooks?: import("./agent-loop.js").AgentHooks;
   parentSessionId: string;
   /** 子代理名称：explore / code-review 等，用于会话命名与事件 */
   name: string;
@@ -52,6 +54,7 @@ export async function runSubagent(options: SubagentOptions): Promise<SubagentRes
     systemPrompt,
     cwd,
     maxSteps: options.maxSteps ?? 15,
+    hooks: options.hooks,
   });
 
   let summary = "";

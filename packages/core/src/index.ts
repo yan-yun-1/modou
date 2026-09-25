@@ -25,6 +25,7 @@ export {
 export {
   AgentLoop,
   type AgentLoopDeps,
+  type AgentHooks,
   type ApprovalAnswer,
   type ApprovalRequest,
 } from "./agent-loop.js";
