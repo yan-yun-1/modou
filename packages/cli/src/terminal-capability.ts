@@ -70,6 +70,8 @@ export interface StyleTable {
   border: string;
   /** 状态栏模型名 */
   model: string;
+  /** 状态栏权限模式（与模型名区分的强调色） */
+  permission: string;
   /** 成本 */
   cost: string;
   /** 用户消息前缀 */
@@ -82,6 +84,7 @@ const STYLE_RICH: StyleTable = {
   dim: undefined, // 用原生 dimColor
   border: "cyan",
   model: "cyan",
+  permission: "magentaBright",
   cost: "green",
   user: "cyan",
   plan: "cyan",
@@ -91,6 +94,7 @@ const STYLE_PLAIN: StyleTable = {
   dim: "gray", // ANSI 90 亮黑，conhost 下可读不糊块
   border: "blue",
   model: "blue",
+  permission: "magenta", // conhost 安全色
   cost: "green",
   user: "cyan",
   plan: "blue",

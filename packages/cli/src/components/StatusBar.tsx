@@ -27,20 +27,17 @@ export function fmtTokens(n: number): string {
 }
 
 /**
- * ctx 使用率四档色（C2）：颜色只在需要预警时出现——
- * <70% gray（结构可见不干扰）、70–80% green、80–95% yellow（compaction 预警）、≥95% red。
+ * ctx 使用率颜色：常规白色（用户要求），仅保留阈值预警——
+ * ≥80% yellow（compaction 预警）、≥95% red。
  */
-export function ctxColor(ratio: number): "gray" | "green" | "yellow" | "red" {
+export function ctxColor(ratio: number): "white" | "yellow" | "red" {
   if (ratio >= 0.95) {
     return "red";
   }
   if (ratio >= 0.8) {
     return "yellow";
   }
-  if (ratio >= 0.7) {
-    return "green";
-  }
-  return "gray";
+  return "white";
 }
 
 /** 状态栏目录显示：主目录前缀缩写为 ~（其余原样） */
@@ -93,30 +90,25 @@ export function StatusBar({
   const ctxRatio = hasCtx ? ctxUsedTokens! / contextWindow! : undefined;
 
   return (
-    <Box>
+    <Box justifyContent="space-between">
       <Text color={style.dim}>
-        {permissionLabel(permissionMode)}
+        <Text color={style.permission}>{permissionLabel(permissionMode)}</Text>
         {" · "}
-        <Text color={style.model}>{model}</Text>
-        {thinking ? ` · 思考${thinking}` : ""}
+        {/* 模型与思考强度用白色（用户要求），与暗淡的分隔符区分层级 */}
+        <Text color="white">
+          {model}
+          {thinking ? ` · 思考${thinking}` : ""}
+        </Text>
         {" │ ↑"}
         {fmtTokens(usage.inputTokens)}
         {" ↓"}
         {fmtTokens(usage.outputTokens)} <Text color={style.cost}>{fmtUsd(usage.costUsd)}</Text>
         {budgetUsd !== undefined ? `/${fmtUsd(budgetUsd)}` : ""}
+        {cwd ? ` │ ${displayCwd(cwd)}` : ""}
       </Text>
       {ctxRatio !== undefined ? (
-        <Text color={style.dim}>
-          {" │ "}
-          <Text color={ctxColor(ctxRatio)}>
-            {`ctx ${Math.round(ctxRatio * 100)}% (${fmtTokens(ctxUsedTokens ?? 0)}/${fmtTokens(contextWindow ?? 0)})`}
-          </Text>
-        </Text>
-      ) : null}
-      {cwd ? (
-        <Text color={style.dim}>
-          {" │ "}
-          {displayCwd(cwd)}
+        <Text color={ctxColor(ctxRatio)}>
+          {`ctx ${Math.round(ctxRatio * 100)}% (${fmtTokens(ctxUsedTokens ?? 0)}/${fmtTokens(contextWindow ?? 0)})`}
         </Text>
       ) : null}
     </Box>

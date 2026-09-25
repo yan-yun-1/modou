@@ -92,9 +92,9 @@ describe("StatusBar", () => {
 });
 
 describe("ctx helpers", () => {
-  it("ctxColor: gray below 70, green 70-80, yellow 80-95, red 95+", () => {
-    expect(ctxColor(0.31)).toBe("gray");
-    expect(ctxColor(0.7)).toBe("green");
+  it("ctxColor: white normally, yellow 80+, red 95+", () => {
+    expect(ctxColor(0.31)).toBe("white");
+    expect(ctxColor(0.7)).toBe("white");
     expect(ctxColor(0.8)).toBe("yellow");
     expect(ctxColor(0.96)).toBe("red");
   });

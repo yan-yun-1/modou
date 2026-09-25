@@ -110,7 +110,8 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
 
   return (
     <Box flexDirection="column" gap={0}>
-      <Box borderStyle="round" borderColor={disabled ? "gray" : style.border} paddingX={1}>
+      {/* 输入卡边框白色；补全面板边框维持主题色 */}
+      <Box borderStyle="round" borderColor={disabled ? "gray" : "white"} paddingX={1}>
         <Text color={disabled ? "gray" : style.user}>❯ </Text>
         <TextInput
           value={value}
