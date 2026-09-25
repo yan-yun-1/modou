@@ -3,6 +3,7 @@ import type {
   LanguageModel,
   ModouEvent,
   ModelCapabilities,
+  SessionStore,
 } from "@modou-dev/core";
 import { ApprovalBridge } from "./approval-bridge.js";
 import { createLoopFromSettings, type McpStatus } from "./loop-factory.js";
@@ -32,6 +33,8 @@ export interface ModouSession {
   sessionId: string;
   contextWindow: number;
   mcpStatus: McpStatus[];
+  /** 会话事件存储（server 历史回放用） */
+  store: SessionStore;
   /** 审批桥：approval_request 事件到达后用 answerById(id, answer) 应答 */
   approvals: ApprovalBridge;
   /** 一次任务的事件流；同一会话请勿并发 run */
@@ -63,6 +66,7 @@ export async function createSession(
     sessionId: bundle.sessionId,
     contextWindow: bundle.contextWindow,
     mcpStatus: bundle.mcpStatus,
+    store: bundle.store,
     approvals,
     run: (input, runOptions) => bundle.loop.run(input, bundle.sessionId, runOptions),
     close: () => bundle.closeMcp(),

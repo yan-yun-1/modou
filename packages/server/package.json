@@ -1,0 +1,31 @@
+{
+  "name": "@modou-dev/server",
+  "version": "0.4.4",
+  "description": "墨斗 Modou Server——HTTP + SSE 服务化（PRD F18），多端复用的会话 API",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@modou-dev/core": "workspace:*",
+    "@modou-dev/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

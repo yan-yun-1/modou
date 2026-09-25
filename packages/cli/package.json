@@ -17,6 +17,7 @@
   "dependencies": {
     "@modou-dev/core": "workspace:*",
     "@modou-dev/sdk": "workspace:*",
+    "@modou-dev/server": "workspace:*",
     "commander": "^14.0.0",
     "ink": "^5.0.0",
     "ink-text-input": "^6.0.0",

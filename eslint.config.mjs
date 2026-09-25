@@ -6,6 +6,8 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    // node 环境（scripts/、examples/ 等 .mjs 无类型引用，需显式全局）
+    languageOptions: { globals: { console: "readonly", process: "readonly" } },
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",

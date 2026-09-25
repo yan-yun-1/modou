@@ -22,6 +22,25 @@ export function buildProgram(): Command {
     });
 
   program
+    .command("serve")
+    .description("启动 HTTP+SSE 会话服务（多端复用，PRD F18；esc/接口见 docs/plan-m4.md）")
+    .option("--port <n>", "监听端口", "4711")
+    .option("--host <h>", "监听地址", "127.0.0.1")
+    .action(async (options: { port: string; host: string }) => {
+      const { ModouServer } = await import("@modou-dev/server");
+      const server = new ModouServer({ port: Number(options.port), host: options.host });
+      const { port, host } = await server.start();
+      process.stdout.write(`[modou] serve 已启动：http://${host}:${port}（POST /sessions 创建会话，GET /sessions/:id/events 订阅 SSE）
+`);
+      const shutdown = async () => {
+        await server.close();
+        process.exit(0);
+      };
+      process.on("SIGINT", () => void shutdown());
+      process.on("SIGTERM", () => void shutdown());
+    });
+
+  program
     .command("provider")
     .description("切换模型供应商（含 API Key 与模型选择，写入 settings.json）")
     .action(async () => {

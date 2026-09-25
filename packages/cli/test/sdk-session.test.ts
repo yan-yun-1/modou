@@ -36,7 +36,7 @@ describe("createSession（@modou-dev/sdk 嵌入验收）", () => {
             controller.enqueue({
               type: "finish",
               finishReason: "stop",
-              usage: { inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 }, outputTokens: { total: 5, text: 5, reasoning: 0 } },
+              usage: { inputTokens: 10, outputTokens: 5 },
             });
             controller.close();
           },
