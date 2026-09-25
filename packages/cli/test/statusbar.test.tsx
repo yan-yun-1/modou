@@ -34,12 +34,12 @@ describe("StatusBar", () => {
     await settle();
     const text = harness.text;
     // default 展示为 standard（避免与思考档位混淆）
-    expect(text).toContain("standard · glm-4.5-air");
+    expect(text).toContain("standard  glm-4.5-air");
     expect(text).toContain("↑1.2k");
     expect(text).toContain("↓567");
     expect(text).toContain("$0.000315");
     // ctx 数字格式（图 2）：百分比 + (已用/总量)
-    expect(text).toContain("ctx 1% (1.9k/128k)");
+    expect(text).toContain("context 1% (1.9k/128k)");
     // 第四段：当前目录
     expect(text).toContain("E:\\Agent Code");
     harness.unmount();
@@ -110,7 +110,7 @@ describe("ctx helpers", () => {
       <StatusBar model="glm-4.5-air" permissionMode="plan" usage={usage} />,
     );
     await settle();
-    expect(harness.text).toContain("plan · glm-4.5-air");
+    expect(harness.text).toContain("plan  glm-4.5-air");
     harness.unmount();
   });
 

@@ -74,7 +74,7 @@ export function permissionLabel(mode: string): string {
   return mode;
 }
 
-/** 单行四段状态栏：`readonly|standard|auto · model · 思考X │ ↑in ↓out $cost │ ctx n% (used/total) │ 目录` */
+/** 状态栏：`权限  模型  thinking: X  ↑in ↓out $cost  目录        context n% (used/total)`（ctx 右对齐） */
 export function StatusBar({
   model,
   thinking,
@@ -93,22 +93,24 @@ export function StatusBar({
     <Box justifyContent="space-between">
       <Text color={style.dim}>
         <Text color={style.permission}>{permissionLabel(permissionMode)}</Text>
-        {" · "}
-        {/* 模型与思考强度用白色（用户要求），与暗淡的分隔符区分层级 */}
+        {/* 分段之间用双空格（不用 · 和 │）；模型/思考/用量/成本白色 */}
         <Text color="white">
+          {"  "}
           {model}
-          {thinking ? ` · 思考${thinking}` : ""}
+          {thinking ? `  thinking: ${thinking}` : ""}
+          {"  ↑"}
+          {fmtTokens(usage.inputTokens)}
+          {" ↓"}
+          {fmtTokens(usage.outputTokens)}
+          {" "}
+          {fmtUsd(usage.costUsd)}
+          {budgetUsd !== undefined ? `/${fmtUsd(budgetUsd)}` : ""}
         </Text>
-        {" │ ↑"}
-        {fmtTokens(usage.inputTokens)}
-        {" ↓"}
-        {fmtTokens(usage.outputTokens)} <Text color={style.cost}>{fmtUsd(usage.costUsd)}</Text>
-        {budgetUsd !== undefined ? `/${fmtUsd(budgetUsd)}` : ""}
-        {cwd ? ` │ ${displayCwd(cwd)}` : ""}
+        {cwd ? `  ${displayCwd(cwd)}` : ""}
       </Text>
       {ctxRatio !== undefined ? (
         <Text color={ctxColor(ctxRatio)}>
-          {`ctx ${Math.round(ctxRatio * 100)}% (${fmtTokens(ctxUsedTokens ?? 0)}/${fmtTokens(contextWindow ?? 0)})`}
+          {`context ${Math.round(ctxRatio * 100)}% (${fmtTokens(ctxUsedTokens ?? 0)}/${fmtTokens(contextWindow ?? 0)})`}
         </Text>
       ) : null}
     </Box>

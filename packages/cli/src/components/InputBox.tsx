@@ -21,6 +21,9 @@ const HINT_COL_WIDTH = 26;
 /** 上下键导航时面板最多可见行数 */
 const MAX_VISIBLE_ROWS = 6;
 
+/** 命令选择态强调色（浅蓝）：面板边框、选中行、输入卡边框（选择时）统一用它 */
+const PANEL_ACCENT = "blueBright";
+
 /** 按显示宽度右补空格（string-width：CJK/全角按 2 列，emoji 等宽符号也正确计宽） */
 function padByWidth(s: string, width: number): string {
   return s + " ".repeat(Math.max(0, width - stringWidth(s)));
@@ -110,12 +113,16 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
 
   return (
     <Box flexDirection="column" gap={0}>
-      {/* 输入卡边框白色；补全面板边框维持主题色 */}
-      <Box borderStyle="round" borderColor={disabled ? "gray" : "white"} paddingX={1}>
+      {/* 输入卡：空闲灰色，命令选择时浅蓝（与面板边框同色，标识选择态） */}
+      <Box
+        borderStyle="round"
+        borderColor={disabled ? "gray" : showSuggestions ? PANEL_ACCENT : "gray"}
+        paddingX={1}
+      >
         <Text color={disabled ? "gray" : style.user}>❯ </Text>
         <TextInput
           value={value}
-          placeholder={placeholder ?? "输入任务，/ 开头为命令…"}
+          placeholder={placeholder ?? ""}
           onChange={setValue}
           onSubmit={(v) => {
             if (disabled || v.trim() === "") {
@@ -141,7 +148,7 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
           borderStyle="round"
           borderTop={false}
           borderBottom={false}
-          borderColor={disabled ? "gray" : style.border}
+          borderColor={disabled ? "gray" : PANEL_ACCENT}
           paddingX={1}
         >
           {visible.map((c) => {
@@ -159,11 +166,11 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
                   // 选中行：整行亮青加粗（命令 + 描述统一色）
                   // 分段结构与非选中行完全一致——保证尾空格裁剪行为相同（行宽恒定）
                   <>
-                    <Text color="cyanBright" bold>
+                    <Text color={PANEL_ACCENT} bold>
                       {marker}
                       {padByWidth(c.name, NAME_COL_WIDTH)}
                     </Text>
-                    <Text color="cyanBright" bold>
+                    <Text color={PANEL_ACCENT} bold>
                       {fixedWidthCell(c.hint, HINT_COL_WIDTH)}
                     </Text>
                   </>

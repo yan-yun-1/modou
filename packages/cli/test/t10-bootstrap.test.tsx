@@ -59,7 +59,7 @@ describe("T10 装配切换", () => {
     // 装配完成不再追加「上下文就绪」提示（U/V 系列降噪），只验证 ctx 段接通
     expect(harness.text).not.toContain("上下文就绪");
     // ctx 段出现（contextWindow 接通）
-    expect(harness.text).toContain("ctx");
+    expect(harness.text).toContain("context");
 
     // 提交走真 loop
     harness.stdin.write("任务");

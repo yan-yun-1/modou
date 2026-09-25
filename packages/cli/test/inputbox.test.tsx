@@ -4,12 +4,13 @@ import { matchSlashCommands, SLASH_COMMANDS } from "../src/commands.js";
 import { renderInk, settle } from "./ink-test-utils.js";
 
 describe("InputBox（T3 输入卡）", () => {
-  it("renders inside a round border with a placeholder", async () => {
+  it("renders inside a round border with no placeholder text", async () => {
     const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
     await settle();
     expect(harness.text).toContain("╭");
     expect(harness.text).toContain("❯");
-    expect(harness.text).toContain("输入任务，/ 开头为命令…");
+    // 空闲态输入框内不显示任何文字（无占位提示）
+    expect(harness.text).not.toContain("输入任务");
     harness.unmount();
   });
 
