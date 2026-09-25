@@ -155,7 +155,7 @@ export class ModouServer {
     const ids = await store.list();
     const sessions: { sessionId: string; active: boolean; preview: string }[] = [];
     for (const sid of ids.slice(-50).reverse()) {
-      let preview = "";
+      let preview: string;
       try {
         const events = await store.read(sid);
         const user = events.find((ev): ev is typeof ev & { text: string } => ev.type === "user_message");

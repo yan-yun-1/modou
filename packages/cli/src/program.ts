@@ -41,6 +41,14 @@ export function buildProgram(): Command {
     });
 
   program
+    .command("acp")
+    .description("以 ACP agent 模式运行（stdio JSON-RPC，供 Zed/JetBrains 接入，PRD F19）")
+    .action(async () => {
+      const { runAcpAgent } = await import("@modou-dev/sdk");
+      runAcpAgent({});
+    });
+
+  program
     .command("provider")
     .description("切换模型供应商（含 API Key 与模型选择，写入 settings.json）")
     .action(async () => {
