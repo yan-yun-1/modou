@@ -8,13 +8,13 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { runPrintMode } from "../packages/cli/src/print-mode.js";
+import { runPrintMode } from "@modou-dev/sdk";
 import {
   loadModelOverrides,
   loadSettings,
   type ProviderName,
   type Settings,
-} from "../packages/cli/src/settings.js";
+} from "@modou-dev/sdk";
 
 if (!process.env.LUBAN_EVAL) {
   console.log("跳过 eval（设置 LUBAN_EVAL=1 启用）");
