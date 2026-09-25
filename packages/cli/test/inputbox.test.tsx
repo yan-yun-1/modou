@@ -53,6 +53,19 @@ describe("宽度计算（string-width，R1）", () => {
 });
 
 describe("F 系列：面板导航与执行", () => {
+  it("esc clears the input and hides the completion panel", async () => {
+    const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
+    await settle();
+    harness.stdin.write("/");
+    await settle();
+    expect(harness.frame).toContain("/plan");
+    harness.stdin.write(""); // esc → 清空收起
+    await settle();
+    expect(harness.frame).not.toContain("/plan");
+    expect(harness.frame).not.toContain("(1/15)");
+    harness.unmount();
+  });
+
   it("wraps around when navigating past the first/last item (F1)", async () => {
     const harness = renderInk(<InputBox busy={false} onSubmit={() => {}} />);
     await settle();

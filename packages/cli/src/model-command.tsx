@@ -23,6 +23,10 @@ export async function runModelCommand(home: string = homedir()): Promise<void> {
     base: existing,
     initialProvider: provider as ProviderName,
   });
+  if (!settings) {
+    process.stdout.write("[modou] 已取消，未修改任何设置。\n");
+    return;
+  }
   process.stdout.write(`[modou] 已保存：${settings.provider} / ${settings.modelId}。重启 modou 后生效。\n`);
 }
 
@@ -36,6 +40,10 @@ export async function runProviderCommand(home: string = homedir()): Promise<void
 async function runFullOnboarding(home: string): Promise<void> {
   const existing = await loadSettings(home);
   const settings = await renderOnboarding({ home, base: existing ?? undefined });
+  if (!settings) {
+    process.stdout.write("[modou] 已取消，未修改任何设置。\n");
+    return;
+  }
   process.stdout.write(
     `[modou] 已保存：${settings.provider} / ${settings.modelId}。重启 modou 后生效。\n`,
   );
@@ -45,9 +53,9 @@ function renderOnboarding(options: {
   home: string;
   base?: Settings;
   initialProvider?: Settings["provider"];
-}): Promise<Settings> {
+}): Promise<Settings | null> {
   const { home, base, initialProvider } = options;
-  return new Promise<Settings>((resolve, reject) => {
+  return new Promise<Settings | null>((resolve, reject) => {
     const instance = render(
       <Box>
         <Onboarding
@@ -57,6 +65,10 @@ function renderOnboarding(options: {
           onDone={(done) => {
             instance.unmount();
             resolve(done);
+          }}
+          onCancel={() => {
+            instance.unmount();
+            resolve(null);
           }}
           onError={(message) => {
             instance.unmount();

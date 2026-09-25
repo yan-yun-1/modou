@@ -92,6 +92,10 @@ export function InputBox({ busy, onSubmit, placeholder, disabled = false }: Inpu
       } else if (key.tab && selected) {
         // Tab = 仅补全到输入框，继续编辑
         setValue(`${selected.name} `);
+      } else if (key.escape) {
+        // esc = 不选了：清空输入收起面板
+        setValue("");
+        setSelectedIndex(0);
       }
     },
     { isActive: !busy && showSuggestions },

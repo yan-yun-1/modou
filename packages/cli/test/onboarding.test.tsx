@@ -30,6 +30,24 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
+describe("Onboarding esc 取消", () => {
+  it("esc cancels the whole flow without saving", async () => {
+    const done: Settings[] = [];
+    let cancelled = 0;
+    const harness = renderInk(
+      <Onboarding home={home} onDone={(s) => done.push(s)} onCancel={() => cancelled++} />,
+    );
+    await settle();
+    harness.stdin.write(""); // esc
+    await settle();
+    expect(cancelled).toBe(1);
+    expect(done).toHaveLength(0);
+    const persisted = await loadSettings(home);
+    expect(persisted).toBeNull();
+    harness.unmount();
+  });
+});
+
 describe("Onboarding（V3：先 Key 后模型列表）", () => {
   it("renders the provider list on first screen", async () => {
     const harness = renderInk(<Onboarding home={home} onDone={() => {}} />);

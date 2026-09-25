@@ -144,6 +144,11 @@ async function runOnboarding(home: string): Promise<Settings> {
             instance.unmount();
             resolve(doneSettings);
           }}
+          onCancel={() => {
+            instance.unmount();
+            process.stderr.write("[modou] 已取消。再次运行 modou 可重新开始配置。\n");
+            process.exit(1);
+          }}
           onError={(message) => {
             instance.unmount();
             process.stderr.write(`[modou] ${message}\n`);

@@ -19,6 +19,8 @@ export interface OnboardingProps {
   initialProvider?: ProviderName;
   onDone: (settings: Settings) => void;
   onError?: (message: string) => void;
+  /** esc 取消整个引导（不保存任何设置） */
+  onCancel?: () => void;
 }
 
 type Step = "provider" | "key" | "loading" | "models" | "manualModel" | "saving";
@@ -29,7 +31,7 @@ type Step = "provider" | "key" | "loading" | "models" | "manualModel" | "saving"
  * （失败回退内置目录）→ ↑↓ 选择模型（M 手动输入 ID）→ 写入设置。
  * Ollama 免 Key：跳过 key 直接拉本地 /v1/models。
  */
-export function Onboarding({ home, base, initialProvider, onDone, onError }: OnboardingProps) {
+export function Onboarding({ home, base, initialProvider, onDone, onError, onCancel }: OnboardingProps) {
   const [step, setStep] = useState<Step>(initialProvider ? "key" : "provider");
   const [providerIndex, setProviderIndex] = useState(0);
   const [provider, setProvider] = useState<ProviderName | null>(initialProvider ?? null);
@@ -106,6 +108,11 @@ export function Onboarding({ home, base, initialProvider, onDone, onError }: Onb
   };
 
   useInput((input, key) => {
+    // esc：任意步骤（保存中除外）取消整个引导
+    if (key.escape && step !== "saving") {
+      onCancel?.();
+      return;
+    }
     if (step === "provider") {
       if (key.upArrow) {
         setProviderIndex((i) => (i + PROVIDER_OPTIONS.length - 1) % PROVIDER_OPTIONS.length);
