@@ -99,18 +99,18 @@ describe("ctx helpers", () => {
     expect(ctxColor(0.96)).toBe("red");
   });
 
-  it("permissionLabel maps to unambiguous English display names", () => {
-    expect(permissionLabel("plan")).toBe("readonly");
+  it("permissionLabel renames only default (plan/yolo pass through)", () => {
+    expect(permissionLabel("plan")).toBe("plan");
     expect(permissionLabel("default")).toBe("standard");
-    expect(permissionLabel("yolo")).toBe("auto");
+    expect(permissionLabel("yolo")).toBe("yolo");
   });
 
-  it("shows readonly for plan mode", async () => {
+  it("shows plan mode as-is", async () => {
     const harness = renderInk(
       <StatusBar model="glm-4.5-air" permissionMode="plan" usage={usage} />,
     );
     await settle();
-    expect(harness.text).toContain("readonly · glm-4.5-air");
+    expect(harness.text).toContain("plan · glm-4.5-air");
     harness.unmount();
   });
 

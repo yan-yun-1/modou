@@ -67,17 +67,14 @@ export interface StatusBarProps {
 }
 
 /**
- * 权限模式在状态栏的显示名：换成不与思考档位混淆的英文
- * （settings/命令仍是 plan/default/yolo，此处仅展示层映射）
+ * 权限模式在状态栏的显示名：仅 default 换词（与思考档位观感雷同易混淆），
+ * plan/yolo 本身无歧义原样显示。settings/命令取值不变，仅展示层映射。
  */
 export function permissionLabel(mode: string): string {
-  if (mode === "plan") {
-    return "readonly";
+  if (mode === "default") {
+    return "standard";
   }
-  if (mode === "yolo") {
-    return "auto";
-  }
-  return "standard";
+  return mode;
 }
 
 /** 单行四段状态栏：`readonly|standard|auto · model · 思考X │ ↑in ↓out $cost │ ctx n% (used/total) │ 目录` */

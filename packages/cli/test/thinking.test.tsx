@@ -72,7 +72,7 @@ describe("StatusBar 思考强度显示", () => {
       />,
     );
     await settle();
-    expect(harness.text).toContain("auto · glm-4.5-air · 思考high");
+    expect(harness.text).toContain("yolo · glm-4.5-air · 思考high");
     harness.unmount();
   });
 
