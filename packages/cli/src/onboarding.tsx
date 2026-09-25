@@ -39,6 +39,8 @@ export function Onboarding({ home, base, initialProvider, onDone, onError }: Onb
   const [manualId, setManualId] = useState("");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
+  // 用户按 K 主动重输 Key：本次 key 步骤不自动跳过
+  const [manualKeyEntry, setManualKeyEntry] = useState(false);
 
   const providerLabel = PROVIDER_OPTIONS.find((p) => p.name === provider)?.label ?? "";
 
@@ -61,6 +63,20 @@ export function Onboarding({ home, base, initialProvider, onDone, onError }: Onb
     },
     [base],
   );
+
+  // 进入 key 步骤时：settings 里已存有该供应商的 Key → 直接用旧 Key 拉模型列表，
+  // /model 换模型不必重输 Key（想换 Key 在模型列表按 K）
+  useEffect(() => {
+    if (step !== "key" || provider === null || provider === "ollama") {
+      return;
+    }
+    if (manualKeyEntry) {
+      return;
+    }
+    if (base?.apiKey) {
+      void loadModels(provider, base.apiKey);
+    }
+  }, [step, provider, manualKeyEntry, loadModels, base]);
 
   const saveWith = async (modelId: string) => {
     if (!provider) {
@@ -144,6 +160,11 @@ export function Onboarding({ home, base, initialProvider, onDone, onError }: Onb
       } else if (input === "m" || input === "M") {
         setManualId("");
         setStep("manualModel");
+      } else if (input === "k" || input === "K") {
+        // 重输 Key（当前 Key 失效/想换号时用）
+        setManualKeyEntry(true);
+        setApiKey("");
+        setStep("key");
       }
     }
   });
@@ -170,7 +191,7 @@ export function Onboarding({ home, base, initialProvider, onDone, onError }: Onb
     }
     return (
       <Box flexDirection="column">
-        <Text>{providerLabel} 的 API Key（输入不回显，回车确认；留空沿用已有 Key）：</Text>
+        <Text>{providerLabel} 的 API Key（输入不回显，回车确认）：</Text>
         <TextInput value={apiKey} onChange={setApiKey} onSubmit={submitKey} mask="*" />
       </Box>
     );
@@ -189,7 +210,7 @@ export function Onboarding({ home, base, initialProvider, onDone, onError }: Onb
     return (
       <Box flexDirection="column">
         <Text>
-          选择 {providerLabel} 的模型（↑/↓ 移动，回车确认，M 手动输入 ID）：
+          选择 {providerLabel} 的模型（↑/↓ 移动，回车确认，M 手动输入 ID，K 重输 Key）：
         </Text>
         {loadError ? (
           <Text color="yellow">远端列表拉取失败（{loadError}），已回退内置目录</Text>

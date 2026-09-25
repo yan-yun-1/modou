@@ -140,7 +140,7 @@ describe("Onboarding（V3：先 Key 后模型列表）", () => {
     harness.unmount();
   }, 30_000);
 
-  it("merges base settings so re-selection keeps permissionMode and budget", async () => {
+  it("skips the key prompt when base already has a key (e.g. /model)", async () => {
     const done: Settings[] = [];
     const base: Settings = {
       provider: "deepseek",
@@ -152,13 +152,49 @@ describe("Onboarding（V3：先 Key 后模型列表）", () => {
     const harness = renderInk(<Onboarding home={home} base={base} onDone={(s) => done.push(s)} />);
     await settle();
 
-    // anthropic → 输入新 key → 列表确认第一个
+    // anthropic → 已有 Key：不提示输入，直接拉模型列表 → 确认第一个
     harness.stdin.write("\r");
+    await settle(200);
+    // key 提示只可能出现在过渡帧，用最后一帧判断是否被跳过
+    expect(harness.frame).not.toContain("API Key");
+    expect(harness.frame).toContain("remote-model-a");
+    harness.stdin.write("\r");
+    await settle(150);
+
+    expect(done).toHaveLength(1);
+    expect(done[0]).toMatchObject({
+      provider: "anthropic",
+      modelId: "remote-model-a",
+      apiKey: "old-key", // 沿用既有 Key
+      permissionMode: "yolo",
+      budgetUsd: 5,
+    });
+    harness.unmount();
+  }, 30_000);
+
+  it("re-enters the key with K in the model list", async () => {
+    const done: Settings[] = [];
+    const base: Settings = {
+      provider: "deepseek",
+      modelId: "deepseek-chat",
+      apiKey: "old-key",
+      permissionMode: "default",
+    };
+    const harness = renderInk(<Onboarding home={home} base={base} onDone={(s) => done.push(s)} />);
     await settle();
+
+    // anthropic → 已有 Key 自动拉列表 → K 重输 → 新 Key → 再拉 → 确认
+    harness.stdin.write("\r");
+    await settle(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    harness.stdin.write("k");
+    await settle();
+    expect(harness.text).toContain("API Key");
     harness.stdin.write("sk-new-key");
     await settle();
     harness.stdin.write("\r");
     await settle(200);
+    expect(harness.text).toContain("remote-model-a");
     harness.stdin.write("\r");
     await settle(150);
 
@@ -167,8 +203,6 @@ describe("Onboarding（V3：先 Key 后模型列表）", () => {
       provider: "anthropic",
       modelId: "remote-model-a",
       apiKey: "sk-new-key",
-      permissionMode: "yolo",
-      budgetUsd: 5,
     });
     harness.unmount();
   }, 30_000);
