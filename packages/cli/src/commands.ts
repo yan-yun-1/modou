@@ -144,12 +144,25 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
     case "help":
       return {
         action: "message",
-        text: "可用命令：/cost（用量与成本）、/checkpoints（回滚点列表）、/rollback <n>（恢复）、/sessions（会话列表）、/resume <id>（恢复会话）、/model（切换模型）、/provider（切换供应商）、/thinking（思考强度）、/permission（权限模式）、/exit（退出）。",
+        text: [
+          "可用命令：",
+          "  /cost — 用量与成本",
+          "  /checkpoints — 回滚点列表",
+          "  /rollback <n> — 恢复回滚点",
+          "  /sessions — 会话列表",
+          "  /resume <id> — 恢复会话",
+          "  /model — 切换模型",
+          "  /provider — 切换供应商",
+          "  /thinking — 思考强度",
+          "  /permission — 权限模式",
+          "  /exit — 退出",
+          "  /help — 帮助",
+        ].join("\n"),
       };
     default:
       return {
         action: "message",
-        text: `未知命令 "${input.trim()}"。可用命令：/cost、/checkpoints、/rollback <n>、/sessions、/resume <id>、/model、/provider、/thinking、/permission、/exit、/help`,
+        text: `未知命令 "${input.trim()}"。输入 /help 查看全部命令。`,
       };
   }
 }
