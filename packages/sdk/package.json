@@ -18,8 +18,8 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@agentclientprotocol/sdk": "^1.5.0",
     "@modou-dev/core": "workspace:*",
-    "@zed-industries/agent-client-protocol": "0.4.5",
     "zod": "^4.6.5"
   },
   "engines": {

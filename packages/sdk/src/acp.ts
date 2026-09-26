@@ -4,7 +4,7 @@ import {
   ndJsonStream,
   type Agent,
   type AgentSideConnection as AgentSideConnectionType,
-} from "@zed-industries/agent-client-protocol";
+} from "@agentclientprotocol/sdk";
 import { createSession, type ModouSession } from "./session.js";
 import { loadModelOverrides } from "./settings.js";
 import type { LanguageModel, PermissionRule } from "@modou-dev/core";
