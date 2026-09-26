@@ -1,0 +1,33 @@
+{
+  "name": "@modou-dev/lsp",
+  "version": "0.5.0-alpha.1",
+  "description": "墨斗 Modou LSP 客户端（PRD F16）——language server 诊断与定义跳转注入 agent 上下文",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "vscode-jsonrpc": "^9.0.3",
+    "vscode-languageserver-protocol": "^3.18.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.7"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
