@@ -1,6 +1,6 @@
 {
   "name": "@modou-dev/server",
-  "version": "0.5.0-alpha",
+  "version": "0.5.0-alpha.1",
   "description": "墨斗 Modou Server——HTTP + SSE 服务化（PRD F18），多端复用的会话 API",
   "type": "module",
   "main": "./dist/index.js",
