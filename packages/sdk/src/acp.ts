@@ -50,24 +50,46 @@ function acpToolKind(name: string): "read" | "edit" | "delete" | "move" | "searc
   return "other";
 }
 
-/** 回环自测用 stub 模型（MODOU_ACP_MODEL_STUB=1 时启用）；真实 Zed 运行走 settings 的 provider */
+/** 回环自测用 stub 模型（MODOU_ACP_MODEL_STUB=1 时启用）；真实 Zed 运行走 settings 的 provider。
+ * MODOU_ACP_STUB_TOOL=1 时首轮额外发一次 write 工具调用，供审批回环测试。 */
 function stubModel(): LanguageModel {
+  let calls = 0;
   return {
     specificationVersion: "v2",
     provider: "stub",
     modelId: "stub",
-    doStream: async () => ({
-      stream: new ReadableStream({
-        start(controller) {
-          controller.enqueue({ type: "stream-start", warnings: [] });
-          controller.enqueue({ type: "text-start", id: "1" });
-          controller.enqueue({ type: "text-delta", id: "1", delta: "你好，这是墨斗 ACP stub 回复。" });
-          controller.enqueue({ type: "text-end", id: "1" });
-          controller.enqueue({ type: "finish", finishReason: "stop", usage: { inputTokens: 10, outputTokens: 5 } });
-          controller.close();
-        },
-      }),
-    }),
+    doStream: async () => {
+      calls += 1;
+      const withTool = process.env.MODOU_ACP_STUB_TOOL === "1" && calls === 1;
+      return {
+        stream: new ReadableStream({
+          start(controller) {
+            controller.enqueue({ type: "stream-start", warnings: [] });
+            controller.enqueue({ type: "text-start", id: "1" });
+            controller.enqueue({
+              type: "text-delta",
+              id: "1",
+              delta: withTool ? "好的，我来创建文件。" : "你好，这是墨斗 ACP stub 回复。",
+            });
+            controller.enqueue({ type: "text-end", id: "1" });
+            if (withTool) {
+              controller.enqueue({
+                type: "tool-call",
+                toolCallId: "call_stub_e2e",
+                toolName: "write",
+                input: JSON.stringify({ path: "acp-e2e.txt", text: "hi" }),
+              });
+            }
+            controller.enqueue({
+              type: "finish",
+              finishReason: withTool ? "tool-calls" : "stop",
+              usage: { inputTokens: 10, outputTokens: 5 },
+            });
+            controller.close();
+          },
+        }),
+      };
+    },
   } as unknown as LanguageModel;
 }
 

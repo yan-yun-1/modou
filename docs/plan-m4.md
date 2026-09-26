@@ -109,7 +109,7 @@ LSP（F16）、VS Code 插件（F20）、OS 沙箱落地（补三平台评估文
 | A4 createSession 高层 API | ✅ 10 行嵌入测试通过 | 2026-09-25 |
 | B1-B4 server 包（node:http） | ✅ 5 例集成测试（SSE/审批/历史/409/400） | 2026-09-25 |
 | C1-C3 ACP 适配（modou acp） | ✅ 回环测试 initialize→prompt→end_turn 1.6s | 2026-09-25 |
-| C4 Zed 实测 | ⏳ 待用户环境安装 Zed 联调 | — |
+| C4 Zed 实测 | 🔄 协议层全通（init/new/prompt/流式/审批回环）；联调中修复 answerById 竞态挂死：approve() 先入队再 yield approval_request，否则远程方立即应答时 answerById 扑空、整轮挂起（+回归测试）；UI 层待用户复测 | 2026-09-25 |
 | D1-D3 Hooks | ✅ deny/改写 args/附加输出 + 命令式钩子端到端 | 2026-09-25 |
 | E1-E2 dogfood/backlog 清偿 | ✅ 摩擦点 1/2/4 + backlog #8/#12 | 2026-09-25 |
 | E3 eval 回归 | ⏳ 发布前执行 | — |

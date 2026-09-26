@@ -364,6 +364,15 @@ export class AgentLoop {
             })
             .catch(() => null)
         : null;
+      // 先入队审批请求再产出事件：远程消费方（ACP/server）收到事件后立即按 id 回答，
+      // 若 approve() 在 yield 之后才入队，answerById 会扑空、整轮挂起
+      const answerPromise = approve({
+        id: event.id,
+        name: event.name,
+        args: event.args,
+        reason,
+        diff: diff ?? undefined,
+      });
       yield await persist({
         type: "approval_request",
         id: event.id,
@@ -373,13 +382,7 @@ export class AgentLoop {
         diff: diff ?? undefined,
         at: at(),
       });
-      const answer = await approve({
-        id: event.id,
-        name: event.name,
-        args: event.args,
-        reason,
-        diff: diff ?? undefined,
-      });
+      const answer = await answerPromise;
       yield await persist({
         type: "approval_result",
         id: event.id,

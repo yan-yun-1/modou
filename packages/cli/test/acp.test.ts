@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -108,6 +108,48 @@ describe("modou acp（F19 回环自测）", () => {
       expect((chunkUpdate.params!.update as Record<string, unknown>).content).toBeTruthy();
       const promptDone = await readUntil(child, buffer, (m) => m.id === 3);
       expect((promptDone.result!.stopReason as string)).toBe("end_turn");
+    } finally {
+      child.kill();
+    }
+  }, 30_000);
+
+  it("审批回环：request_permission 立即应答后工具执行且 prompt 正常收尾（answerById 竞态回归）", async () => {
+    const child = spawn(process.execPath, [join(__dirname, "..", "dist", "index.js"), "acp"], {
+      env: { ...process.env, MODOU_ACP_MODEL_STUB: "1", MODOU_ACP_STUB_TOOL: "1" },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    const buffer = { value: "" };
+    try {
+      writeMessage(child, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: 1, clientCapabilities: {} } });
+      await readUntil(child, buffer, (m) => m.id === 1);
+      writeMessage(child, { jsonrpc: "2.0", id: 2, method: "session/new", params: { cwd: dir, mcpServers: [] } });
+      const newSession = await readUntil(child, buffer, (m) => m.id === 2);
+      const sessionId = newSession.result!.sessionId as string;
+      expect(sessionId).toBeTruthy();
+
+      writeMessage(child, {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "session/prompt",
+        params: { sessionId, prompt: [{ type: "text", text: "创建文件" }] },
+      });
+
+      // 权限请求一到立即应答（复刻 Zed 时序）：修复前 approve() 尚未入队，
+      // answerById 扑空导致整轮挂起、文件不落盘
+      const perm = await readUntil(child, buffer, (m) => m.method === "session/request_permission");
+      writeMessage(child, { jsonrpc: "2.0", id: perm.id, result: { outcome: { outcome: "selected", optionId: "allow" } } });
+
+      const toolDone = await readUntil(child, buffer, (m) => {
+        if (m.method !== "session/update") return false;
+        const update = m.params!.update as Record<string, unknown>;
+        return update.sessionUpdate === "tool_call_update" && update.status === "completed";
+      });
+      expect(toolDone).toBeTruthy();
+
+      const promptDone = await readUntil(child, buffer, (m) => m.id === 3);
+      expect(promptDone.result!.stopReason as string).toBe("end_turn");
+
+      expect(await readFile(join(dir, "acp-e2e.txt"), "utf8")).toBe("hi");
     } finally {
       child.kill();
     }
