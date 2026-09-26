@@ -65,6 +65,20 @@ export const settingsSchema = z.object({
       ]),
     )
     .optional(),
+  /**
+   * LSP servers（M5 C2 / PRD F16）：缺省时自动探测 PATH 中的 typescript-language-server。
+   * extensions 指定该 server 处理的扩展名（缺省 typescript → TS/JS 系）。
+   */
+  lspServers: z
+    .record(
+      z.string().min(1),
+      z.object({
+        command: z.string().min(1),
+        args: z.array(z.string()).optional(),
+        extensions: z.array(z.string()).optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;

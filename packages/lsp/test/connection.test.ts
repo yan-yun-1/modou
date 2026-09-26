@@ -47,7 +47,7 @@ describe("LspConnection（C1 集成）", () => {
     const file = join(dir, "a.ts");
     await writeFile(file, "const x = ERROR_MARKER;\n");
     conn.applyChanges(file, "const x = ERROR_MARKER;\n");
-    const diags = await conn.waitForDiagnostics(file);
+    const diags = await conn.waitForDiagnostics(file, { sinceRevision: 0 });
     expect(diags).toHaveLength(1);
     expect(diags[0]).toMatchObject({
       severity: 1,

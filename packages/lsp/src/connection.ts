@@ -80,6 +80,7 @@ export class LspConnection {
   #diagnostics = new Map<string, Diagnostic[]>();
   #open = new Set<string>();
   #version = new Map<string, number>();
+  #revision = 0;
   #closed = false;
 
   private constructor(child: ChildProcess, connection: MessageConnection, cwd: string) {
@@ -87,6 +88,7 @@ export class LspConnection {
     this.#connection = connection;
     this.#cwd = cwd;
     connection.onNotification(PublishDiagnosticsNotification.type, (params) => {
+      this.#revision += 1;
       this.#diagnostics.set(params.uri, params.diagnostics ?? []);
     });
     connection.onError(([error]) => {
@@ -178,16 +180,30 @@ export class LspConnection {
     }));
   }
 
-  /** 等待诊断满足谓词（默认等到出现非空诊断），超时返回当前快照 */
+  /** 诊断缓存修订号：每次 publishDiagnostics 递增（等待"本次变更之后"的发布用） */
+  get diagnosticRevision(): number {
+    return this.#revision;
+  }
+
+  /**
+   * 等待诊断满足谓词。默认等待修订号推进之后的非空诊断，避免被旧快照满足；
+   * 超时返回当前快照。
+   */
   async waitForDiagnostics(
     path: string,
-    options: { timeoutMs?: number; predicate?: (diags: DiagnosticInfo[]) => boolean } = {},
+    options: {
+      timeoutMs?: number;
+      predicate?: (diags: DiagnosticInfo[]) => boolean;
+      /** 只认该修订号之后的发布（缺省=当前值，即要求一次新发布） */
+      sinceRevision?: number;
+    } = {},
   ): Promise<DiagnosticInfo[]> {
     const predicate = options.predicate ?? ((diags) => diags.length > 0);
+    const since = options.sinceRevision ?? this.#revision;
     const deadline = Date.now() + (options.timeoutMs ?? 2_000);
     for (;;) {
       const current = this.diagnosticsFor(path);
-      if (predicate(current)) {
+      if (this.#revision > since && predicate(current)) {
         return current;
       }
       if (Date.now() >= deadline) {
