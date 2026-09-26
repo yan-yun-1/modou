@@ -5,6 +5,7 @@ import {
   SessionStore,
   createBuiltinTools,
   createLanguageModel,
+  createSandboxAdapter,
   buildSystemPrompt,
   formatAgreements,
   loadAgreements,
@@ -153,6 +154,9 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
 `);
   }
   const capabilities = resolveCapabilities(settings.provider, settings.modelId, modelOverrides);
+  // M5 B2（PRD 6.5）：settings.sandbox → 平台可用时启用 OS 沙箱（当前仅 macOS Seatbelt）
+  const sandbox = createSandboxAdapter(settings.sandbox ?? "off");
+  const sandboxAutoAllow = sandbox !== undefined && settings.sandboxAutoAllow === true;
   // 思考强度可变引用：setThinking 改 current，下一次模型请求立即生效（无需重启）
   const thinkingRef: { current: Record<string, unknown> | undefined } = {
     current: settings.thinking
@@ -173,7 +177,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       // 用可变引用持有，/thinking 改 current 即热切换，无需重启
       extraBodyRef: thinkingRef,
     });
-  const tools = options.tools ?? createBuiltinTools();
+  const tools = options.tools ?? createBuiltinTools({ sandbox });
   const store = options.store ?? new SessionStore();
   let spent = 0;
 
@@ -245,6 +249,8 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     store,
     // M4 D2：settings.hooks 的 shell 命令 → core 生命周期钩子
     hooks: buildHooks(settings),
+    // M5 B2：沙箱实际生效时 execute 免弹窗（docs/sandbox-eval.md §五）
+    sandboxAutoAllow,
     permissions: (() => {
       // M4 A3：读回持久化的 always-allow 白名单；remember 新增规则时落盘
       const engine = new PermissionEngine({

@@ -143,6 +143,8 @@ interface FixtureOptions {
   checkpointer?: Checkpointer;
   /** 传给 loop.run 的运行级权限覆盖（O1） */
   runPermissions?: PermissionEngine;
+  /** M5 B2：沙箱内 execute 免审批开关 */
+  sandboxAutoAllow?: boolean;
 }
 
 async function runFixture(
@@ -174,6 +176,7 @@ async function runFixture(
     systemPrompt: "test",
     cwd: dir,
     checkpointer: options.checkpointer,
+    sandboxAutoAllow: options.sandboxAutoAllow,
   });
   const events: ModouEvent[] = [];
   for await (const event of loop.run(input, sessionId, { permissions: options.runPermissions })) {
@@ -343,6 +346,41 @@ describe("AgentLoop tools", () => {
       [toolCallStream("t4", "fakeBash", { command: "node x.js" }), textStream("明白")],
       "跑脚本",
       { mode: "plan" },
+    );
+    const result = events.find((e) => e.type === "tool_result");
+    expect((result as { output: string }).output).toContain("权限拒绝");
+    expect(events.some((e) => e.type === "approval_request")).toBe(false);
+    expect(approveSpy).not.toHaveBeenCalled();
+  });
+
+  it("sandboxAutoAllow runs execute tools without approval (M5 B2)", async () => {
+    const { events, approveSpy } = await runFixture(
+      [toolCallStream("t4b", "fakeBash", { command: "npm test" }), textStream("执行完成")],
+      "跑测试",
+      { sandboxAutoAllow: true, approve: async () => ({ granted: false, remembered: false }) },
+    );
+    expect(events.map((e) => e.type)).toEqual(TYPE_SEQUENCE_WITH_RESULT);
+    const result = events.find((e) => e.type === "tool_result");
+    expect((result as { output: string }).output).toBe("ran-npm test");
+    expect(events.some((e) => e.type === "approval_request")).toBe(false);
+    expect(approveSpy).not.toHaveBeenCalled();
+  });
+
+  it("sandboxAutoAllow does not bypass write approvals (M5 B2)", async () => {
+    const { events, approveSpy } = await runFixture(
+      [toolCallStream("t4c", "fakeWrite", { path: "a.ts", text: "x" }), textStream("完成")],
+      "写文件",
+      { sandboxAutoAllow: true, approve: async () => ({ granted: true, remembered: false }) },
+    );
+    expect(events.some((e) => e.type === "approval_request")).toBe(true);
+    expect(approveSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("sandboxAutoAllow does not override plan-mode deny (M5 B2)", async () => {
+    const { events, approveSpy } = await runFixture(
+      [toolCallStream("t4d", "fakeBash", { command: "node x.js" }), textStream("明白")],
+      "跑脚本",
+      { mode: "plan", sandboxAutoAllow: true },
     );
     const result = events.find((e) => e.type === "tool_result");
     expect((result as { output: string }).output).toContain("权限拒绝");

@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { z } from "zod";
+import type { SandboxAdapter } from "../sandbox/index.js";
 import type { Tool } from "./types.js";
 
 const DEFAULT_TIMEOUT_MS = 120_000;
@@ -61,21 +62,28 @@ function exec(
   cwd: string,
   timeoutMs: number,
   signal: AbortSignal,
+  sandbox?: SandboxAdapter,
 ): Promise<RunOutcome> {
   return new Promise((resolvePromise, rejectPromise) => {
     const isWin = process.platform === "win32";
-    const child = isWin
-      ? spawn(
-          "powershell.exe",
-          [
+    const base = isWin
+      ? {
+          cmd: "powershell.exe",
+          args: [
             "-NoProfile",
             "-NonInteractive",
             "-EncodedCommand",
             Buffer.from(buildWindowsScript(command), "utf16le").toString("base64"),
           ],
-          { cwd, windowsHide: true },
-        )
-      : spawn("/bin/sh", ["-c", command], { cwd, detached: true });
+        }
+      : { cmd: "/bin/sh", args: ["-c", command] };
+    // M5 B2：沙箱激活时经适配器包装（macOS sandbox-exec；见 docs/sandbox-eval.md）
+    const target = sandbox ? sandbox.wrapExec(base.cmd, base.args, { cwd }) : base;
+    const child = spawn(target.cmd, target.args, {
+      cwd,
+      windowsHide: true,
+      detached: !isWin,
+    });
 
     let stdout = "";
     let stderr = "";
@@ -149,34 +157,40 @@ function exec(
   });
 }
 
-export const bashTool: Tool<z.infer<typeof bashSchema>> = {
-  name: "bash",
-  description:
-    "在项目目录执行 shell 命令（Windows 用 PowerShell，其余用 /bin/sh），返回 stdout/stderr 与退出码。长输出只保留尾部。超时默认 120 秒。",
-  kind: "execute",
-  schema: bashSchema,
-  async run(args, ctx) {
-    const outcome = await exec(
-      args.command,
-      ctx.cwd,
-      args.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      ctx.signal,
-    );
-    const sections: string[] = [];
-    if (outcome.timedOut) {
-      sections.push("[命令超时，进程已被强制终止]");
-    }
-    if (outcome.stdout.trim()) {
-      sections.push(
-        `--- stdout ${outcome.outputTruncated ? "（超长，仅保留尾部）" : ""} ---\n${outcome.stdout.trimEnd()}`,
+export function createBashTool(options: { sandbox?: SandboxAdapter } = {}): Tool<z.infer<typeof bashSchema>> {
+  const { sandbox } = options;
+  return {
+    name: "bash",
+    description:
+      "在项目目录执行 shell 命令（Windows 用 PowerShell，其余用 /bin/sh），返回 stdout/stderr 与退出码。长输出只保留尾部。超时默认 120 秒。",
+    kind: "execute",
+    schema: bashSchema,
+    async run(args, ctx) {
+      const outcome = await exec(
+        args.command,
+        ctx.cwd,
+        args.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        ctx.signal,
+        sandbox,
       );
-    }
-    if (outcome.stderr.trim()) {
-      sections.push(`--- stderr ---\n${outcome.stderr.trimEnd()}`);
-    }
-    return {
-      output: `${sections.join("\n")}\n[exit ${outcome.code ?? "null"}]`,
-      truncated: outcome.outputTruncated || undefined,
-    };
-  },
-};
+      const sections: string[] = [];
+      if (outcome.timedOut) {
+        sections.push("[命令超时，进程已被强制终止]");
+      }
+      if (outcome.stdout.trim()) {
+        sections.push(
+          `--- stdout ${outcome.outputTruncated ? "（超长，仅保留尾部）" : ""} ---\n${outcome.stdout.trimEnd()}`,
+        );
+      }
+      if (outcome.stderr.trim()) {
+        sections.push(`--- stderr ---\n${outcome.stderr.trimEnd()}`);
+      }
+      return {
+        output: `${sections.join("\n")}\n[exit ${outcome.code ?? "null"}]`,
+        truncated: outcome.outputTruncated || undefined,
+      };
+    },
+  };
+}
+
+export const bashTool = createBashTool();

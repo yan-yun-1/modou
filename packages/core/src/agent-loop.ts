@@ -48,6 +48,11 @@ export interface AgentLoopDeps {
   hooks?: AgentHooks;
   /** M4 E1：无头模式标记——审批被自动拒绝时，拒绝文案附带 always-allow 配置建议 */
   headless?: boolean;
+  /**
+   * M5 B2（PRD 6.5）：沙箱内执行免审批。仅当 OS 沙箱实际生效时由 sdk 装配层置 true
+   * （docs/sandbox-eval.md）。只把 execute 的 ask 转为 allow，不覆盖 plan 模式 deny。
+   */
+  sandboxAutoAllow?: boolean;
 }
 
 /** 工具生命周期钩子（F14） */
@@ -337,6 +342,14 @@ export class AgentLoop {
     if (hookDecision) {
       // 钩子显式决策覆盖引擎判定（deny 已在上方短路）
       decision = hookDecision;
+    }
+    if (
+      decision === "ask" &&
+      tool.kind === "execute" &&
+      this.#deps.sandboxAutoAllow === true
+    ) {
+      // 沙箱内 execute 免弹窗（M5 B2）：ask→allow；plan 模式 deny 不受影响
+      decision = "allow";
     }
 
     if (decision === "deny") {

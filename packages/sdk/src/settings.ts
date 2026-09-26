@@ -41,6 +41,13 @@ export const settingsSchema = z.object({
   cwd: z.string().min(1).optional(),
   /** 思考强度（X）：off 关闭推理，low/medium/high 按供应商映射；缺省=跟随模型默认 */
   thinking: z.enum(["off", "low", "medium", "high"]).optional(),
+  /**
+   * OS 沙箱（M5 B2 / PRD 6.5）：off 关闭；auto 仅在平台支持时启用（当前仅 macOS Seatbelt）。
+   * 评估文档 docs/sandbox-eval.md。
+   */
+  sandbox: z.enum(["off", "auto"]).optional(),
+  /** 沙箱内 execute 免审批（PRD 6.5「少弹窗而更安全」）：仅当沙箱实际生效时才起作用 */
+  sandboxAutoAllow: z.boolean().optional(),
   /** MCP servers（契约增补：plan-m2 N3） */
   mcpServers: z
     .record(

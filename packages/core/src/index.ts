@@ -46,4 +46,12 @@ export { ToolRegistry } from "./tools/registry.js";
 export { createBuiltinTools, createReadonlyTools } from "./tools/index.js";
 export { createExploreTool } from "./tools/explore.js";
 export type { Tool, ToolContext, ToolKind, ToolResult } from "./tools/types.js";
+export {
+  createSandboxAdapter,
+  buildSeatbeltProfile,
+  createSeatbeltAdapter,
+  type SandboxAdapter,
+  type SandboxMode,
+  type SandboxSpawnContext,
+} from "./sandbox/index.js";
 export type { LanguageModel } from "ai";
