@@ -18,6 +18,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@modou-dev/sdk": "workspace:*",
     "eslint": "^10.10.0",
     "prettier": "^3.9.8",
     "tsx": "^4.23.13",

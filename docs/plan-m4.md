@@ -112,7 +112,7 @@ LSP（F16）、VS Code 插件（F20）、OS 沙箱落地（补三平台评估文
 | C4 Zed 实测 | 🔄 协议层全通（init/new/prompt/流式/审批回环）；联调中修复 answerById 竞态挂死：approve() 先入队再 yield approval_request，否则远程方立即应答时 answerById 扑空、整轮挂起（+回归测试）；UI 层待用户复测 | 2026-09-25 |
 | D1-D3 Hooks | ✅ deny/改写 args/附加输出 + 命令式钩子端到端 | 2026-09-25 |
 | E1-E2 dogfood/backlog 清偿 | ✅ 摩擦点 1/2/4 + backlog #8/#12 | 2026-09-25 |
-| E3 eval 回归 | ⏳ 发布前执行 | — |
+| E3 eval 回归 | ✅ 14/14 通过（基线 10）；修复根包缺失 @modou-dev/sdk workspace 依赖导致 pnpm eval 无法启动 | 2026-09-26 |
 | E5 v0.5.0-alpha 发布 | ⏳ | — |
 
 版本升级：0.4.4 → 0.5.0-alpha（新增 sdk/server 两包）。
