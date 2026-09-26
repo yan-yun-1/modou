@@ -25,6 +25,7 @@ import { spawn } from "node:child_process";
 import { resolveApiKey, resolveCwd, savePermissionRule, type Settings } from "./settings.js";
 import { thinkingToExtraBody } from "./provider-models.js";
 import { ApprovalBridge } from "./approval-bridge.js";
+import { createDefinitionTool, createLspIntegration, startLspHub } from "./lsp-assembly.js";
 import type { AgentHooks } from "@modou-dev/core";
 
 export interface CreateLoopOptions {
@@ -178,6 +179,11 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       extraBodyRef: thinkingRef,
     });
   const tools = options.tools ?? createBuiltinTools({ sandbox });
+  // M5 C3（PRD F16）：LSP 装配——hub 失败/无 server 时为 undefined，零影响
+  const lspHub = await startLspHub(settings, cwd);
+  if (lspHub) {
+    tools.register(createDefinitionTool(lspHub));
+  }
   const store = options.store ?? new SessionStore();
   let spent = 0;
 
@@ -275,6 +281,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     cwd,
     isOverBudget: () => settings.budgetUsd !== undefined && spent > settings.budgetUsd,
     checkpointer: options.checkpointer,
+    lsp: lspHub ? createLspIntegration(lspHub) : undefined,
   });
 
   return {
@@ -289,6 +296,7 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
       for (const connection of mcpConnections) {
         await connection.close().catch(() => {});
       }
+      await lspHub?.close().catch(() => {});
     },
     contextWindow: capabilities.contextWindow,
     updateSpent: (costUsd: number) => {

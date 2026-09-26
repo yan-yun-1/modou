@@ -11,5 +11,6 @@ export * from "./loop-factory.js";
 export * from "./print-mode.js";
 export * from "./session.js";
 export * from "./acp.js";
+export * from "./lsp-assembly.js";
 export { SessionStore } from "@modou-dev/core";
 export type { McpServerConfig } from "@modou-dev/core";

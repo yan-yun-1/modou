@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { resolve as resolvePath } from "node:path";
 import {
   tool as aiTool,
   type LanguageModel,
@@ -11,6 +13,7 @@ import type { ModouEvent } from "./events.js";
 import type { ModelCapabilities } from "./models/catalog.js";
 import { streamTurn } from "./models/stream.js";
 import type { PermissionEngine, PermissionRule } from "./permissions.js";
+import { pathOfArgs, type LspIntegration } from "./lsp.js";
 import { rebuildState } from "./session.js";
 import type { SessionStore } from "./session-store.js";
 import type { ToolRegistry } from "./tools/registry.js";
@@ -53,6 +56,8 @@ export interface AgentLoopDeps {
    * （docs/sandbox-eval.md）。只把 execute 的 ask 转为 allow，不覆盖 plan 模式 deny。
    */
   sandboxAutoAllow?: boolean;
+  /** M5 C3（PRD F16）：LSP 集成——write 类工具成功后注入诊断；definition 工具由 sdk 装配注册 */
+  lsp?: LspIntegration;
 }
 
 /** 工具生命周期钩子（F14） */
@@ -283,6 +288,35 @@ export class AgentLoop {
   }
 
   /**
+   * M5 C3：write 后诊断。内容取 args.text（write），edit 从磁盘回读；
+   * 任何失败静默跳过——诊断是增强信息，不能阻断工具结果回注。
+   */
+  async #lspDiagnosticsNote(args: unknown): Promise<string | undefined> {
+    const lsp = this.#deps.lsp;
+    if (!lsp) {
+      return undefined;
+    }
+    try {
+      const path = pathOfArgs(args);
+      if (!path) {
+        return undefined;
+      }
+      const abs = resolvePath(this.#deps.cwd, path);
+      const record = args as Record<string, unknown>;
+      const content =
+        typeof record.text === "string"
+          ? record.text
+          : await readFile(abs, "utf8").catch(() => undefined);
+      if (content === undefined) {
+        return undefined;
+      }
+      return await lsp.diagnosticsAfterWrite(abs, content);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
    * 处理一次工具调用：权限判定 → （需要时）人工审批 → 执行 → 结果回注模型。
    * 未知工具与校验失败不中断会话，作为工具结果回注让模型自行修复。
    */
@@ -451,6 +485,13 @@ export class AgentLoop {
       toolError = (error as Error).message;
       output = `工具执行失败：${toolError}`;
       yield await persist({ type: "error", message: output, fatal: false, at: at() });
+    }
+    // M5 C3（PRD F16）：write 类工具成功后注入 LSP 诊断（早于用户 postToolUse hook）
+    if (!toolError && tool.kind === "write" && this.#deps.lsp) {
+      const lspNote = await this.#lspDiagnosticsNote(hookArgs);
+      if (lspNote) {
+        output = `${output}\n${lspNote}`;
+      }
     }
     // F14 PostToolUse：可附加输出（成功与失败路径都触发）
     const postHook = this.#deps.hooks?.postToolUse;

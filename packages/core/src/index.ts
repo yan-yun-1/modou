@@ -29,6 +29,7 @@ export {
   type ApprovalAnswer,
   type ApprovalRequest,
 } from "./agent-loop.js";
+export { pathOfArgs, type LspIntegration } from "./lsp.js";
 export { buildSystemPrompt, buildPlanTaskPrompt, type PromptContext } from "./prompt.js";
 export { formatAgreements, loadAgreements, type AgreementSection } from "./context/agents-md.js";
 export { compactMessages, estimateTokens, needsCompaction } from "./context/compaction.js";

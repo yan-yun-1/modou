@@ -20,6 +20,7 @@
   "dependencies": {
     "@agentclientprotocol/sdk": "^1.5.0",
     "@modou-dev/core": "workspace:*",
+    "@modou-dev/lsp": "workspace:*",
     "zod": "^4.6.5"
   },
   "engines": {
