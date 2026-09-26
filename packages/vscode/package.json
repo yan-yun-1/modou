@@ -1,0 +1,56 @@
+{
+  "name": "modou-vscode",
+  "displayName": "墨斗 Modou",
+  "description": "墨斗 Modou 终端 Agent 的 VS Code 侧边栏（alpha，PRD F20）——复用 @modou-dev/server 的 REST+SSE",
+  "version": "0.5.0-alpha.1",
+  "publisher": "modou-dev",
+  "private": true,
+  "main": "./dist/extension.js",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "modou",
+          "title": "墨斗 Modou",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "modou": [
+        {
+          "type": "webview",
+          "id": "modou.panel",
+          "name": "Modou"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "modou.focus",
+        "title": "打开墨斗面板"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "package": "vsce package -o modou-vscode.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.9.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yan-yun-1/modou.git",
+    "directory": "packages/vscode"
+  },
+  "license": "Apache-2.0"
+}
