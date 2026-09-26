@@ -5,16 +5,20 @@ import { createDefinitionTool, resolveLspServers } from "@modou-dev/sdk";
 // M5 C3：LSP 装配层单元测试（hub 的协议行为在 @modou-dev/lsp 测试覆盖）
 
 describe("resolveLspServers（C3 装配）", () => {
-  it("显式 lspServers 优先于自动探测", () => {
+  it("显式 lspServers 优先于自动探测（无需 lsp 开关）", () => {
     const servers = resolveLspServers({
       lspServers: { py: { command: "pyright-langserver", args: ["--stdio"] } },
     } as never);
     expect(servers).toEqual({ py: { command: "pyright-langserver", args: ["--stdio"] } });
   });
 
-  it("lspServers 为空对象时回退探测（本机无 server 则 undefined）", () => {
-    const servers = resolveLspServers({ lspServers: {} } as never);
-    // 本机是否装了 typescript-language-server 不确定，两者都是合法结果
+  it("默认 off：未配置 lspServers 且未开 lsp 时不探测", () => {
+    expect(resolveLspServers({} as never)).toBeUndefined();
+    expect(resolveLspServers({ lspServers: {}, lsp: "off" } as never)).toBeUndefined();
+  });
+
+  it("lsp:auto 时回退探测（探测结果取决于本机环境）", () => {
+    const servers = resolveLspServers({ lsp: "auto" } as never);
     expect(servers === undefined || Object.keys(servers).length >= 0).toBe(true);
   });
 });

@@ -73,10 +73,32 @@ export interface StartOptions {
   initTimeoutMs?: number;
 }
 
+/** LSP URI → 本地路径；处理 server 回传的非常规编码（如 file:///c%3A/...） */
+function uriToPath(uri: string): string {
+  try {
+    return fileURLToPath(uri);
+  } catch {
+    return decodeURIComponent(uri.replace(/^file:\/\//, ""));
+  }
+}
+
+/** 路径归一化键：Windows 盘符统一小写（server 回传小写盘符），仅作缓存键用 */
+function pathKey(p: string): string {
+  const resolved = resolve(p);
+  return process.platform === "win32" ? resolved.replace(/^[A-Z]:/, (m) => m.toLowerCase()) : resolved;
+}
+
+/** 对外返回的规范路径：Windows 盘符统一大写 */
+function canonicalPath(p: string): string {
+  const resolved = resolve(p);
+  return process.platform === "win32" ? resolved.replace(/^[a-z]:/, (m) => m.toUpperCase()) : resolved;
+}
+
 export class LspConnection {
   #child: ChildProcess;
   #connection: MessageConnection;
   #cwd: string;
+  /** key = pathKey（归一化本地路径），规避 server 回传 URI 的编码/盘符差异 */
   #diagnostics = new Map<string, Diagnostic[]>();
   #open = new Set<string>();
   #version = new Map<string, number>();
@@ -89,7 +111,7 @@ export class LspConnection {
     this.#cwd = cwd;
     connection.onNotification(PublishDiagnosticsNotification.type, (params) => {
       this.#revision += 1;
-      this.#diagnostics.set(params.uri, params.diagnostics ?? []);
+      this.#diagnostics.set(pathKey(uriToPath(params.uri)), params.diagnostics ?? []);
     });
     connection.onError(([error]) => {
       process.stderr.write(`[modou-lsp] server error: ${error.message}\n`);
@@ -98,10 +120,17 @@ export class LspConnection {
 
   /** 启动 server 并完成 initialize 握手 */
   static async start(config: LspServerConfig, options: StartOptions): Promise<LspConnection> {
-    const child = spawn(config.command, config.args ?? [], {
+    // Windows 上 server 多为 .cmd 垫片（typescript-language-server 等），
+    // Node 安全策略禁止无 shell 直接 spawn——命令来自用户 settings，与 bash 同级信任。
+    // shell 模式下 Node 只做字符串拼接，含空格的路径必须自己加引号。
+    const useShell = process.platform === "win32";
+    const quote = (part: string) => (/\s/.test(part) ? `"${part}"` : part);
+    const parts = [config.command, ...(config.args ?? [])].map(quote);
+    const child = spawn(useShell ? parts.join(" ") : config.command, useShell ? [] : (config.args ?? []), {
       cwd: options.cwd,
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
+      shell: useShell,
     });
     const connection = createMessageConnection(
       new StreamMessageReader(child.stdout),
@@ -111,19 +140,43 @@ export class LspConnection {
     connection.listen();
     const initTimeoutMs = options.initTimeoutMs ?? 15_000;
     const rootUri = pathToFileURL(resolve(options.cwd)).href;
-    const result = await Promise.race([
-      connection.sendRequest(InitializeRequest.type, {
-        processId: process.pid,
-        rootUri,
+    const spawnFailure = new Promise<never>((_, reject) => {
+      child.once("error", reject);
+    });
+    // server 进程提前退出（如命令不存在）：vscode-jsonrpc 不会因流关闭拒绝挂起请求，必须自己兜
+    const childExit = new Promise<never>((_, reject) => {
+      child.once("exit", (code) => reject(new Error(`LSP server 启动即退出（code ${code}）`)));
+    });
+    let result;
+    try {
+      result = await Promise.race([
+        connection.sendRequest(InitializeRequest.type, {
+          processId: process.pid,
+          rootUri,
         capabilities: {
-          textDocument: { synchronization: { dynamicRegistration: false, didSave: false } },
+          textDocument: {
+            synchronization: { dynamicRegistration: false, didSave: false },
+            // typescript-language-server 以此判定 diagnosticsSupport，不声明则永不推送诊断
+            publishDiagnostics: { relatedInformation: true, versionSupport: true, tagSupport: { valueSet: [1, 2] } },
+          },
         },
-        workspaceFolders: [{ uri: rootUri, name: basename(resolve(options.cwd)) }],
-      }),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`LSP initialize 超时（${initTimeoutMs}ms）`)), initTimeoutMs),
-      ),
-    ]);
+          workspaceFolders: [{ uri: rootUri, name: basename(resolve(options.cwd)) }],
+        }),
+        spawnFailure,
+        childExit,
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`LSP initialize 超时（${initTimeoutMs}ms）`)),
+            initTimeoutMs,
+          ),
+        ),
+      ]);
+    } catch (error) {
+      // 启动失败：不留孤儿进程与半开连接（hub 会捕获并继续用其余 server）
+      child.kill();
+      connection.dispose();
+      throw error;
+    }
     conn.#serverCapabilities = (result?.capabilities ?? {}) as object;
     connection.sendNotification(InitializedNotification.type, {});
     return conn;
@@ -167,7 +220,7 @@ export class LspConnection {
   }
 
   diagnosticsFor(path: string): DiagnosticInfo[] {
-    const diags = this.#diagnostics.get(toUri(resolve(path))) ?? [];
+    const diags = this.#diagnostics.get(pathKey(path)) ?? [];
     return diags.map((d: Diagnostic) => ({
       severity: d.severity ?? 1,
       // MarkupContent（含 markdown）降级为纯文本
@@ -229,13 +282,13 @@ export class LspConnection {
       // Location 与 LocationLink 两种形状
       if ("targetUri" in loc) {
         out.push({
-          path: fileURLToPath(loc.targetUri),
+          path: canonicalPath(uriToPath(loc.targetUri)),
           line: loc.targetSelectionRange.start.line,
           character: loc.targetSelectionRange.start.character,
         });
       } else {
         out.push({
-          path: fileURLToPath(loc.uri),
+          path: canonicalPath(uriToPath(loc.uri)),
           line: loc.range.start.line,
           character: loc.range.start.character,
         });

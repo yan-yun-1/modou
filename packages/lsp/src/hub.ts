@@ -40,8 +40,13 @@ export class LspHub {
     const hub = new LspHub(options.servers, options.cwd);
     await Promise.allSettled(
       Object.entries(options.servers).map(async ([name, config]) => {
-        const connection = await LspConnection.start(config, { cwd: options.cwd });
-        hub.#connections.set(name, connection);
+        try {
+          const connection = await LspConnection.start(config, { cwd: options.cwd });
+          hub.#connections.set(name, connection);
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          process.stderr.write(`[modou-lsp] server "${name}" 启动失败：${reason}\n`);
+        }
       }),
     );
     return hub;

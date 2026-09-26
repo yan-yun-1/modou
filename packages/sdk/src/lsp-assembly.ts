@@ -8,11 +8,15 @@ import type { Settings } from "./settings.js";
  * core 的 LspIntegration + definition 工具。core 不感知 settings.json。
  */
 
-/** 解析 LSP server 配置：显式 lspServers 优先；未配置时自动探测 PATH */
+/** 解析 LSP server 配置：显式 lspServers 优先；否则 lsp:"auto" 时自动探测 PATH */
 export function resolveLspServers(settings: Settings): Record<string, HubServerConfig> | undefined {
   const configured = settings.lspServers;
   if (configured && Object.keys(configured).length > 0) {
     return configured;
+  }
+  // 默认 off：探测并常驻一个 language server 有进程成本，须用户显式开启
+  if (settings.lsp !== "auto") {
+    return undefined;
   }
   const detected = detectDefaultServers();
   return Object.keys(detected).length > 0 ? detected : undefined;

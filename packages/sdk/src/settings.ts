@@ -79,6 +79,11 @@ export const settingsSchema = z.object({
       }),
     )
     .optional(),
+  /**
+   * LSP 总开关（M5 C3）：off（默认）不装配；auto 时未配置 lspServers 也自动探测。
+   * 显式配置 lspServers 视为开启（无需再设此开关）。
+   */
+  lsp: z.enum(["off", "auto"]).optional(),
 });
 
 export type Settings = z.infer<typeof settingsSchema>;
