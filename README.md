@@ -9,7 +9,7 @@
 
 墨斗是木匠弹线定直的工具——先弹线（Plan Mode 定计划），后动锯（确认后再执行）。
 
-**当前状态**：M4 开发中（server/SDK/ACP/Hooks 已落地；Zed 实测与 v0.5.0-alpha 发布收尾中）。路线图见 [docs/PRD.md](docs/PRD.md)。
+**当前状态**：M4 已发布（v0.5.0-alpha：server / SDK / ACP / Hooks，Zed 实测通过）；M5 进行中（OS 沙箱、LSP 上下文、VS Code 插件 alpha）。路线图见 [docs/PRD.md](docs/PRD.md)，进度见 [docs/plan-m5.md](docs/plan-m5.md)。
 
 ## 多端（M4）
 

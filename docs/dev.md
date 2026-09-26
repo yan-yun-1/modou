@@ -11,19 +11,23 @@ packages/
 │  ├─ session-store.ts   JSONL 追加式会话存储（并发串行化）
 │  ├─ session.ts         rebuildState：事件流 → 模型消息 + 用量合计
 │  ├─ permissions.ts     权限引擎：模式 × 白名单规则 × 高危拦截
-│  ├─ agent-loop.ts      主循环：多步 model↔tool 循环、审批、守卫
+│  ├─ agent-loop.ts      主循环：多步 model↔tool 循环、审批、Hooks、守卫
 │  ├─ prompt.ts          系统提示词装配
 │  ├─ models/            catalog（能力+计价）/ provider（8 家工厂）/ stream（流→事件）/ cost
-│  └─ tools/             Tool 接口、注册表、read/grep/glob/bash、walk 共享遍历器
-└─ cli/     终端交互
-   ├─ index.tsx          入口：-p 无头 / 交互两路径
-   ├─ settings.ts        ~/.modou/settings.json
+│  ├─ tools/             Tool 接口、注册表、read/grep/glob/write/edit/bash/explore、walk 共享遍历器
+│  ├─ mcp/               MCP client（stdio / StreamableHTTP）
+│  ├─ context/           AGENTS.md 分层 / repo map
+│  ├─ skills.ts          Skills 加载
+│  └─ subagent.ts        explore 等子代理
+├─ sdk/      @modou-dev/sdk 装配层（M4）：settings / loop-factory / approval-bridge / print-mode / acp / session（createSession 高层 API）
+├─ server/   @modou-dev/server（M4）：node:http 手写 REST+SSE 会话 API
+└─ cli/      modou 终端交互
+   ├─ index.tsx          入口：-p 无头 / 交互两路径；program.ts 子命令（serve/acp）
    ├─ onboarding.tsx     首次引导
    ├─ app.tsx            ModouApp 主视图（事件驱动渲染）
-   ├─ print-mode.ts      无头执行（审批自动拒绝）
-   ├─ approval-bridge.ts loop 审批请求 ↔ UI 回答 的异步桥
    └─ components/        MessageItem(Static 冻结) / InputBox(边框+补全) / BusyLine(spinner)
                          / StatusBar(三段式) / ApprovalPrompt / PlanConfirm
+M5 新增：packages/lsp（LSP 客户端）、packages/vscode（VS Code 插件 alpha）、core/src/sandbox/（沙箱）
 ```
 
 ## 核心不变量（改代码前必读）
@@ -52,31 +56,25 @@ packages/
 - **grep 路线而非向量索引**：中小仓库足够且零基础设施（PRD 1.3/4.4）。
 - **PowerShell EncodedCommand**：绕开 Windows 命令行嵌套引号被 CreateProcess 重 quoting 的坑；`exit $LASTEXITCODE` 透传退出码；`$ProgressPreference='SilentlyContinue'` 消除 CLIXML 噪声（见 tools/bash.ts 注释）。
 
-## 已知限制与 M1 待办
+## 已知限制与待办
 
-见 [backlog-m1.md](./backlog-m1.md)。
+历史 backlog 已滚动迁移：[backlog-m1](./backlog-m1.md) → [backlog-m2](./backlog-m2.md) → [backlog-m3](./backlog-m3.md) → [backlog-m5](./backlog-m5.md)（当前）。
 
+## 发布手册（现行：pnpm workspace + alpha tag）
 
-## 发布手册（M3）
-
-npm 发布（仓库公开后执行）：
-
-1. 版本检查：`packages/*/package.json` 版本一致（当前 0.4.0）。
+1. 版本检查：`packages/*/package.json` 版本一致。
 2. 构建：`pnpm build`（必须先于 pack，产物在 dist/）。
-3. 打包演练：`npm pack` 两包（core 产物 `modou-core-x.y.z.tgz`，cli 产物 `modou-x.y.z.tgz`），
-   核对 unpacked 内容只含 dist/、README、LICENSE、package.json。
-4. 全新目录安装实测（演练已通过）：
+3. **发布物校验（必做）**：`pnpm check:pack`——pack 后扫描发布物 manifest，
+   拦截 `workspace:` 协议泄漏（0.5.0-alpha 事故的防再发，见 scripts/check-pack.mts）。
+4. 正式发布（按依赖序 core → sdk → server → cli，prerelease 用 alpha tag 防止抢占 latest）：
    ```bash
-   npm install -g ./packages/sdk（M4：装配层 @modou-dev/sdk——settings/loop-factory/approval-bridge/print-mode/acp）
-packages/server（M4：@modou-dev/server——node:http HTTP+SSE 会话 API，`modou serve`）
-packages/cli/pkgs/modou-0.4.0.tgz ./packages/core/pkgs/modou-core-0.4.0.tgz
-   modou --version && modou init && modou -p "1+1"
+   (cd packages/core   && pnpm publish --tag alpha --access public --no-git-checks)
+   (cd packages/sdk    && pnpm publish --tag alpha --access public --no-git-checks)
+   (cd packages/server && pnpm publish --tag alpha --access public --no-git-checks)
+   (cd packages/cli    && pnpm publish --tag alpha --access public --no-git-checks)
    ```
-5. 正式发布（按依赖序）：
-   ```bash
-   (cd packages/core && npm publish --access public)
-   (cd packages/cli  && npm publish --access public)
-   ```
-6. 打 tag：`git tag vX.Y.Z && git push --tags`。
+   注意必须用 `pnpm publish`（发布时替换 workspace: 依赖），不能用 `npm publish`。
+5. 全新目录安装实测：`npm install -g modou@alpha && modou --version`。
+6. 打 tag：`git tag vX.Y.Z && git push --tags`，GitHub Release 页写变更说明。
 
 注意：`files` 字段只含 `dist`，README/LICENSE/package.json 会自动包含；`.luban/`、`eval-results/` 不会进入产物。
