@@ -104,9 +104,9 @@ VS Code 插件 marketplace 发布。
 | C3 core 集成 + 装配 | ✅ 9033c49；诊断注入（失败静默）+ definition 工具；默认 off 需显式开启 | 2026-09-27 |
 | C4 真实 server 实测 | ✅ 40055e2；修三个坑：客户端须声明 publishDiagnostics 能力、回传 URI 盘符小写+编码冒号（缓存键归一化）、Windows .cmd shell spawn；真实 TS server 1s 出诊断、修复后无噪声 | 2026-09-27 |
 | D1-D3 VS Code 插件 | ✅ a39129f；侧边栏面板（流式/审批 diff/用量），serve 自动拉起 | 2026-09-27 |
-| D4 插件人工实测 | ⏳ 待用户在 VS Code/Cursor 面板验收（.vsix 已装本机） | — |
+| D4 插件人工实测 | ✅ 用户在 VS Code 验收通过（一问一答 + 审批面板无问题；注意用户 code CLI 指向 Cursor，实际安装用 VS Code 自身 CLI） | 2026-09-27 |
 | E1 code-review 子代理 | ✅ 8c9fd3d（F13 补全） | 2026-09-27 |
 | E2 HTTP 型 MCP 测试 | ✅ 70fa29e；顺带修连接失败后 isConnected 谎报 | 2026-09-27 |
 | E3 eval 包化 | ✅ 83c703d（@modou-dev/eval，private） | 2026-09-27 |
 | E4 文档 | ✅ 7b8475d（README/PRD 附录 A/验收记录） | 2026-09-27 |
-| E5 发布 v0.6.0-alpha | ✅ npm 五包发布（lsp 首发，core/sdk/server/lsp latest 同步指向，cli latest 保持 0.4.4 稳定线）；check:pack 通过；eval 14/14；GitHub Release 已建 | 2026-09-27 |
+| E5 发布 v0.6.0-alpha | ✅（含 D4 通过，M5 全部闭环）npm 五包发布（lsp 首发，core/sdk/server/lsp latest 同步指向，cli latest 保持 0.4.4 稳定线）；check:pack 通过；eval 14/14；GitHub Release 已建 | 2026-09-27 |
