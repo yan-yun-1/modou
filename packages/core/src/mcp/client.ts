@@ -54,8 +54,15 @@ export class McpConnection {
           args: this.config.args ?? [],
           env: this.config.env as Record<string, string> | undefined,
         });
-    this.#client = new Client(CLIENT_INFO, { capabilities: {} });
-    await this.#client.connect(transport);
+    const client = new Client(CLIENT_INFO, { capabilities: {} });
+    try {
+      await client.connect(transport);
+    } catch (error) {
+      // 失败不留半开状态：isConnected() 必须如实反映
+      await client.close().catch(() => {});
+      throw error;
+    }
+    this.#client = client;
   }
 
   isConnected(): boolean {
