@@ -363,6 +363,8 @@ Vercel AI SDK 作为多 provider 底座 + 针对专有能力（prompt cache、re
 | MCP | M2 | stdio 先行，Streamable HTTP 随后 |
 | Agent Skills (SKILL.md) | M4（已提前随 M3 交付） | 与 AGENTS.md 同理念，按需加载 |
 | ACP | M4 | 作为 agent 接入 Zed/JetBrains |
+| LSP | M5 | 诊断与定义跳转注入上下文（F16，@modou-dev/lsp） |
+| VS Code 插件 | M5（alpha） | 复用 server 的官方前端（F20） |
 
 ### B. 本 PRD 的信息来源
 

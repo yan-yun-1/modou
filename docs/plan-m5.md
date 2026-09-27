@@ -94,4 +94,19 @@ VS Code 插件 marketplace 发布。
 
 | 项 | 结果 | 日期 |
 |---|---|---|
-| （随任务推进回填） | | |
+| A1 pack 校验脚本 | ✅ 9246aad；拦截 workspace: 泄漏（事故样本测试），private 包跳过 | 2026-09-26 |
+| A2 ACP 迁移 @agentclientprotocol/sdk | ✅ 2780180；三导出等价核对，回环全绿 | 2026-09-26 |
+| A3 文档对齐 + backlog-m5 | ✅ 1e68aff | 2026-09-26 |
+| B1 沙箱评估文档 | ✅ f4d4470（macOS 落地 / Linux bwrap 评估 / Windows 不落地） | 2026-09-27 |
+| B2 SandboxAdapter + 免审批 | ✅ afeb3a5；seatbelt profile 生成/平台选择/接线 7 测 + ask→allow 3 测；macOS 执行路径标注需实机验证 | 2026-09-27 |
+| C1 LspConnection | ✅ e5b473b；mock server 协议级集成测试 5 例 | 2026-09-27 |
+| C2 LspHub + 探测 + settings | ✅ 4543736；修订号等待修 stale 竞态；12 例 | 2026-09-27 |
+| C3 core 集成 + 装配 | ✅ 9033c49；诊断注入（失败静默）+ definition 工具；默认 off 需显式开启 | 2026-09-27 |
+| C4 真实 server 实测 | ✅ 40055e2；修三个坑：客户端须声明 publishDiagnostics 能力、回传 URI 盘符小写+编码冒号（缓存键归一化）、Windows .cmd shell spawn；真实 TS server 1s 出诊断、修复后无噪声 | 2026-09-27 |
+| D1-D3 VS Code 插件 | ✅ a39129f；侧边栏面板（流式/审批 diff/用量），serve 自动拉起 | 2026-09-27 |
+| D4 插件人工实测 | ⏳ 待用户在 VS Code/Cursor 面板验收（.vsix 已装本机） | — |
+| E1 code-review 子代理 | ✅ 8c9fd3d（F13 补全） | 2026-09-27 |
+| E2 HTTP 型 MCP 测试 | ✅ 70fa29e；顺带修连接失败后 isConnected 谎报 | 2026-09-27 |
+| E3 eval 包化 | ✅ 83c703d（@modou-dev/eval，private） | 2026-09-27 |
+| E4 文档 | 🔄 进行中 | — |
+| E5 发布 v0.6.0-alpha | ⏳ | — |

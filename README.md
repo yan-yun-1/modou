@@ -98,6 +98,7 @@ modou -p "运行 pnpm test 并总结失败原因"
 | `/checkpoints` / `/rollback <n>` | 回滚点列表 / 恢复 |
 | `/sessions` / `/resume <id>` | 列出历史会话 / 恢复指定会话 |
 | `/model` | 切换模型（保存后自动以新模型开新会话） |
+| `/thinking` | 调整思考强度（off/low/medium/high，立即生效） |
 | `/exit` | 退出 |
 | `y` / `a` / `n` | 审批请求：允许本次 / 总是允许 / 拒绝 |
 
@@ -115,10 +116,27 @@ modou -p "运行 pnpm test 并总结失败原因"
 }
 ```
 
+## M5 配置示例（沙箱 / LSP）
+
+```json
+// ~/.modou/settings.json
+{
+  "sandbox": "auto",             // macOS Seatbelt 沙箱（Windows/Linux 忽略，见 docs/sandbox-eval.md）
+  "sandboxAutoAllow": true,      // 沙箱内 execute 免弹窗（谨慎）
+  "lsp": "auto",                 // 自动探测 typescript-language-server；或显式 lspServers
+  "lspServers": {
+    "typescript": { "command": "typescript-language-server", "args": ["--stdio"] }
+  }
+}
+```
+
+LSP 开启后：edit/write 的结果会自动附带该文件的诊断；`definition` 工具可跳转符号定义。
+VS Code 侧边栏：安装 `packages/vscode/modou-vscode.vsix`（`Extensions: Install from VSIX`），自动拉起/复用 `modou serve`。
+
 ## 开发
 
 ```bash
-pnpm test          # 全部测试（253）
+pnpm test          # 全部测试（core 198 / cli 180 / lsp 12）
 pnpm build         # 构建
 pnpm lint          # eslint
 pnpm format        # prettier
@@ -134,6 +152,9 @@ LUBAN_EVAL=1 pnpm eval     # 14 用例沙箱评测（读/查/写/改/MCP/Skills/
 |---|---|
 | [`modou`](https://www.npmjs.com/package/modou) | 终端 CLI（bin：`modou`） |
 | [`@modou-dev/core`](https://www.npmjs.com/package/@modou-dev/core) | headless 引擎，可嵌入你自己的前端 |
+| [`@modou-dev/sdk`](https://www.npmjs.com/package/@modou-dev/sdk) | 装配层：createSession 高层 API（见上方「多端」示例） |
+| [`@modou-dev/server`](https://www.npmjs.com/package/@modou-dev/server) | HTTP+SSE 服务化会话 API（`modou serve`） |
+| [`@modou-dev/lsp`](https://www.npmjs.com/package/@modou-dev/lsp) | LSP 客户端（诊断/定义注入 agent 上下文） |
 
 ## 许可
 
