@@ -1,0 +1,13 @@
+{
+  "name": "@modou-dev/eval",
+  "version": "0.5.0-alpha.1",
+  "description": "墨斗 Modou eval harness（PRD 5.3；用例私有，不发布）",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "eval": "tsx src/eval.mts"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.13"
+  }
+}

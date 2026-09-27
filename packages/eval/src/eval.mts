@@ -412,7 +412,7 @@ for (let i = 0; i < cases.length; i++) {
 console.log(`\n[eval] 通过 ${passed}/${cases.length}（基线 10）`);
 
 // B2（plan-m3）：结构化 JSON 报告 + 与上一份报告的基线对比
-const reportDir = join(import.meta.dirname, "..", "eval-results");
+const reportDir = join(import.meta.dirname, "..", "..", "..", "eval-results");
 await mkdir(reportDir, { recursive: true });
 const reportPath = join(reportDir, "eval-report.json");
 const previousRaw = await readFile(reportPath, "utf8").catch(() => null);

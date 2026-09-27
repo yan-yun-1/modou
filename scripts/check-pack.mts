@@ -12,7 +12,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -81,9 +81,15 @@ async function main(): Promise<void> {
   const dirs = args.length > 0 ? args : (await readdir("packages", { withFileTypes: true }))
     .filter((e) => e.isDirectory())
     .map((e) => join("packages", e.name));
+  // private 包（eval 用例私有 / vscode 扩展）不走 npm 发布，跳过校验
+  const publicDirs: string[] = [];
+  for (const dir of dirs) {
+    const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8")) as { private?: boolean };
+    if (pkg.private !== true) publicDirs.push(dir);
+  }
 
   let failed = false;
-  for (const dir of dirs) {
+  for (const dir of publicDirs) {
     const refs = await packAndScan(dir);
     if (refs.length > 0) {
       failed = true;
