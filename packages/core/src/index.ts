@@ -46,6 +46,7 @@ export { mcpToolsFromConnection } from "./mcp/tools.js";
 export { ToolRegistry } from "./tools/registry.js";
 export { createBuiltinTools, createReadonlyTools } from "./tools/index.js";
 export { createExploreTool } from "./tools/explore.js";
+export { createCodeReviewTool } from "./tools/code-review.js";
 export type { Tool, ToolContext, ToolKind, ToolResult } from "./tools/types.js";
 export {
   createSandboxAdapter,

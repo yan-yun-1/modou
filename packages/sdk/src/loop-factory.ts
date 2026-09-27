@@ -10,6 +10,7 @@ import {
   formatAgreements,
   loadAgreements,
   buildRepoMap,
+  createCodeReviewTool,
   createExploreTool,
   formatSkillsPrompt,
   loadSkills,
@@ -232,6 +233,8 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
 
   // explore 子代理工具需要 model/capabilities，在系统提示词组装前注册（plan-m2 P2）
   tools.register(createExploreTool({ model, capabilities, cwd, store }));
+  // M5 E1（F13 补全）：code-review 子代理
+  tools.register(createCodeReviewTool({ model, capabilities, cwd, store }));
 
   // 上下文装配（plan-m1 K1/K3 + plan-m3 D2）：基础提示词 + AGENTS.md 约定 + repo map + Skills 清单
   const [agreementSections, repoMap, skills] = await Promise.all([
