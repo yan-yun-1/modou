@@ -108,5 +108,5 @@ VS Code 插件 marketplace 发布。
 | E1 code-review 子代理 | ✅ 8c9fd3d（F13 补全） | 2026-09-27 |
 | E2 HTTP 型 MCP 测试 | ✅ 70fa29e；顺带修连接失败后 isConnected 谎报 | 2026-09-27 |
 | E3 eval 包化 | ✅ 83c703d（@modou-dev/eval，private） | 2026-09-27 |
-| E4 文档 | 🔄 进行中 | — |
-| E5 发布 v0.6.0-alpha | ⏳ | — |
+| E4 文档 | ✅ 7b8475d（README/PRD 附录 A/验收记录） | 2026-09-27 |
+| E5 发布 v0.6.0-alpha | ✅ npm 五包发布（lsp 首发，core/sdk/server/lsp latest 同步指向，cli latest 保持 0.4.4 稳定线）；check:pack 通过；eval 14/14；GitHub Release 已建 | 2026-09-27 |
