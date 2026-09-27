@@ -2,7 +2,7 @@
   "name": "modou-vscode",
   "displayName": "墨斗 Modou",
   "description": "墨斗 Modou 终端 Agent 的 VS Code 侧边栏（alpha，PRD F20）——复用 @modou-dev/server 的 REST+SSE",
-  "version": "0.5.0-alpha.1",
+  "version": "0.6.0-alpha",
   "publisher": "modou-dev",
   "private": true,
   "main": "./dist/extension.js",

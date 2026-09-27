@@ -113,6 +113,12 @@ importers:
         specifier: ^3.0.0
         version: 3.2.7(@types/node@24.13.5)(supports-color@7.1.0)(tsx@4.23.13)
 
+  packages/eval:
+    devDependencies:
+      tsx:
+        specifier: ^4.23.13
+        version: 4.23.13
+
   packages/lsp:
     dependencies:
       vscode-jsonrpc:
