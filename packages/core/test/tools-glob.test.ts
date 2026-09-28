@@ -54,7 +54,8 @@ describe("glob tool", () => {
     expect(result.output).toContain("无匹配");
   });
 
-  it("caps results at 500 and marks truncation", async () => {
+  // 600 个真实文件的创建/遍历是 I/O 密集——turbo 并发负载下 5s 默认超时不够（曾抖动）
+  it("caps results at 500 and marks truncation", { timeout: 30_000 }, async () => {
     await mkdir(join(dir, "gen"), { recursive: true });
     for (let i = 0; i < 600; i++) {
       await writeFile(join(dir, `gen/f${i}.txt`), "x", "utf8");
