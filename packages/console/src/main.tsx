@@ -93,6 +93,9 @@ function MessageList({
   }, [itemCount]);
   return (
     <div id="messages" ref={boxRef}>
+      {view.replay && view.items.length > 0 && (
+        <div class="replay-badge">📖 只读回放（server 重启后的历史会话）</div>
+      )}
       {view.items.length === 0 && !view.streaming && <div class="empty">把任务交给墨斗…</div>}
       {view.items.map((item, idx) => {
         if (item.kind === "user") return <div class="msg user">{item.text}</div>;
@@ -162,6 +165,7 @@ function App(): JSX.Element {
           if ((event as { turnEnd?: boolean }).turnEnd === true) void refreshSessions();
         },
         (error) => {
+          if (!error) return; // 正常结束（如非活跃会话 404 静默退出）
           const entry = subsRef.current.get(sessionId);
           if (!entry) return;
           if (error && error !== "unauthorized" && entry.attempts < 5) {

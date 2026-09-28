@@ -141,6 +141,11 @@ export class ModouClient {
           onDone?.("unauthorized");
           return;
         }
+        if (res.status === 404) {
+          // 非活跃会话（server 重启后）不在注册表——只读回放已完成，静默结束
+          onDone?.();
+          return;
+        }
         if (!res.ok || !res.body) {
           onDone?.(`SSE ${res.status}`);
           return;
