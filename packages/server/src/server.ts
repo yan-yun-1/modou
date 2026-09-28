@@ -37,6 +37,8 @@ export interface ModouServerOptions {
    * 重启后非活跃会话仍可只读回放。缺省 ~/.modou/sessions。
    */
   store?: import("@modou-dev/sdk").SessionStore;
+  /** plan-web A7：并发会话上限（默认 8，超出 429）——每会话真实成本为 MCP/LSP/模型连接 */
+  maxSessions?: number;
   /** 透传给 createSession 的默认项（home/settings/model 注入等，测试用） */
   createSessionDefaults?: Omit<CreateSessionOptions, "cwd">;
   /** 每会话覆盖项工厂（按请求体 body.cwd 等），测试注入 model 用 */
@@ -215,6 +217,14 @@ export class ModouServer {
 
   async #createSession(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const body = (await this.#readJson(req)) ?? {};
+    if (this.#bodyTooLarge) {
+      this.#bodyTooLarge = false;
+      return this.#json(res, 413, { error: "request body too large (1MB max)" });
+    }
+    const maxSessions = this.#options.maxSessions ?? 8;
+    if (this.#sessions.size >= maxSessions) {
+      return this.#json(res, 429, { error: `session limit reached (${maxSessions}); DELETE an unused session first` });
+    }
     const defaults = this.#options.createSessionDefaults ?? {};
     // plan-web A5：cwd 语义修正——请求 body.cwd 优先于 settings.cwd（SDK 的 resolveCwd
     // 是 settings 优先，浏览器控制台不能被宿主配置静默钉死）；目录不存在 400 不静默回退
@@ -417,10 +427,25 @@ export class ModouServer {
     res.write(`event: modou\ndata: ${JSON.stringify(event)}\n\n`);
   }
 
+  #bodyTooLarge = false;
+
   async #readJson(req: IncomingMessage): Promise<Record<string, unknown> | null> {
+    const MAX_BODY_BYTES = 1 << 20; // plan-web A7：1MB 上限
     const chunks: Buffer[] = [];
+    let total = 0;
+    let tooLarge = false;
     for await (const chunk of req) {
-      chunks.push(chunk as Buffer);
+      total += (chunk as Buffer).length;
+      if (total > MAX_BODY_BYTES) {
+        // 超限后继续排空（不销毁 socket），让客户端拿到干净的 413 而非 ECONNRESET
+        tooLarge = true;
+        continue;
+      }
+      if (!tooLarge) chunks.push(chunk as Buffer);
+    }
+    if (tooLarge) {
+      this.#bodyTooLarge = true;
+      return null;
     }
     if (chunks.length === 0) {
       return null;

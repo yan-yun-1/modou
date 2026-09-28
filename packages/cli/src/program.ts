@@ -28,7 +28,8 @@ export function buildProgram(): Command {
     .option("--host <h>", "监听地址", "127.0.0.1")
     .option("--auth-token <t>", "Bearer 鉴权 token（除 /health 外全部 401 保护）")
     .option("--auth", "自动生成随机 token 并打印（等价 --auth-token <随机>）")
-    .action(async (options: { port: string; host: string; authToken?: string; auth?: boolean }) => {
+    .option("--max-sessions <n>", "并发会话上限（超出 429）", "8")
+    .action(async (options: { port: string; host: string; authToken?: string; auth?: boolean; maxSessions: string }) => {
       const { randomBytes } = await import("node:crypto");
       // plan-web A1：--auth > --auth-token > 环境变量 MOUDOU_TOKEN > 关闭
       const authToken =
@@ -40,6 +41,7 @@ export function buildProgram(): Command {
         port: Number(options.port),
         host: options.host,
         authToken,
+        maxSessions: Number(options.maxSessions),
         // plan-web A6：注入 home——remembered 审批落盘 permissionRules 与 models.json
         // 生效的前提（loop-factory 的 onRemember 接线以 options.home 为条件）
         createSessionDefaults: { home: homedir() },

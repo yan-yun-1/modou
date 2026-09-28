@@ -203,3 +203,42 @@ describe("remembered 落盘（A6 前提）", () => {
     expect(stored.permissionRules?.some((r) => r.type === "execute-prefix")).toBe(true);
   });
 });
+
+describe("健壮性（A7）", () => {
+  it("maxSessions 超限返回 429", async () => {
+    server = new ModouServer({
+      port: 0,
+      maxSessions: 1,
+      store: new SessionStore(join(dir, "store-a7")),
+      createSessionDefaults: {
+        home,
+        settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "k", permissionMode: "default" },
+      },
+      createSessionOverrides: () => ({ model: stubModel("ok") }),
+    });
+    const baseUrl = `http://127.0.0.1:${(await server.start()).port}`;
+    const first = await fetch(`${baseUrl}/sessions`, { method: "POST" });
+    expect(first.status).toBe(201);
+    const second = await fetch(`${baseUrl}/sessions`, { method: "POST" });
+    expect(second.status).toBe(429);
+    expect(await second.json()).toMatchObject({ error: expect.stringContaining("session limit") });
+  });
+
+  it("请求体超 1MB 返回 413", async () => {
+    server = new ModouServer({
+      port: 0,
+      store: new SessionStore(join(dir, "store-a7b")),
+      createSessionDefaults: {
+        home,
+        settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "k", permissionMode: "default" },
+      },
+      createSessionOverrides: () => ({ model: stubModel("ok") }),
+    });
+    const baseUrl = `http://127.0.0.1:${(await server.start()).port}`;
+    const res = await fetch(`${baseUrl}/sessions`, {
+      method: "POST",
+      body: JSON.stringify({ cwd: dir, junk: "x".repeat(2 * 1024 * 1024) }),
+    });
+    expect(res.status).toBe(413);
+  });
+});
