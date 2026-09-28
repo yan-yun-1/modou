@@ -1,6 +1,6 @@
 {
   "name": "@modou-dev/console",
-  "version": "0.6.0-alpha",
+  "version": "0.6.0-alpha.1",
   "description": "墨斗 Modou Web 控制台（PRD F21）——官方浏览器前端，复用 @modou-dev/server 的 REST+SSE",
   "private": true,
   "type": "module",

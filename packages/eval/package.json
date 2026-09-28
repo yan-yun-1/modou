@@ -1,6 +1,6 @@
 {
   "name": "@modou-dev/eval",
-  "version": "0.6.0-alpha",
+  "version": "0.6.0-alpha.1",
   "description": "墨斗 Modou eval harness（PRD 5.3；用例私有，不发布）",
   "private": true,
   "type": "module",

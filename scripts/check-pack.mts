@@ -51,8 +51,15 @@ export function readPackagedManifest(tgz: string): Record<string, unknown> {
   return JSON.parse(res.stdout) as Record<string, unknown>;
 }
 
-/** pack 指定包并扫描发布物 manifest，返回 workspace: 引用列表（空数组=通过） */
-export async function packAndScan(pkgDir: string): Promise<string[]> {
+export interface PackScanResult {
+  /** workspace: 协议引用（空数组=通过） */
+  refs: string[];
+  /** tarball 内全部文件路径（package/ 前缀） */
+  files: string[];
+}
+
+/** pack 指定包并扫描发布物：workspace: 引用 + 文件清单（供断言 files 字段生效） */
+export async function packAndScan(pkgDir: string): Promise<PackScanResult> {
   const tmp = await mkdtemp(join(tmpdir(), "check-pack-"));
   try {
     // pnpm 在 Windows 上是 .cmd，必须经 shell 解析；shell 模式下用单命令字符串避免转义歧义
@@ -70,7 +77,10 @@ export async function packAndScan(pkgDir: string): Promise<string[]> {
       | { filename: string }[];
     const entry = Array.isArray(parsed) ? parsed[0]! : parsed;
     const tgz = join(tmp, basename(entry.filename));
-    return collectWorkspaceRefs(readPackagedManifest(tgz));
+    // 文件清单：tar -tzf 列全量（webui 断言用）
+    const list = spawnSync("tar", ["-tzf", basename(tgz)], { cwd: dirname(tgz), encoding: "utf8" });
+    const files = list.status === 0 ? list.stdout.split("\n").filter(Boolean) : [];
+    return { refs: collectWorkspaceRefs(readPackagedManifest(tgz)), files };
   } finally {
     await rm(tmp, { recursive: true, force: true });
   }
@@ -90,14 +100,21 @@ async function main(): Promise<void> {
 
   let failed = false;
   for (const dir of publicDirs) {
-    const refs = await packAndScan(dir);
+    const { refs, files } = await packAndScan(dir);
+    const pkg = JSON.parse(await readFile(join(dir, "package.json"), "utf8")) as { files?: string[] };
     if (refs.length > 0) {
       failed = true;
       console.error(`✗ ${dir} 发布物含 workspace: 协议（第三方将无法安装）：`);
       for (const ref of refs) console.error(`    ${ref}`);
-    } else {
-      console.log(`✓ ${dir}`);
+      continue;
     }
+    // files 声明了 webui 的包（server 随包分发控制台）必须真打进 tarball
+    if (pkg.files?.includes("webui") && !files.includes("package/webui/index.html")) {
+      failed = true;
+      console.error(`✗ ${dir} 声明了 webui 但 tarball 缺 package/webui/index.html（先构建 packages/console）`);
+      continue;
+    }
+    console.log(`✓ ${dir}`);
   }
   if (failed) process.exit(1);
 }
