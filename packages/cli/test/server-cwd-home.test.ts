@@ -147,7 +147,8 @@ describe("remembered 落盘（A6 前提）", () => {
 
     const events: ModouEvent[] = [];
     const controller = new AbortController();
-    void (async () => {
+    // abort 后读取循环会以 AbortError 拒绝——必须接住，否则 vitest 计为 Unhandled Errors
+    const sseDone = (async () => {
       const res = await fetch(`${baseUrl}/sessions/${sessionId}/events`, { signal: controller.signal });
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
@@ -168,6 +169,7 @@ describe("remembered 落盘（A6 前提）", () => {
         }
       }
     })();
+    void sseDone.catch(() => {});
     const waitFor = async (predicate: (e: ModouEvent) => boolean): Promise<void> => {
       const deadline = Date.now() + 8000;
       while (Date.now() < deadline) {
@@ -191,6 +193,8 @@ describe("remembered 落盘（A6 前提）", () => {
     expect(answer.status).toBe(200);
     await waitFor((e) => e.type === "approval_result" && e.granted === true && e.remembered === true);
     controller.abort();
+    // abort 后 SSE 读取循环的 AbortError 不能成为 unhandled rejection（vitest 计入 Errors）
+    await new Promise((r) => setTimeout(r, 100));
 
     // home 的 settings.json 出现 always-allow 规则（A6 接线生效）
     const stored = JSON.parse(await readFile(join(home, ".modou", "settings.json"), "utf8")) as {

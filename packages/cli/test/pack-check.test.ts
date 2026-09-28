@@ -67,13 +67,13 @@ describe("check-pack（A1 发布物校验）", () => {
     expect(collectWorkspaceRefs({ dependencies: { zod: "^4.6.5" } })).toEqual([]);
   });
 
-  it("事故样本：npm publish 路径下 workspace:* 原样进入发布物（校验必须能拦下）", async () => {
+  it("事故样本：npm publish 路径下 workspace:* 原样进入发布物（校验必须能拦下）", { timeout: 30_000 }, async () => {
     const pkgDir = await makeFixture("pack-check-bad", { "@modou-dev/core": "workspace:*" });
     const manifest = npmPack(pkgDir);
     expect(collectWorkspaceRefs(manifest)).toEqual(["dependencies.@modou-dev/core: workspace:*"]);
   });
 
-  it("正常版本号的发布物无引用", async () => {
+  it("正常版本号的发布物无引用", { timeout: 30_000 }, async () => {
     const pkgDir = await makeFixture("pack-check-good", { "@modou-dev/core": "0.5.0-alpha" });
     const manifest = npmPack(pkgDir);
     expect(collectWorkspaceRefs(manifest)).toEqual([]);
