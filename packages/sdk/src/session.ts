@@ -25,6 +25,8 @@ export interface CreateSessionOptions {
   /** models.json 自定义模型能力 */
   modelOverrides?: ModelCapabilities[];
   checkpointer?: Checkpointer;
+  /** 会话存储目录覆盖（plan-web A4：server 指定隔离目录，重启回放与列表同源）；默认 ~/.modou/sessions */
+  store?: SessionStore;
   /** 测试/高级用法：绕过真实 provider */
   model?: LanguageModel;
 }
@@ -59,6 +61,7 @@ export async function createSession(
     home: options.home,
     modelOverrides: options.modelOverrides,
     checkpointer: options.checkpointer,
+    store: options.store,
     model: options.model,
     approvals,
   });

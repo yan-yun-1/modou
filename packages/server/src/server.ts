@@ -32,6 +32,11 @@ export interface ModouServerOptions {
    * 都不存在时保持纯 API 模式（GET / 404）。
    */
   webRoot?: string;
+  /**
+   * 会话存储目录（plan-web A4）：createSession 与历史回放/列表共用同一 store，
+   * 重启后非活跃会话仍可只读回放。缺省 ~/.modou/sessions。
+   */
+  store?: import("@modou-dev/sdk").SessionStore;
   /** 透传给 createSession 的默认项（home/settings/model 注入等，测试用） */
   createSessionDefaults?: Omit<CreateSessionOptions, "cwd">;
   /** 每会话覆盖项工厂（按请求体 body.cwd 等），测试注入 model 用 */
@@ -190,6 +195,9 @@ export class ModouServer {
         if (parts[2] === "events" && req.method === "GET") {
           return this.#sse(id, res);
         }
+        if (parts[2] === "cancel" && req.method === "POST") {
+          return this.#cancelTurn(id, res);
+        }
         if (parts[2] === "messages" && req.method === "POST") {
           const body = await this.#readJson(req);
           return this.#postMessage(id, String(body?.input ?? ""), res);
@@ -210,6 +218,8 @@ export class ModouServer {
     const defaults = this.#options.createSessionDefaults ?? {};
     const session = await createSession({
       ...defaults,
+      // plan-web A4：server 级 store 覆盖（测试隔离 + 回放/列表同源）
+      ...(this.#options.store ? { store: this.#options.store } : {}),
       // models.json 自定义能力（目录外模型如 glm-4.5-air 需要它解析能力与计价）
       modelOverrides: await loadModelOverrides(defaults.home),
       cwd: typeof body.cwd === "string" ? body.cwd : undefined,
@@ -226,7 +236,7 @@ export class ModouServer {
 
   /** 会话列表：最近 50 个，标出本进程活跃会话，附首条用户消息预览 */
   async #list(res: ServerResponse): Promise<void> {
-    const store = new SessionStore();
+    const store = this.#options.store ?? new SessionStore();
     const ids = await store.list();
     const sessions: { sessionId: string; active: boolean; preview: string }[] = [];
     for (const sid of ids.slice(-50).reverse()) {
@@ -245,12 +255,22 @@ export class ModouServer {
 
   async #history(id: string, res: ServerResponse): Promise<void> {
     const entry = this.#sessions.get(id);
-    if (!entry) {
-      // 会话不在本进程注册表（可能重启过）——仍可从 SessionStore 回放
+    if (entry) {
+      const events: ModouEvent[] = await entry.session.store.read(id);
+      this.#json(res, 200, { sessionId: id, events, active: true });
+      return;
+    }
+    // plan-web A4：非活跃会话（server 重启过）从同一 SessionStore 只读回放
+    const store = this.#options.store ?? new SessionStore();
+    const events = await store.read(id).catch((error: Error) => {
+      process.stderr.write(`[modou] 回放会话 ${id} 失败：${error.message}
+`);
+      return [] as ModouEvent[];
+    });
+    if (events.length === 0) {
       return this.#json(res, 404, { error: "session not found" });
     }
-    const events: ModouEvent[] = await entry.session.store.read(id);
-    this.#json(res, 200, { sessionId: id, events });
+    this.#json(res, 200, { sessionId: id, events, active: false });
   }
 
   async #closeSession(id: string, res: ServerResponse): Promise<void> {
@@ -288,6 +308,28 @@ export class ModouServer {
     res.on("close", () => {
       entry.sseClients.delete(res);
     });
+  }
+
+  /**
+   * plan-web A3：取消进行中的 turn。abort 只覆盖模型流与工具执行（agent-loop.ts:216,479），
+   * 审批等待是纯 Promise 挂起——必须同时对 pendingRequests 逐个 answerById(granted:false)，
+   * 否则 busy 永不释放、挂起审批仍被 SSE 补发、事后应答会让已取消的 turn 复活。
+   */
+  #cancelTurn(id: string, res: ServerResponse): void {
+    const entry = this.#sessions.get(id);
+    if (!entry) {
+      this.#json(res, 404, { error: "session not found" });
+      return;
+    }
+    if (!entry.busy) {
+      this.#json(res, 200, { ok: true, cancelled: false });
+      return;
+    }
+    for (const pending of entry.session.approvals.pendingRequests()) {
+      entry.session.approvals.answerById(pending.id, { granted: false, remembered: false });
+    }
+    entry.abort?.abort();
+    this.#json(res, 200, { ok: true, cancelled: true });
   }
 
   #postMessage(id: string, input: string, res: ServerResponse): void {
