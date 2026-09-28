@@ -112,10 +112,10 @@ export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSess
           {session.active && <span class="dot" />}
         </span>
         <span class="line2">{line2}</span>
-        {session.active && onCloseSession && (
+        {onCloseSession && (
           <button
             class="row-close"
-            title="关闭此会话（释放配额）"
+            title={session.active ? "关闭此会话（释放配额）" : "删除此历史会话（不可恢复）"}
             onClick={(e) => {
               e.stopPropagation();
               onCloseSession(session.sessionId);

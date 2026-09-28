@@ -89,6 +89,15 @@ export class SessionStore {
     return stats.sort((a, b) => b.mtimeMs - a.mtimeMs).map((s) => s.id);
   }
 
+  /** plan-web：删除会话文件（历史会话清理）。文件不存在视为已删除 */
+  async delete(sessionId: string): Promise<void> {
+    try {
+      await (await import("node:fs/promises")).rm(this.sessionFile(sessionId));
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+
   private sessionFile(sessionId: string): string {
     return join(this.baseDir, `${sessionId}.jsonl`);
   }

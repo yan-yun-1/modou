@@ -233,6 +233,40 @@ describe("历史只读回放（A4）", () => {
     expect(body.events.some((e) => e.type === "assistant_message" && e.text === "首轮回复")).toBe(true);
   });
 
+  it("非活跃会话续跑：重启后 POST 消息 → 202 → 回复可继续", async () => {
+    server = startServer(textModel("首轮"));
+    let baseUrl = `http://127.0.0.1:${(await server.start()).port}`;
+    const create = await fetch(`${baseUrl}/sessions`, { method: "POST" });
+    const { sessionId } = (await create.json()) as { sessionId: string };
+    const sse1 = collectSse(baseUrl, sessionId);
+    await new Promise((r) => setTimeout(r, 100));
+    await fetch(`${baseUrl}/sessions/${sessionId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ input: "首轮输入" }),
+    });
+    await sse1.waitFor((e) => e.type === "assistant_message");
+    sse1.stop();
+    await server.close();
+
+    // 重启后直接对旧会话发消息（不再 404）
+    server = startServer(textModel("续跑回复"));
+    baseUrl = `http://127.0.0.1:${(await server.start()).port}`;
+    const sse2 = collectSse(baseUrl, sessionId);
+    await new Promise((r) => setTimeout(r, 100));
+    const again = await fetch(`${baseUrl}/sessions/${sessionId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ input: "续跑输入" }),
+    });
+    expect(again.status).toBe(202);
+    await sse2.waitFor((e) => e.type === "assistant_message" && e.text === "续跑回复");
+
+    // 历史里两轮都在
+    const hist = await fetch(`${baseUrl}/sessions/${sessionId}`);
+    const body = (await hist.json()) as { events: ModouEvent[] };
+    const inputs = body.events.filter((e) => e.type === "user_message").map((e) => e.text);
+    expect(inputs).toEqual(["首轮输入", "续跑输入"]);
+  });
+
   it("不存在的会话仍 404", async () => {
     server = startServer(textModel("x"));
     const baseUrl = `http://127.0.0.1:${(await server.start()).port}`;

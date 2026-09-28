@@ -195,14 +195,14 @@ export class ModouServer {
           return await this.#closeSession(id, res);
         }
         if (parts[2] === "events" && req.method === "GET") {
-          return this.#sse(id, res);
+          return await this.#sse(id, res);
         }
         if (parts[2] === "cancel" && req.method === "POST") {
           return this.#cancelTurn(id, res);
         }
         if (parts[2] === "messages" && req.method === "POST") {
           const body = await this.#readJson(req);
-          return this.#postMessage(id, String(body?.input ?? ""), res);
+          return await this.#postMessage(id, String(body?.input ?? ""), res);
         }
         if (parts[2] === "approvals" && parts[3] !== undefined && req.method === "POST") {
           const body = (await this.#readJson(req)) ?? {};
@@ -306,22 +306,25 @@ export class ModouServer {
 
   async #closeSession(id: string, res: ServerResponse): Promise<void> {
     const entry = this.#sessions.get(id);
-    if (!entry) {
-      return this.#json(res, 404, { error: "session not found" });
+    if (entry) {
+      entry.abort?.abort();
+      for (const client of entry.sseClients) {
+        client.end();
+      }
+      await entry.session.close().catch(() => {});
+      this.#sessions.delete(id);
+      this.#json(res, 200, { ok: true });
+      return;
     }
-    entry.abort?.abort();
-    for (const client of entry.sseClients) {
-      client.end();
-    }
-    await entry.session.close().catch(() => {});
-    this.#sessions.delete(id);
-    this.#json(res, 200, { ok: true });
+    // plan-web：非活跃会话（server 重启过）→ 直接删历史文件（用户实测要求清理入口）
+    const store = this.#options.store ?? new SessionStore();
+    await store.delete(id).catch(() => {});
+    this.#json(res, 200, { ok: true, deletedHistory: true });
   }
 
-  #sse(id: string, res: ServerResponse): void {
-    const entry = this.#sessions.get(id);
+  async #sse(id: string, res: ServerResponse): Promise<void> {
+    const entry = await this.#reattach(id);
     if (!entry) {
-      console.error("[dbg] sse 404 id=" + JSON.stringify(id) + " keys=" + JSON.stringify([...this.#sessions.keys()]));
       this.#json(res, 404, { error: "session not found" });
       return;
     }
@@ -363,8 +366,40 @@ export class ModouServer {
     this.#json(res, 200, { ok: true, cancelled: true });
   }
 
-  #postMessage(id: string, input: string, res: ServerResponse): void {
-    const entry = this.#sessions.get(id);
+  /**
+   * plan-web：非活跃会话续跑——以同一 sessionId 重建 loop，
+   * AgentLoop.run 会从 store 回放历史继续对话（用户实测要求的核心能力）。
+   * 仅当 store 中确有该会话的历史时才重建（GET 不得凭空建档）。
+   */
+  async #reattach(id: string): Promise<SessionEntry | null> {
+    const existing = this.#sessions.get(id);
+    if (existing) {
+      return existing;
+    }
+    const store = this.#options.store ?? new SessionStore();
+    const events = await store.read(id).catch(() => [] as ModouEvent[]);
+    if (events.length === 0) {
+      return null;
+    }
+    const defaults = this.#options.createSessionDefaults ?? {};
+    try {
+      const session = await createSession({
+        ...defaults,
+        ...(this.#options.store ? { store: this.#options.store } : {}),
+        modelOverrides: await loadModelOverrides(defaults.home),
+        sessionId: id,
+        ...(this.#options.createSessionOverrides?.({}) ?? {}),
+      });
+      const entry: SessionEntry = { session, busy: false, sseClients: new Set() };
+      this.#sessions.set(id, entry);
+      return entry;
+    } catch {
+      return null;
+    }
+  }
+
+  async #postMessage(id: string, input: string, res: ServerResponse): Promise<void> {
+    const entry = await this.#reattach(id);
     if (!entry) {
       this.#json(res, 404, { error: "session not found" });
       return;

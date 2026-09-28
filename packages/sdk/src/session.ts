@@ -27,6 +27,11 @@ export interface CreateSessionOptions {
   checkpointer?: Checkpointer;
   /** 会话存储目录覆盖（plan-web A4：server 指定隔离目录，重启回放与列表同源）；默认 ~/.modou/sessions */
   store?: SessionStore;
+  /**
+   * 会话 id（plan-web：非活跃会话续跑——以既有 id 重建 loop，
+   * AgentLoop.run 从 store 回放历史继续对话）；缺省生成新 id
+   */
+  sessionId?: string;
   /** 测试/高级用法：绕过真实 provider */
   model?: LanguageModel;
 }
@@ -62,6 +67,7 @@ export async function createSession(
     modelOverrides: options.modelOverrides,
     checkpointer: options.checkpointer,
     store: options.store,
+    sessionId: options.sessionId,
     model: options.model,
     approvals,
   });

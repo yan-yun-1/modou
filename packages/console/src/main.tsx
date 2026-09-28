@@ -303,7 +303,11 @@ function App(): JSX.Element {
           if ((event as { turnEnd?: boolean }).turnEnd === true) void refreshSessions();
         },
         (error) => {
-          if (!error) return; // 非活跃会话 404 静默退出
+          if (!error) {
+            // 非活跃会话 404 静默退出：注册表同步移除，发送消息时会重订阅
+            subsRef.current.delete(sessionId);
+            return;
+          }
           const entry = subsRef.current.get(sessionId);
           if (!entry) return;
           if (error !== "unauthorized" && entry.attempts < 5) {
@@ -371,6 +375,8 @@ function App(): JSX.Element {
     }
     setInput("");
     setState((s) => markBusy(s, target!));
+    // 非活跃会话（回放中打开）的 SSE 已静默退出——发送前重订阅，否则事件全部丢失
+    if (!subsRef.current.has(target)) subscribe(target);
     const result = await client.sendMessage(target, text);
     if (!result.ok) {
       setState((s) => setNotice(s, translateServerError(result.error, "发送失败")));
@@ -379,7 +385,7 @@ function App(): JSX.Element {
         views: { ...s.views, [target!]: { ...s.views[target!]!, busy: false } },
       }));
     }
-  }, [input, state.currentId, cwd, newSession]);
+  }, [input, state.currentId, cwd, newSession, subscribe]);
 
   const answerApproval = useCallback(
     (requestId: string, granted: boolean, remembered: boolean) => {
@@ -470,9 +476,10 @@ function App(): JSX.Element {
               onOpen={(id) => void openSession(id)}
               onClose={() => setPanelOpen(false)}
               onCloseSession={(id) => {
-                void client.deleteSession(id).then(() => {
+                void client.deleteSession(id).then((ok) => {
                   void refreshSessions();
-                  if (state.currentId === id) setState((s) => setCurrent(s, null));
+                  if (state.currentId === id) setState((s) => setCurrent(s, ok ? null : s.currentId));
+                  if (ok) subsRef.current.delete(id);
                 });
               }}
             />

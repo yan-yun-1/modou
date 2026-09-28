@@ -78,6 +78,15 @@ describe("SessionStore", () => {
     await expect(store.read(id)).rejects.toThrow(/第 2 行/);
   });
 
+  it("delete removes the session file; missing id is a no-op", async () => {
+    const store = new SessionStore(dir);
+    await store.create("doomed");
+    await store.append("doomed", { type: "user_message", text: "x", at: 1 } as never);
+    await store.delete("doomed");
+    expect(await store.read("doomed")).toEqual([]);
+    await store.delete("never-existed"); // 无文件不抛
+  });
+
   it("lists session ids by newest modification first", async () => {
     const store = new SessionStore(dir);
     await store.create("old-session");
