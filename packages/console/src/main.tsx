@@ -167,7 +167,13 @@ function MessageList({
   return (
     <div id="messages" ref={boxRef}>
       {view.replay && view.items.length > 0 && <div class="replay-badge">⟲ 只读回放</div>}
-      {view.items.length === 0 && !view.streaming && <div class="empty-state-hint">把任务交给墨斗…</div>}
+      {view.items.length === 0 && !view.streaming && (
+        <div class="empty-session">
+          <Snapline />
+          <p>把任务交给墨斗——先弹线，后动锯。</p>
+          <div class="hint">输入任务开始 · Enter 发送</div>
+        </div>
+      )}
       {view.items.map((item, idx) => {
         if (item.kind === "user")
           return (
@@ -397,10 +403,6 @@ function App(): JSX.Element {
       <header>
         <span class="seal">墨</span>
         <span class="wordmark">墨斗 MODOU</span>
-        <span class={"status" + (currentView?.busy ? " running" : "")}>
-          <span class="dot" />
-          {currentView?.busy ? "执行中" : "空闲"}
-        </span>
         <span class="spacer" />
         <span class="session-anchor">
           <button class="btn icon" onClick={() => setPanelOpen(!panelOpen)}>
