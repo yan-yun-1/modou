@@ -259,7 +259,28 @@ function App(): JSX.Element {
   const [cwd, setCwd] = useState("");
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
+  const [theme, setThemeState] = useState<"light" | "dark">(() =>
+    document.documentElement.dataset.theme === "light"
+      ? "light"
+      : document.documentElement.dataset.theme === "dark"
+        ? "dark"
+        : window.matchMedia("(prefers-color-scheme: light)").matches
+          ? "light"
+          : "dark",
+  );
   const subsRef = useRef(new Map<string, { dispose(): void; attempts: number }>());
+
+  // 主题切换（§1.2）：覆写 html[data-theme] 并持久化；无覆写时跟随系统
+  const toggleTheme = useCallback(() => {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try {
+      localStorage.setItem("modou.theme", next);
+    } catch {
+      /* 存储不可用仅内存生效 */
+    }
+    setThemeState(next);
+  }, [theme]);
 
   const refreshSessions = useCallback(async () => {
     const sessions = await client.listSessions();
@@ -404,6 +425,34 @@ function App(): JSX.Element {
         <span class="seal">墨</span>
         <span class="wordmark">墨斗 MODOU</span>
         <span class="spacer" />
+        <button
+          class="btn icon theme-toggle"
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "切换到亮色主题" : "切换到暗色主题"}
+          title={theme === "dark" ? "切换到亮色主题" : "切换到暗色主题"}
+        >
+          {theme === "dark" ? (
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <circle cx="8" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.4" />
+              <path
+                d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M13 3l-1.4 1.4M4.4 11.6L3 13"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linecap="round"
+              />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+              <path
+                d="M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linejoin="round"
+              />
+            </svg>
+          )}
+        </button>
         <span class="session-anchor">
           <button class="btn icon" onClick={() => setPanelOpen(!panelOpen)}>
             <span class="label">{triggerLabel(currentSummary?.preview ?? null, state.currentId)}</span>
