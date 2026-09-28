@@ -344,7 +344,7 @@ function App(): JSX.Element {
         return null;
       }
       if (result.error || !result.sessionId) {
-        setState((s) => setNotice(s, result.error ?? "创建会话失败"));
+        setState((s) => setNotice(s, translateServerError(result.error, "创建会话失败")));
         return null;
       }
       const created = result.sessionId;
@@ -373,7 +373,7 @@ function App(): JSX.Element {
     setState((s) => markBusy(s, target!));
     const result = await client.sendMessage(target, text);
     if (!result.ok) {
-      setState((s) => setNotice(s, result.error ?? "发送失败"));
+      setState((s) => setNotice(s, translateServerError(result.error, "发送失败")));
       setState((s) => ({
         ...s,
         views: { ...s.views, [target!]: { ...s.views[target!]!, busy: false } },
@@ -469,6 +469,12 @@ function App(): JSX.Element {
               currentId={state.currentId}
               onOpen={(id) => void openSession(id)}
               onClose={() => setPanelOpen(false)}
+              onCloseSession={(id) => {
+                void client.deleteSession(id).then(() => {
+                  void refreshSessions();
+                  if (state.currentId === id) setState((s) => setCurrent(s, null));
+                });
+              }}
             />
           )}
         </span>
@@ -532,6 +538,18 @@ function App(): JSX.Element {
       </footer>
     </>
   );
+}
+
+// ---------- server 错误中文化（plan-web A7 配额等） ----------
+function translateServerError(error: string | undefined, fallback: string): string {
+  if (!error) return fallback;
+  const quota = error.match(/session limit reached \((\d+)\)/);
+  if (quota) {
+    return `会话数已达上限（${quota[1]} 个）——请在会话面板把不用的会话关闭（悬停行尾 ✕）后重试`;
+  }
+  if (error.includes("session busy")) return "上一轮还在进行中——可点「取消本轮」后再发";
+  if (error.includes("cwd 不存在")) return error; // server 侧已是中文
+  return error;
 }
 
 // ---------- 401 门 ----------

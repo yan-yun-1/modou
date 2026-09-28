@@ -128,15 +128,21 @@
     .panel .list { max-height: 380px; overflow-y: auto; }
     .panel .group-label { font-family: var(--mono); font-size: 12px; color: var(--t3);
                           padding: 8px var(--s3) 2px; }
-    .panel .row { display: block; width: 100%; text-align: left; padding: 7px var(--s3);
-                  border-left: 2px solid transparent; transition: background var(--t-fast) var(--ease); }
+    .panel .row { display: block; width: 100%; text-align: left; padding: 7px var(--s3); position: relative;
+                  border-left: 2px solid transparent; transition: background var(--t-fast) var(--ease); cursor: pointer; }
+    .panel .row .row-close { position: absolute; right: 8px; bottom: 7px; font-family: var(--mono);
+                             font-size: 11px; color: var(--t3); border: none; background: none;
+                             padding: 2px 4px; border-radius: var(--r1); opacity: 0;
+                             transition: opacity var(--t-fast) var(--ease); }
+    .panel .row:hover .row-close { opacity: 1; }
+    .panel .row .row-close:hover { color: var(--err); background: var(--err-bg); }
     .panel .row:hover, .panel .row.kbd-active { background: var(--bg3); }
     .panel .row.current { border-left-color: var(--acc); background: var(--bg2); }
     .panel .row .line1 { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--t1); }
     .panel .row .line1 .preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
     .panel .row .line1 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc);
                               animation: pulse 2s ease-in-out infinite; flex: none; }
-    .panel .row .line2 { font-family: var(--mono); font-size: 12px; color: var(--t3); }
+    .panel .row .line2 { font-family: var(--mono); font-size: 12px; color: var(--t3); padding-right: 20px; }
     .panel .empty { padding: var(--s4); text-align: center; color: var(--t3); font-size: 13px; }
     .panel .kbd-bar { border-top: 1px solid var(--line); padding: 6px var(--s3);
                       font-family: var(--mono); font-size: 11px; color: var(--t3); }

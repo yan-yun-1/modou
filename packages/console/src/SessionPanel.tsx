@@ -29,9 +29,11 @@ export interface SessionPanelProps {
   currentId: string | null;
   onOpen: (sessionId: string) => void;
   onClose: () => void;
+  /** 关闭活跃会话（DELETE；仅注册表内会话可关） */
+  onCloseSession?: (sessionId: string) => void;
 }
 
-export function SessionPanel({ sessions, currentId, onOpen, onClose }: SessionPanelProps): JSX.Element {
+export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSession }: SessionPanelProps): JSX.Element {
   const [filter, setFilter] = useState("");
   const [kbdIndex, setKbdIndex] = useState(0);
   const filterRef = useRef<HTMLInputElement>(null);
@@ -97,9 +99,11 @@ export function SessionPanel({ sessions, currentId, onOpen, onClose }: SessionPa
     if (session.sessionId === currentId) classes.push("current");
     if (kbdActive) classes.push("kbd-active");
     return (
-      <button
+      <div
         key={session.sessionId}
         class={classes.join(" ")}
+        role="button"
+        tabIndex={-1}
         onClick={() => onOpen(session.sessionId)}
         onMouseEnter={() => setKbdIndex(index)}
       >
@@ -108,7 +112,19 @@ export function SessionPanel({ sessions, currentId, onOpen, onClose }: SessionPa
           {session.active && <span class="dot" />}
         </span>
         <span class="line2">{line2}</span>
-      </button>
+        {session.active && onCloseSession && (
+          <button
+            class="row-close"
+            title="关闭此会话（释放配额）"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCloseSession(session.sessionId);
+            }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
     );
   };
 

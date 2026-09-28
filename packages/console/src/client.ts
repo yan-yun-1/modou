@@ -113,6 +113,12 @@ export class ModouClient {
     return { ok: false, error: body.error ?? `发送失败（${res.status}）` };
   }
 
+  /** 关闭（删除）活跃会话：abort + 释放资源 + 移出注册表（plan-web A7 配额的配套操作） */
+  async deleteSession(sessionId: string): Promise<boolean> {
+    const res = await this.#request(`/sessions/${sessionId}`, { method: "DELETE" });
+    return res.ok;
+  }
+
   async answerApproval(sessionId: string, requestId: string, granted: boolean, remembered = false): Promise<void> {
     await this.#request(`/sessions/${sessionId}/approvals/${requestId}`, {
       method: "POST",
