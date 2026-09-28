@@ -5,7 +5,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node esbuild.mjs"
+    "build": "node esbuild.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "preact": "^10.25.0"
