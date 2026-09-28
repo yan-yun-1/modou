@@ -1,0 +1,19 @@
+{
+  "name": "@modou-dev/console",
+  "version": "0.6.0-alpha",
+  "description": "墨斗 Modou Web 控制台（PRD F21）——官方浏览器前端，复用 @modou-dev/server 的 REST+SSE",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.mjs"
+  },
+  "dependencies": {
+    "preact": "^10.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.7"
+  }
+}
