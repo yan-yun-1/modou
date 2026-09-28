@@ -13,7 +13,7 @@ import {
   type RenderItem,
   type SessionView,
 } from "./state.js";
-import { ModouClient, clearToken, loadToken, saveToken, type SessionSummary } from "./client.js";
+import { ModouClient, saveToken, type SessionSummary } from "./client.js";
 
 /**
  * plan-web B3/C1/C2/D1/D2：墨斗 Web 控制台（Preact SPA）。
@@ -323,7 +323,6 @@ function App(): JSX.Element {
         {current && (
           <div class="usage">
             tokens ↑{current.usage.inputTokens} ↓{current.usage.outputTokens} · 累计 ${current.usage.costUsd.toFixed(4)}
-            {loadToken() ? "" : " · 未配置 token"}
           </div>
         )}
       </footer>

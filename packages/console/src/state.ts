@@ -103,7 +103,8 @@ export function applyEventToView(view: SessionView, event: ModouEvent): SessionV
   switch (event.type) {
     case "user_message": {
       items.push({ kind: "user", text: event.text ?? "" });
-      return { ...view, items, busy: true };
+      // 回放：历史 user_message 不代表一轮正在进行（落盘 usage 无 turnEnd 标记）
+      return { ...view, items, busy: view.replay ? false : true };
     }
     case "text_delta": {
       if (view.replay) return view; // 回放跳过增量（assistant_message 是持久化事实）
@@ -184,7 +185,8 @@ export function replayEvents(state: ConsoleState, sessionId: string, events: Mod
   for (const event of events) {
     view = applyEventToView(view, event);
   }
-  return { ...state, views: { ...state.views, [sessionId]: view } };
+  // 兜底：落盘 usage 不带 turnEnd，回放结束强制非 busy（不显示取消按钮）
+  return { ...state, views: { ...state.views, [sessionId]: { ...view, busy: false } } };
 }
 
 /** 实时事件（当前订阅的会话） */

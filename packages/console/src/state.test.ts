@@ -75,6 +75,17 @@ describe("applyEventToView（B2 状态层）", () => {
     expect(v.busy).toBe(false);
   });
 
+  it("回放完整一轮后 busy 为 false（取消按钮不显示）——用户实测回归", () => {
+    const events: ModouEvent[] = [
+      { type: "user_message", text: "介绍一下自己" },
+      { type: "text_delta", delta: "忽略" },
+      { type: "assistant_message", text: "我是墨斗" },
+      { type: "usage", inputTokens: 10, outputTokens: 5, costUsd: 0.01 },
+    ];
+    const state = replayEvents({ sessions: [], views: {}, currentId: null, needsToken: false, notice: null }, "s1", events);
+    expect(state.views["s1"]!.busy).toBe(false);
+  });
+
   it("回放模式跳过 text_delta（assistant_message 是唯一文本事实）", () => {
     const events: ModouEvent[] = [
       { type: "user_message", text: "hi" },
