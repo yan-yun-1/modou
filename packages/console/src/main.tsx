@@ -155,12 +155,17 @@ function MessageList({
 }): JSX.Element {
   const boxRef = useRef<HTMLDivElement>(null);
   const itemCount = view.items.length + (view.streaming?.length ?? 0);
+  const prevItemsRef = useRef(view.items.length);
   useEffect(() => {
     boxRef.current?.scrollTo({ top: boxRef.current.scrollHeight });
-    // 新消息入列动效（§4.2：fadeUp 10px 0.25s）
-    const last = boxRef.current?.lastElementChild;
-    if (last) fadeUp(last);
-  }, [itemCount]);
+    // 入列动效只认"条目数变化"——流式增量每几十毫秒一个，逐个 fadeUp 会把
+    // 正在输出的气泡反复置透明（频闪，用户实测反馈），text_delta 增长只滚动
+    if (view.items.length !== prevItemsRef.current) {
+      prevItemsRef.current = view.items.length;
+      const last = boxRef.current?.lastElementChild;
+      if (last) fadeUp(last);
+    }
+  }, [itemCount, view.items.length]);
 
   const who = (kind: string) => (kind === "user" ? "你" : kind === "assistant" ? "墨斗" : null);
 
