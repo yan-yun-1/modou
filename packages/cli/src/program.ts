@@ -40,6 +40,9 @@ export function buildProgram(): Command {
         port: Number(options.port),
         host: options.host,
         authToken,
+        // plan-web A6：注入 home——remembered 审批落盘 permissionRules 与 models.json
+        // 生效的前提（loop-factory 的 onRemember 接线以 options.home 为条件）
+        createSessionDefaults: { home: homedir() },
       });
       const { port, host } = await server.start();
       if (authToken) {

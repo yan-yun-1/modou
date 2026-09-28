@@ -216,13 +216,31 @@ export class ModouServer {
   async #createSession(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const body = (await this.#readJson(req)) ?? {};
     const defaults = this.#options.createSessionDefaults ?? {};
+    // plan-web A5：cwd 语义修正——请求 body.cwd 优先于 settings.cwd（SDK 的 resolveCwd
+    // 是 settings 优先，浏览器控制台不能被宿主配置静默钉死）；目录不存在 400 不静默回退
+    const requested = typeof body.cwd === "string" && body.cwd !== "" ? body.cwd : undefined;
+    const settingsCwd = defaults.settings?.cwd;
+    const chosenCwd = requested ?? settingsCwd;
+    let cwdWarning: string | undefined;
+    if (requested && settingsCwd && resolve(requested) !== resolve(settingsCwd)) {
+      cwdWarning = `请求 cwd 覆盖 settings.cwd（${resolve(settingsCwd)}）`;
+    }
+    let chosenAbs: string | undefined;
+    if (chosenCwd) {
+      chosenAbs = resolve(chosenCwd);
+      if (!existsSync(chosenAbs) || !statSync(chosenAbs).isDirectory()) {
+        return this.#json(res, 400, { error: `cwd 不存在或不是目录：${chosenAbs}` });
+      }
+    }
     const session = await createSession({
       ...defaults,
       // plan-web A4：server 级 store 覆盖（测试隔离 + 回放/列表同源）
       ...(this.#options.store ? { store: this.#options.store } : {}),
       // models.json 自定义能力（目录外模型如 glm-4.5-air 需要它解析能力与计价）
       modelOverrides: await loadModelOverrides(defaults.home),
-      cwd: typeof body.cwd === "string" ? body.cwd : undefined,
+      cwd: chosenAbs,
+      // A5：settings.cwd 同步覆盖，杜绝 SDK 层 settings 优先把请求 cwd 钉死
+      ...(chosenAbs && defaults.settings ? { settings: { ...defaults.settings, cwd: chosenAbs } } : {}),
       ...(this.#options.createSessionOverrides?.(body) ?? {}),
     });
     const entry: SessionEntry = { session, busy: false, sseClients: new Set() };
@@ -231,6 +249,8 @@ export class ModouServer {
       sessionId: session.sessionId,
       contextWindow: session.contextWindow,
       mcpStatus: session.mcpStatus,
+      cwd: chosenAbs,
+      cwdWarning,
     });
   }
 
