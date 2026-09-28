@@ -78,12 +78,14 @@ describe("SessionStore", () => {
     await expect(store.read(id)).rejects.toThrow(/第 2 行/);
   });
 
-  it("lists session ids in order", async () => {
+  it("lists session ids by newest modification first", async () => {
     const store = new SessionStore(dir);
-    await store.create("b-session");
-    await store.create("a-session");
-    await store.create("c-session");
-    expect(await store.list()).toEqual(["a-session", "b-session", "c-session"]);
+    await store.create("old-session");
+    // 等 mtime 明显推进（Windows 文件时间精度约 10-16ms）
+    await new Promise((r) => setTimeout(r, 50));
+    await store.create("new-session");
+    const ids = await store.list();
+    expect(ids.indexOf("new-session")).toBeLessThan(ids.indexOf("old-session"));
   });
 
   it("defaults its base directory to ~/.modou/sessions", () => {

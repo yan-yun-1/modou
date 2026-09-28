@@ -518,7 +518,8 @@ export function ModouApp({
           setItems((prev) => [...prev, { kind: "error", text: "会话存储不可用" }]);
           return;
         }
-        const ids = (await store.list()).slice(-20);
+        // store.list 现为最新在前（plan-web 修复）
+        const ids = (await store.list()).slice(0, 20);
         setItems((prev) => [
           ...prev,
           {

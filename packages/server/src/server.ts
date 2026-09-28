@@ -269,7 +269,8 @@ export class ModouServer {
     const store = this.#options.store ?? new SessionStore();
     const ids = await store.list();
     const sessions: { sessionId: string; active: boolean; preview: string }[] = [];
-    for (const sid of ids.slice(-50).reverse()) {
+    // store.list 现为最新在前（plan-web 修复），取前 50 即最近 50
+    for (const sid of ids.slice(0, 50)) {
       let preview: string;
       try {
         const events = await store.read(sid);

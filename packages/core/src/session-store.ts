@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseEvent, type ModouEvent } from "./events.js";
@@ -64,6 +64,11 @@ export class SessionStore {
       .filter((event): event is ModouEvent => event !== null);
   }
 
+  /**
+   * 会话 id 列表，按文件修改时间倒序（最新在前）。
+   * plan-web 修复：字典序会让子代理（sub-）与无头（print-）历史会话在
+   * slice 窗口里刷屏，把用户近期会话挤出"最近 50"。
+   */
   async list(): Promise<string[]> {
     let entries: string[];
     try {
@@ -74,10 +79,14 @@ export class SessionStore {
       }
       throw error;
     }
-    return entries
-      .filter((name) => name.endsWith(".jsonl"))
-      .map((name) => name.slice(0, -".jsonl".length))
-      .sort();
+    const names = entries.filter((name) => name.endsWith(".jsonl"));
+    const stats = await Promise.all(
+      names.map(async (name) => ({
+        id: name.slice(0, -".jsonl".length),
+        mtimeMs: (await stat(join(this.baseDir, name))).mtimeMs,
+      })),
+    );
+    return stats.sort((a, b) => b.mtimeMs - a.mtimeMs).map((s) => s.id);
   }
 
   private sessionFile(sessionId: string): string {
