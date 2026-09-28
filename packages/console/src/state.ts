@@ -5,12 +5,6 @@
  * 审批卡三键状态、usage 累计、error 非致命不破坏流。
  */
 
-export interface SessionSummary {
-  sessionId: string;
-  active: boolean;
-  preview: string;
-}
-
 export interface ModouEvent {
   type: string;
   id?: string;
@@ -41,8 +35,10 @@ export interface RenderItem {
   kind: "user" | "assistant" | "tool" | "approval" | "error";
   /** tool/approval 的配对键（toolCallId / requestId） */
   id?: string;
-  /** user/assistant 的文本；tool 的标题；error 的消息 */
+  /** user/assistant 的文本；tool 的参数摘要；approval 的工具名；error 的消息 */
   text?: string;
+  /** 工具名（tool 卡 chip） */
+  name?: string;
   /** 工具参数摘要 */
   args?: unknown;
   /** tool 结果输出 / 审批 reason / 审批 diff */
@@ -74,6 +70,11 @@ export interface ConsoleState {
   /** 全局提示（网络错误等） */
   notice: string | null;
 }
+
+// plan-web §3.5：SessionSummary 以 client.ts 为单一来源（消除双份定义漂移）
+import type { SessionSummary } from "./client.js";
+
+export type { SessionSummary };
 
 export function emptyState(): ConsoleState {
   return { sessions: [], views: {}, currentId: null, needsToken: false, notice: null };
@@ -124,7 +125,8 @@ export function applyEventToView(view: SessionView, event: ModouEvent): SessionV
       items.push({
         kind: "tool",
         id: event.id,
-        text: `${event.name ?? "tool"} ${JSON.stringify(event.args ?? {}).slice(0, 160)}`,
+        name: event.name,
+        text: JSON.stringify(event.args ?? {}).slice(0, 160),
         args: event.args,
         status: "pending",
       });

@@ -34,6 +34,8 @@ export interface SessionSummary {
   sessionId: string;
   active: boolean;
   preview: string;
+  /** server 未提供（plan-web §3.5 服务端待办）；当前恒 undefined，时间位显示「—」 */
+  updatedAt?: number;
 }
 
 export interface ModouEvent {
