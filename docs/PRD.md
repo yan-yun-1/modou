@@ -365,6 +365,7 @@ Vercel AI SDK 作为多 provider 底座 + 针对专有能力（prompt cache、re
 | ACP | M4 | 作为 agent 接入 Zed/JetBrains |
 | LSP | M5 | 诊断与定义跳转注入上下文（F16，@modou-dev/lsp） |
 | VS Code 插件 | M5（alpha） | 复用 server 的官方前端（F20） |
+| Web 控制台 | M5 收尾（v0.6.0-alpha.1） | F21：多会话/审批 diff/取消/回放，同源复用 server |
 
 ### B. 本 PRD 的信息来源
 

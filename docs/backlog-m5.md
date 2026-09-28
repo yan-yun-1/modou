@@ -6,7 +6,7 @@ M5 计划内的清偿项（pack 校验、ACP 迁移、code-review 子代理、HT
 
 ## 商业验证（PRD 原定 M5 主线，用户决策顺延）
 
-1. **F21 Web 控制台**：任务列表、多会话并行、diff 审阅（PRD.md:177）。M4 server 的 REST+SSE 已就绪。
+1. **F21 Web 控制台**——✅ 已交付（2026-09-28，docs/plan-web.md；本地复用 server，商业化的云/计费部分仍属 F22）。
 2. **F22 云任务沙箱**：Docker/Firecracker 并行执行 + 按用量计费（PRD.md:178、335）。需要云基础设施与支付渠道。
 3. **官方模型网关订阅**：$20/月档、免自备 key（PRD.md:334）。依赖支付与账号体系。
 

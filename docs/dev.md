@@ -27,7 +27,9 @@ packages/
    ├─ app.tsx            ModouApp 主视图（事件驱动渲染）
    └─ components/        MessageItem(Static 冻结) / InputBox(边框+补全) / BusyLine(spinner)
                          / StatusBar(三段式) / ApprovalPrompt / PlanConfirm
-M5 新增：packages/lsp（LSP 客户端）、packages/vscode（VS Code 插件 alpha）、core/src/sandbox/（沙箱）
+packages/lsp     @modou-dev/lsp   LSP 客户端（诊断/定义注入，settings.lsp 开关）
+packages/console @modou-dev/console Web 控制台前端（Preact，private；产物随 server webui/ 分发）
+core/src/sandbox/               OS 沙箱（macOS Seatbelt；docs/sandbox-eval.md）
 ```
 
 ## 核心不变量（改代码前必读）

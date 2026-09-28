@@ -9,7 +9,7 @@
 
 墨斗是木匠弹线定直的工具——先弹线（Plan Mode 定计划），后动锯（确认后再执行）。
 
-**当前状态**：M4 已发布（v0.5.0-alpha：server / SDK / ACP / Hooks，Zed 实测通过）；M5 进行中（OS 沙箱、LSP 上下文、VS Code 插件 alpha）。路线图见 [docs/PRD.md](docs/PRD.md)，进度见 [docs/plan-m5.md](docs/plan-m5.md)。
+**当前状态**：M5 已发布（v0.6.0-alpha：OS 沙箱 / LSP / VS Code 插件 alpha）；Web 控制台（F21）v0.6.0-alpha.1 进行中——进度见 [docs/plan-web.md](docs/plan-web.md)，路线图见 [docs/PRD.md](docs/PRD.md)。
 
 ## 多端（M4）
 
@@ -17,6 +17,10 @@
 modou serve --port 4711   # HTTP+SSE 会话 API（POST /sessions → POST /sessions/:id/messages → GET /sessions/:id/events）
 modou acp                 # ACP agent 模式（stdio JSON-RPC），Zed/JetBrains 接入
 ```
+
+Web 控制台（F21）：`modou serve` 后浏览器打开 `http://127.0.0.1:4711`——多会话并行、流式回复、
+审批卡（diff + 允许/总是允许/拒绝）、turn 取消、用量成本、重启后历史只读回放。
+可选鉴权：`modou serve --auth`（随机 token 打印到 stdout）或 `--auth-token <t>`；浏览器首次 401 弹 token 表单。
 
 SDK 嵌入（`@modou-dev/sdk`）：
 
