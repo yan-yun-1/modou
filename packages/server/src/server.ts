@@ -1,5 +1,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { dirname, extname, join, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ModouEvent } from "@modou-dev/core";
 import { VERSION } from "@modou-dev/core";
 import {
@@ -23,10 +26,49 @@ export interface ModouServerOptions {
    * `/health` 豁免（VS Code 插件探测兼容，无敏感数据）。
    */
   authToken?: string;
+  /**
+   * Web 控制台（plan-web A2）：静态资源根目录（控制台构建产物）。
+   * 缺省三级解析：显式 webRoot → 开发态 packages/console/dist → 发布形态包内 webui/。
+   * 都不存在时保持纯 API 模式（GET / 404）。
+   */
+  webRoot?: string;
   /** 透传给 createSession 的默认项（home/settings/model 注入等，测试用） */
   createSessionDefaults?: Omit<CreateSessionOptions, "cwd">;
   /** 每会话覆盖项工厂（按请求体 body.cwd 等），测试注入 model 用 */
   createSessionOverrides?: (body: Record<string, unknown>) => Partial<CreateSessionOptions>;
+}
+
+const CONTENT_TYPES: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".json": "application/json; charset=utf-8",
+  ".woff2": "font/woff2",
+  ".map": "application/json; charset=utf-8",
+};
+
+/** server 包根目录（dist/server.js → 包根），web-root 二三级解析的锚点 */
+const PACKAGE_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * plan-web A2：web-root 三级解析。导出以便测试。
+ * ① 显式 webRoot；② 开发态 packages/console/dist；③ 发布形态包内 webui/。
+ */
+export function resolveWebRoot(explicit?: string): string | undefined {
+  if (explicit) {
+    return existsSync(explicit) ? resolve(explicit) : undefined;
+  }
+  const dev = resolve(PACKAGE_DIR, "..", "console", "dist");
+  if (existsSync(join(dev, "index.html"))) {
+    return dev;
+  }
+  const published = join(PACKAGE_DIR, "webui");
+  if (existsSync(join(published, "index.html"))) {
+    return published;
+  }
+  return undefined;
 }
 
 interface SessionEntry {
@@ -106,8 +148,9 @@ export class ModouServer {
   async #handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     const parts = url.pathname.split("/").filter(Boolean);
-    // plan-web A1：Bearer 鉴权（opt-in）。/health 豁免（插件探测兼容、无敏感数据）
-    if (this.#options.authToken !== undefined && url.pathname !== "/health") {
+    // plan-web A1：Bearer 鉴权（opt-in）。/health 与静态资源豁免（插件探测兼容、无敏感数据）
+    const isStatic = url.pathname === "/" || parts[0] === "assets";
+    if (this.#options.authToken !== undefined && url.pathname !== "/health" && !isStatic) {
       const header = req.headers.authorization ?? "";
       const provided = header.startsWith("Bearer ") ? header.slice(7) : "";
       if (!this.#tokenMatches(provided)) {
@@ -115,6 +158,11 @@ export class ModouServer {
         res.end(JSON.stringify({ error: "unauthorized: missing or invalid bearer token" }));
         return;
       }
+    }
+    // plan-web A2：同源静态托管（GET / 与 /assets/*；web-root 未就绪时纯 API 模式）
+    if (req.method === "GET" && isStatic) {
+      this.#serveStatic(url.pathname, res);
+      return;
     }
     try {
       if (req.method === "GET" && url.pathname === "/health") {
@@ -320,6 +368,35 @@ export class ModouServer {
     } catch {
       return null;
     }
+  }
+
+  /** plan-web A2：静态资源服务。/assets/* 强制落在 webRoot/assets/ 内（穿越防护含解码后的分隔符） */
+  #serveStatic(pathname: string, res: ServerResponse): void {
+    const webRoot = resolveWebRoot(this.#options.webRoot);
+    if (!webRoot) {
+      this.#json(res, 404, { error: "web ui not built (pass --web-root or build packages/console)" });
+      return;
+    }
+    let target: string;
+    if (pathname === "/") {
+      // 固定文件，无用户输入，无需守卫
+      target = join(webRoot, "index.html");
+    } else {
+      const assetsRoot = join(webRoot, "assets");
+      target = resolve(assetsRoot, decodeURIComponent(pathname.replace(/^\/assets\//, "")));
+      // 穿越防护：resolve 展平（含解码出的 \ 与 ../）后必须仍在 assetsRoot 内
+      if (!target.startsWith(assetsRoot + sep)) {
+        this.#json(res, 403, { error: "forbidden" });
+        return;
+      }
+    }
+    if (!existsSync(target) || !statSync(target).isFile()) {
+      this.#json(res, 404, { error: "not found" });
+      return;
+    }
+    const type = CONTENT_TYPES[extname(target)] ?? "application/octet-stream";
+    res.writeHead(200, { "content-type": type });
+    createReadStream(target).pipe(res);
   }
 
   #json(res: ServerResponse, status: number, body: unknown): void {

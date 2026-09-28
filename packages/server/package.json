@@ -12,7 +12,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "webui"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json"

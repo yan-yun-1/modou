@@ -1,1 +1,1 @@
-export { ModouServer, type ModouServerOptions } from "./server.js";
+export { ModouServer, resolveWebRoot, type ModouServerOptions } from "./server.js";
