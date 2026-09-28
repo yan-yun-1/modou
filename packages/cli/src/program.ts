@@ -26,10 +26,27 @@ export function buildProgram(): Command {
     .description("启动 HTTP+SSE 会话服务（多端复用，PRD F18；esc/接口见 docs/plan-m4.md）")
     .option("--port <n>", "监听端口", "4711")
     .option("--host <h>", "监听地址", "127.0.0.1")
-    .action(async (options: { port: string; host: string }) => {
+    .option("--auth-token <t>", "Bearer 鉴权 token（除 /health 外全部 401 保护）")
+    .option("--auth", "自动生成随机 token 并打印（等价 --auth-token <随机>）")
+    .action(async (options: { port: string; host: string; authToken?: string; auth?: boolean }) => {
+      const { randomBytes } = await import("node:crypto");
+      // plan-web A1：--auth > --auth-token > 环境变量 MOUDOU_TOKEN > 关闭
+      const authToken =
+        options.auth === true
+          ? randomBytes(16).toString("hex")
+          : (options.authToken ?? process.env.MOUDOU_TOKEN ?? undefined);
       const { ModouServer } = await import("@modou-dev/server");
-      const server = new ModouServer({ port: Number(options.port), host: options.host });
+      const server = new ModouServer({
+        port: Number(options.port),
+        host: options.host,
+        authToken,
+      });
       const { port, host } = await server.start();
+      if (authToken) {
+        process.stdout.write(`[modou] 鉴权已开启：请求需带 Authorization: Bearer <token>（/health 豁免）
+[modou] token: ${authToken}
+`);
+      }
       process.stdout.write(`[modou] serve 已启动：http://${host}:${port}（POST /sessions 创建会话，GET /sessions/:id/events 订阅 SSE）
 `);
       const shutdown = async () => {

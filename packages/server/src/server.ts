@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { ModouEvent } from "@modou-dev/core";
 import { VERSION } from "@modou-dev/core";
@@ -17,6 +18,11 @@ import {
 export interface ModouServerOptions {
   port?: number;
   host?: string;
+  /**
+   * Web 控制台（plan-web A1）：Bearer 鉴权 token；未配置时零行为变化。
+   * `/health` 豁免（VS Code 插件探测兼容，无敏感数据）。
+   */
+  authToken?: string;
   /** 透传给 createSession 的默认项（home/settings/model 注入等，测试用） */
   createSessionDefaults?: Omit<CreateSessionOptions, "cwd">;
   /** 每会话覆盖项工厂（按请求体 body.cwd 等），测试注入 model 用 */
@@ -86,9 +92,30 @@ export class ModouServer {
     this.#http = null;
   }
 
+  /** token 比较：sha256 后 timingSafeEqual，避免长度与逐字节时序侧信道 */
+  #tokenMatches(provided: string): boolean {
+    const expected = this.#options.authToken ?? "";
+    if (provided.length === 0 || expected.length === 0) {
+      return false;
+    }
+    const a = createHash("sha256").update(provided).digest();
+    const b = createHash("sha256").update(expected).digest();
+    return timingSafeEqual(a, b);
+  }
+
   async #handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
     const parts = url.pathname.split("/").filter(Boolean);
+    // plan-web A1：Bearer 鉴权（opt-in）。/health 豁免（插件探测兼容、无敏感数据）
+    if (this.#options.authToken !== undefined && url.pathname !== "/health") {
+      const header = req.headers.authorization ?? "";
+      const provided = header.startsWith("Bearer ") ? header.slice(7) : "";
+      if (!this.#tokenMatches(provided)) {
+        res.writeHead(401, { "content-type": "application/json", "www-authenticate": "Bearer" });
+        res.end(JSON.stringify({ error: "unauthorized: missing or invalid bearer token" }));
+        return;
+      }
+    }
     try {
       if (req.method === "GET" && url.pathname === "/health") {
         return this.#json(res, 200, { ok: true, version: VERSION });
