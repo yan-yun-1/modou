@@ -482,6 +482,15 @@ function App(): JSX.Element {
                   if (ok) subsRef.current.delete(id);
                 });
               }}
+              onBulkDelete={(ids) => {
+                void client.bulkDelete(ids).then(() => {
+                  for (const id of ids) subsRef.current.delete(id);
+                  setState((s) =>
+                    s.currentId && ids.includes(s.currentId) ? setCurrent(s, null) : s,
+                  );
+                  void refreshSessions();
+                });
+              }}
             />
           )}
         </span>

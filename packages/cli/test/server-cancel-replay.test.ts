@@ -267,6 +267,43 @@ describe("历史只读回放（A4）", () => {
     expect(inputs).toEqual(["首轮输入", "续跑输入"]);
   });
 
+  it("批量删除：历史会话删文件、活跃会话走关闭（A7 配额释放）", async () => {
+    server = startServer(textModel("x"));
+    let baseUrl = `http://127.0.0.1:${(await server.start()).port}`;
+    // 会话 1：有历史（跑一轮后 server 重启使其非活跃）
+    const c1 = await (await fetch(`${baseUrl}/sessions`, { method: "POST" })).json();
+    const sse1 = collectSse(baseUrl, c1.sessionId);
+    await new Promise((r) => setTimeout(r, 100));
+    await fetch(`${baseUrl}/sessions/${c1.sessionId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ input: "x" }),
+    });
+    await sse1.waitFor((e) => e.type === "assistant_message");
+    sse1.stop();
+    await server.close();
+    // 会话 2、3：重启后新建（活跃）
+    server = startServer(textModel("y"));
+    baseUrl = `http://127.0.0.1:${(await server.start()).port}`;
+    const c2 = await (await fetch(`${baseUrl}/sessions`, { method: "POST" })).json();
+    const c3 = await (await fetch(`${baseUrl}/sessions`, { method: "POST" })).json();
+
+    const bulk = await fetch(`${baseUrl}/sessions/bulk-delete`, {
+      method: "POST",
+      body: JSON.stringify({ ids: [c1.sessionId, c2.sessionId, c3.sessionId, "garbage<>id"] }),
+    });
+    const body = (await bulk.json()) as { deleted: number; requested: number };
+    expect(bulk.status).toBe(200);
+    expect(body.requested).toBe(3); // 非法 id 被过滤
+    expect(body.deleted).toBe(3);
+
+    // 批量删除 = 彻底删除：历史文件移除、活跃会话完整关闭
+    const list = (await (await fetch(`${baseUrl}/sessions`)).json()) as { sessions: { sessionId: string }[] };
+    expect(list.sessions.some((s) => s.sessionId === c1.sessionId)).toBe(false);
+    expect(list.sessions.some((s) => s.sessionId === c2.sessionId)).toBe(false);
+    expect(list.sessions.some((s) => s.sessionId === c3.sessionId)).toBe(false);
+    expect(server.sessionCount).toBe(0);
+  });
+
   it("不存在的会话仍 404", async () => {
     server = startServer(textModel("x"));
     const baseUrl = `http://127.0.0.1:${(await server.start()).port}`;

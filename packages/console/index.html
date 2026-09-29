@@ -128,6 +128,20 @@
     .panel .list { max-height: 380px; overflow-y: auto; }
     .panel .group-label { font-family: var(--mono); font-size: 12px; color: var(--t3);
                           padding: 8px var(--s3) 2px; }
+    .panel .group-head { display: flex; align-items: center; justify-content: space-between;
+                         padding: 8px var(--s3) 2px; }
+    .panel .group-head .group-label { padding: 0; }
+    .panel .group-head .select-all { display: flex; align-items: center; gap: 4px;
+                                     font-family: var(--mono); font-size: 12px; color: var(--t2);
+                                     cursor: pointer; }
+    .panel .group-head .select-all input { accent-color: var(--acc); margin: 0; }
+    .panel .bulk-bar { display: flex; align-items: center; gap: var(--s2); padding: 6px var(--s3);
+                       border-top: 1px solid var(--line); font-family: var(--mono); font-size: 12px;
+                       color: var(--t2); }
+    .panel .bulk-bar .danger { background: var(--err); color: #fff; border-radius: var(--r1);
+                               padding: 3px 10px; font-size: 12px; }
+    .panel .bulk-bar .ghost { color: var(--t3); font-size: 12px; }
+    .panel .row .line1, .panel .row .line2 { padding-right: 22px; }
     .panel .row { display: block; width: 100%; text-align: left; padding: 7px var(--s3); position: relative;
                   border-left: 2px solid transparent; transition: background var(--t-fast) var(--ease); cursor: pointer; }
     .panel .row .row-close { position: absolute; right: 8px; bottom: 7px; font-family: var(--mono);

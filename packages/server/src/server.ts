@@ -183,6 +183,10 @@ export class ModouServer {
           return await this.#list(res);
         }
       }
+      // plan-web：历史会话批量删除（控制台全选清理；活跃会话自动走完整关闭）
+      if (url.pathname === "/sessions/bulk-delete" && req.method === "POST") {
+        return await this.#bulkDelete(req, res);
+      }
       if (parts[0] === "sessions" && parts[1] !== undefined) {
         const id = parts[1];
         if (!SESSION_ID_PATTERN.test(id)) {
@@ -302,6 +306,32 @@ export class ModouServer {
       return this.#json(res, 404, { error: "session not found" });
     }
     this.#json(res, 200, { sessionId: id, events, active: false });
+  }
+
+  /** plan-web：批量删除——活跃会话走完整关闭，其余删历史文件。ids 上限 5000 */
+  async #bulkDelete(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const body = (await this.#readJson(req)) ?? {};
+    const raw = Array.isArray(body.ids) ? body.ids : [];
+    const ids = raw
+      .filter((x): x is string => typeof x === "string" && SESSION_ID_PATTERN.test(x))
+      .slice(0, 5000);
+    const store = this.#options.store ?? new SessionStore();
+    let deleted = 0;
+    for (const id of ids) {
+      const entry = await this.#reattach(id);
+      if (entry) {
+        entry.abort?.abort();
+        for (const client of entry.sseClients) {
+          client.end();
+        }
+        await entry.session.close().catch(() => {});
+        this.#sessions.delete(id);
+      }
+      // 批量删除 = 彻底删除：活跃会话关闭后同样移除历史文件
+      await store.delete(id).catch(() => {});
+      deleted += 1;
+    }
+    this.#json(res, 200, { ok: true, deleted, requested: ids.length });
   }
 
   async #closeSession(id: string, res: ServerResponse): Promise<void> {

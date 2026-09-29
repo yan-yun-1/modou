@@ -113,6 +113,18 @@ export class ModouClient {
     return { ok: false, error: body.error ?? `发送失败（${res.status}）` };
   }
 
+  /** 批量删除：活跃会话走完整关闭，其余删历史文件（plan-web 全选清理） */
+  async bulkDelete(ids: string[]): Promise<number> {
+    if (ids.length === 0) return 0;
+    const res = await this.#request("/sessions/bulk-delete", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    });
+    if (!res.ok) return 0;
+    const body = (await res.json()) as { deleted?: number };
+    return body.deleted ?? 0;
+  }
+
   /** 关闭（删除）活跃会话：abort + 释放资源 + 移出注册表（plan-web A7 配额的配套操作） */
   async deleteSession(sessionId: string): Promise<boolean> {
     const res = await this.#request(`/sessions/${sessionId}`, { method: "DELETE" });

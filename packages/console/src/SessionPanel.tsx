@@ -31,11 +31,15 @@ export interface SessionPanelProps {
   onClose: () => void;
   /** 关闭活跃会话（DELETE；仅注册表内会话可关） */
   onCloseSession?: (sessionId: string) => void;
+  /** 批量删除（历史会话全选清理） */
+  onBulkDelete?: (ids: string[]) => void;
 }
 
-export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSession }: SessionPanelProps): JSX.Element {
+export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSession, onBulkDelete }: SessionPanelProps): JSX.Element {
   const [filter, setFilter] = useState("");
   const [kbdIndex, setKbdIndex] = useState(0);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [armed, setArmed] = useState(false);
   const filterRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -144,10 +148,56 @@ export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSess
         {flat.length === 0 && <div class="empty">没有匹配的会话</div>}
         {active.length > 0 && <div class="group-label">进行中</div>}
         {active.map(renderRow)}
-        {history.length > 0 && <div class="group-label">历史</div>}
+        {history.length > 0 && (
+          <div class="group-head">
+            <span class="group-label">历史</span>
+            <label class="select-all">
+              <input
+                type="checkbox"
+                checked={history.length > 0 && history.every((s) => selected.has(s.sessionId))}
+                onChange={(e) => {
+                  const checked = (e.target as HTMLInputElement).checked;
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    for (const s of history) {
+                      if (checked) next.add(s.sessionId);
+                      else next.delete(s.sessionId);
+                    }
+                    return next;
+                  });
+                  setArmed(false);
+                }}
+              />
+              全选
+            </label>
+          </div>
+        )}
         {history.map(renderRow)}
       </div>
-      <div class="kbd-bar">↑↓ 选择 · Enter 打开 · Esc 关闭</div>
+      {selected.size > 0 && onBulkDelete ? (
+        <div class="bulk-bar">
+          <span class="mono">已选 {selected.size} 个</span>
+          <button
+            class={armed ? "danger" : ""}
+            onClick={() => {
+              if (!armed) {
+                setArmed(true);
+                return;
+              }
+              onBulkDelete([...selected]);
+              setSelected(new Set());
+              setArmed(false);
+            }}
+          >
+            {armed ? `确认删除 ${selected.size} 个（不可恢复）` : "删除所选"}
+          </button>
+          <button class="ghost" onClick={() => { setSelected(new Set()); setArmed(false); }}>
+            取消选择
+          </button>
+        </div>
+      ) : (
+        <div class="kbd-bar">↑↓ 选择 · Enter 打开 · Esc 关闭</div>
+      )}
     </div>
   );
 }
