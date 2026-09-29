@@ -113,14 +113,17 @@ export class ModouClient {
     return { ok: false, error: body.error ?? `发送失败（${res.status}）` };
   }
 
-  /** 批量删除：活跃会话走完整关闭，其余删历史文件（plan-web 全选清理） */
+  /**
+   * 批量删除：活跃会话走完整关闭，其余删历史文件（plan-web 全选清理）。
+   * 返回实际删除数；请求失败（如 server 为不含 bulk-delete 的旧版本）返回 -1。
+   */
   async bulkDelete(ids: string[]): Promise<number> {
     if (ids.length === 0) return 0;
     const res = await this.#request("/sessions/bulk-delete", {
       method: "POST",
       body: JSON.stringify({ ids }),
     });
-    if (!res.ok) return 0;
+    if (!res.ok) return -1;
     const body = (await res.json()) as { deleted?: number };
     return body.deleted ?? 0;
   }

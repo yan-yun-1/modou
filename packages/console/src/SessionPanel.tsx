@@ -31,8 +31,8 @@ export interface SessionPanelProps {
   onClose: () => void;
   /** 关闭活跃会话（DELETE；仅注册表内会话可关） */
   onCloseSession?: (sessionId: string) => void;
-  /** 批量删除（历史会话全选清理） */
-  onBulkDelete?: (ids: string[]) => void;
+  /** 批量删除（历史会话全选清理）；返回实际删除数，-1=失败（保留选择供重试） */
+  onBulkDelete?: (ids: string[]) => Promise<number>;
 }
 
 export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSession, onBulkDelete }: SessionPanelProps): JSX.Element {
@@ -40,6 +40,7 @@ export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSess
   const [kbdIndex, setKbdIndex] = useState(0);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [armed, setArmed] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
   const filterRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -184,16 +185,24 @@ export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSess
                 setArmed(true);
                 return;
               }
-              onBulkDelete([...selected]);
-              setSelected(new Set());
-              setArmed(false);
+              void onBulkDelete([...selected]).then((deleted) => {
+                if (deleted < 0) {
+                  setBulkError("删除失败——请重启 modou serve 后重试");
+                  setArmed(false);
+                  return;
+                }
+                setSelected(new Set());
+                setArmed(false);
+                setBulkError(null);
+              });
             }}
           >
             {armed ? `确认删除 ${selected.size} 个（不可恢复）` : "删除所选"}
           </button>
-          <button class="ghost" onClick={() => { setSelected(new Set()); setArmed(false); }}>
+          <button class="ghost" onClick={() => { setSelected(new Set()); setArmed(false); setBulkError(null); }}>
             取消选择
           </button>
+          {bulkError && <span class="bulk-err">{bulkError}</span>}
         </div>
       ) : (
         <div class="kbd-bar">↑↓ 选择 · Enter 打开 · Esc 关闭</div>
