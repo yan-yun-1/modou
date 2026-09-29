@@ -1,6 +1,21 @@
 import { PassThrough } from "node:stream";
 import type { ReactElement } from "react";
 import { render } from "ink";
+import { resetTerminalStyleCache } from "../src/terminal-capability.js";
+
+/**
+ * 测试钉住终端能力：组件渲染走的 terminalStyle() 探测的是宿主 shell 的
+ * TERM / WT_SESSION / TERM_PROGRAM 等信号（带缓存单例）——同一套字形断言
+ * （如 BusyLine 的重音符 spinner /✻✽✜…/）在带 TERM 的终端通过、在无 TERM 的
+ * CI 或 cmd 直启下退到 plain 表（|/-\）而失败。夹具统一钉为 rich 档并重置
+ * 单例缓存，保证渲染类测试与宿主环境无关；detectColorLevel 的纯函数分支
+ * 仍由 terminal-capability.test.ts 用显式 env 对象覆盖，不受此影响。
+ */
+function pinRichTerminal(): void {
+  process.env.TERM = "xterm-256color";
+  delete process.env.NO_COLOR;
+  resetTerminalStyleCache();
+}
 
 export interface InkHarness {
   /** 全部帧拼接并清除 ANSI 转义码（断言用 contains 即可） */
@@ -18,6 +33,7 @@ export interface InkHarness {
  * 替代 ink-testing-library（它是 CJS，无法在 Node 原生 require(esm) 下加载 ESM-only 的 ink 5）。
  */
 export function renderInk(element: ReactElement): InkHarness {
+  pinRichTerminal();
   const frames: string[] = [];
   const stdout = new PassThrough();
   (stdout as PassThrough & { isTTY?: boolean; columns?: number }).isTTY = true;

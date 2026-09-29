@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>墨斗 MODOU-1 · 仪器面板（硬件样机壳）视觉稿</title>
+<style>
+/* ============ 令牌：亮 = 硬件壳默认，暗 = 炭黑壳（拨杆切换） ============ */
+:root{
+  --desk:#C9C3B6;
+  --shell:#E8E4DC;            /* 暖灰米壳 */
+  --shell-deep:#D6D1C6;       /* 面板分区 */
+  --silk:#2B2926;             /* 丝印深灰 */
+  --silk-2:#6E6A62;           /* 丝印次级 */
+  --cap:#F4F1EA;              /* 键帽白 */
+  --amber:#FF7A1A;            /* 仪器橙：主行动 / 指示灯 / 流式 */
+  --red:#D9482F;
+  --led-green:#3E9B4F;
+  --lcd:#C9D3B8;              /* 灰绿液晶：仅用量与读数区 */
+  --lcd-ink:#2F3A2A;
+  --lcd-ghost:rgba(47,58,42,.14);
+  --lcd-dim:rgba(47,58,42,.55);
+  --diff-add:#1F6B33;
+  --diff-del:#A63A22;
+  --screen:#EFEBE2;           /* 内凹显示区，微深于壳 */
+  --plastic-dark:#2B2926;     /* 用户胶壳块 */
+  --plastic-dark-ink:#F4F1EA;
+  --seam-hi:rgba(255,255,255,.5);   /* 接缝双线：亮 */
+  --seam-lo:rgba(0,0,0,.08);        /* 接缝双线：暗 */
+  --line:rgba(43,41,38,.16);
+  --unlit:rgba(43,41,38,.13);       /* 熄灭 LED */
+  --travel:0 3px 0 rgba(43,41,38,.3);   /* 物理行程：唯一低位实影 */
+  --engrave-ink:#8A857A;            /* 蚀刻铭牌 */
+  --engrave-hi:rgba(255,255,255,.6);
+  --sig-ink:rgba(43,41,38,.52);
+  --sig-hi:rgba(255,255,255,.55);
+  --dev-shadow:0 16px 36px rgba(43,41,38,.18);
+  --f-silk:'Saira','Bahnschrift','Segoe UI','Noto Sans SC','Microsoft YaHei UI',sans-serif;
+  --f-body:'Noto Sans SC','Segoe UI','Microsoft YaHei UI','Microsoft YaHei',sans-serif;
+  --f-mono:'Chivo Mono','Cascadia Mono','Consolas','Courier New',monospace;
+}
+body.night{
+  --desk:#141210;
+  --shell:#23211E;            /* 炭黑壳 */
+  --shell-deep:#1B1916;
+  --silk:#D8D4CB;
+  --silk-2:#94907F;
+  --cap:#3A3733;
+  --amber:#FF7A1A;            /* amber / LED 不变更，保持醒目 */
+  --red:#D9482F;
+  --led-green:#3E9B4F;
+  --lcd:#3A4234;
+  --lcd-ink:#B7C9A0;
+  --lcd-ghost:rgba(183,201,160,.14);
+  --lcd-dim:rgba(183,201,160,.55);
+  --diff-add:#8FCF7C;
+  --diff-del:#E58A72;
+  --screen:#1B1815;
+  --plastic-dark:#141210;
+  --plastic-dark-ink:#E9E5DC;
+  --seam-hi:rgba(255,255,255,.06);
+  --seam-lo:rgba(0,0,0,.4);
+  --line:rgba(216,212,203,.14);
+  --unlit:rgba(216,212,203,.13);
+  --travel:0 3px 0 rgba(0,0,0,.55);
+  --engrave-ink:#5C574E;
+  --engrave-hi:rgba(255,255,255,.07);
+  --sig-ink:rgba(216,212,203,.5);
+  --sig-hi:rgba(255,255,255,.05);
+  --dev-shadow:0 16px 36px rgba(0,0,0,.55);
+}
+/* ============ 基础 ============ */
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--desk);color:var(--silk);font-family:var(--f-body);
+  font-size:14px;line-height:1.7;min-height:100vh;
+  transition:background-color .2s ease;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--amber);color:#fff}
+button{border:0;background:none;font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+input{font-family:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+/* 塑料磨砂噪点 .03，全程无 glow */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;opacity:.03;z-index:40;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E") repeat;
+}
+/* ============ 排印三档 ============ */
+.silk{font-family:var(--f-silk);font-weight:600;text-transform:uppercase;
+  letter-spacing:.14em;font-size:10px;color:var(--silk-2)}
+.silk.strong{color:var(--silk);font-size:11px}
+.mono{font-family:var(--f-mono);font-size:13px}
+/* ============ 页面骨架：硬件说明书双图 ============ */
+.wrap{max-width:1140px;margin:0 auto;padding:40px 22px 60px}
+.docline{text-align:center;margin-bottom:36px;letter-spacing:.2em}
+.figcap{text-align:center;margin:46px 0 14px;font-size:11px;letter-spacing:.16em;color:var(--silk-2)}
+.figcap .mono{color:var(--amber);margin-right:10px;font-size:11px}
+.colophon{text-align:center;margin-top:46px;opacity:.85}
+/* ============ 整机：面板 10px 圆角 + 四角螺丝 ============ */
+.device{
+  position:relative;overflow:hidden;background:var(--shell);
+  border-radius:10px;box-shadow:var(--dev-shadow),inset 0 1px 0 var(--seam-hi);
+  transition:background-color .2s ease,box-shadow .2s ease;
+}
+.screw{position:absolute;width:11px;height:11px;border-radius:50%;background:var(--shell-deep);
+  box-shadow:inset 0 1.5px 2.5px rgba(0,0,0,.35),0 1px 0 var(--seam-hi);z-index:5}
+.screw::before{content:"";position:absolute;left:1.5px;right:1.5px;top:50%;height:1.5px;
+  margin-top:-.75px;background:rgba(0,0,0,.3)}
+.screw.tl{top:8px;left:8px}.screw.tl::before{transform:rotate(-40deg)}
+.screw.tr{top:8px;right:8px}.screw.tr::before{transform:rotate(35deg)}
+.screw.bl{bottom:8px;left:8px}.screw.bl::before{transform:rotate(15deg)}
+.screw.br{bottom:8px;right:8px}.screw.br::before{transform:rotate(-65deg)}
+/* ============ 铭牌条 ============ */
+.nameplate{display:flex;align-items:center;gap:16px;padding:14px 26px;
+  border-bottom:1px solid var(--seam-lo);box-shadow:inset 0 -1px 0 var(--seam-hi)}
+.brand{font-family:var(--f-silk);font-weight:700;font-size:17px;letter-spacing:.16em;
+  color:var(--engrave-ink);text-shadow:0 1px 0 var(--engrave-hi)}
+.model{letter-spacing:.18em}
+/* 主题拨杆：40×20 凹槽滑块 */
+.toggle{margin-left:auto;display:inline-flex;align-items:center;gap:8px}
+.t-label{font-family:var(--f-silk);font-weight:600;font-size:10px;letter-spacing:.14em;
+  color:var(--silk-2);transition:color .15s}
+.toggle:not(.on) .t-day{color:var(--silk)}
+.toggle.on .t-night{color:var(--amber)}
+.t-groove{position:relative;flex:none;width:40px;height:20px;border-radius:999px;
+  background:var(--shell-deep);
+  box-shadow:inset 0 2px 3px rgba(0,0,0,.28),inset 0 -1px 0 var(--seam-hi)}
+.t-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+  background:var(--cap);box-shadow:0 1px 2px rgba(0,0,0,.35);transition:transform .15s ease}
+.toggle.on .t-knob{transform:translateX(20px)}
+/* ============ 机箱网格：240px 卡带架 + 显示列 ============ */
+.chassis{display:grid;grid-template-columns:240px 1fr}
+/* ---- 会话面板 = 卡带架 ---- */
+.rack{position:relative;border-right:1px solid var(--line)}
+.rack-head{display:flex;justify-content:space-between;gap:10px;padding:12px 14px 10px;
+  border-top:1px solid var(--seam-hi);border-bottom:1px solid var(--seam-lo)}
+.rh-l{display:flex;flex-direction:column;gap:3px}
+.rh-r{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.vu-top{display:flex;align-items:center;gap:6px}
+/* VU 电平表：12 格，绿→橙→红按阈值 */
+.vu-bar{display:flex;gap:2px}
+.vu-bar i{width:5px;height:12px;border-radius:1px;background:var(--unlit)}
+.vu-bar i.g.on{background:var(--led-green)}
+.vu-bar i.o.on{background:var(--amber)}
+.vu-bar i.r.on{background:var(--red)}
+/* 段码数字：内联 SVG 七段管（灭段留 ghost 底） */
+.vu-read{display:flex;align-items:center;gap:6px}
+.seg{display:flex;gap:3px;background:var(--lcd);padding:3px 5px;border-radius:3px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.25)}
+.segd{display:block;width:10px;height:16px}
+.segd .on{fill:var(--lcd-ink)}
+.segd .off{fill:var(--lcd-ghost)}
+.tapes{display:flex;flex-direction:column;gap:8px;padding:12px}
+/* 卡带：标签槽 + 两小孔；当前插入位橙色 LED 常亮 */
+.tape{position:relative;width:100%;text-align:left;background:var(--cap);border-radius:6px;
+  padding:9px 10px 12px;transition:transform .05s ease;
+  box-shadow:inset 0 1px 0 var(--seam-hi),0 1.5px 0 rgba(43,41,38,.2)}
+.tape:hover{transform:translateY(-1px)}
+.tape .slot{display:block;background:var(--shell-deep);border-radius:3px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.16);padding:5px 26px 5px 8px;
+  font-size:12px;font-weight:500;color:var(--silk);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tape .holes{display:flex;gap:10px;justify-content:center;margin-top:9px}
+.tape .holes i{width:9px;height:9px;border-radius:50%;background:var(--shell);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.28)}
+.tled{position:absolute;top:9px;right:9px;width:6px;height:6px;border-radius:50%;
+  background:var(--unlit)}
+.tape.active{transform:translateY(1px);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.25),0 1px 0 rgba(43,41,38,.12)}
+.tape.active .tled{background:var(--amber)}
+.tape.new{background:transparent;border:1.5px dashed var(--line);box-shadow:none;
+  display:flex;align-items:center;justify-content:center;padding:11px}
+/* 审批等待：面板边框橙色 LED 呼吸（平面描边脉冲，无 blur） */
+.device.pending .rack::after{content:"";position:absolute;inset:0;pointer-events:none;
+  border:1.5px solid var(--amber);border-radius:10px 0 0 10px;opacity:.5;
+  animation:breathe 2s ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:.12}50%{opacity:.85}}
+/* ---- 显示列 ---- */
+.main-col{display:flex;flex-direction:column;min-width:0}
+/* 内凹显示屏 */
+.display{flex:1;margin:14px;background:var(--screen);border-radius:6px;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.22),inset 0 -1px 0 var(--seam-hi);
+  padding:16px 20px 20px;display:flex;flex-direction:column;min-height:540px;
+  transition:background-color .2s ease}
+.scr-head{display:flex;align-items:center;gap:10px;padding-bottom:10px;margin-bottom:16px;
+  border-bottom:1px solid var(--line)}
+.scr-head .chno{font-family:var(--f-mono);font-size:11px;color:var(--silk-2);letter-spacing:.08em}
+.scr-title{font-size:13px;font-weight:600}
+.scr-head .live-lb{margin-left:auto;color:var(--led-green)}
+/* 消息流：行高 1.7、间距 20px */
+.msgs{flex:1;display:flex;flex-direction:column;gap:20px}
+.msg{max-width:78%;font-size:14px;line-height:1.7}
+.msg.user{align-self:flex-end;background:var(--plastic-dark);color:var(--plastic-dark-ink);
+  border-radius:8px;padding:10px 14px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 1.5px 0 rgba(0,0,0,.22)}
+.msg.agent{position:relative;align-self:flex-start;background:var(--cap);color:var(--silk);
+  border-radius:8px;padding:10px 14px;
+  box-shadow:inset 0 1px 0 var(--seam-hi),0 1.5px 0 rgba(43,41,38,.18)}
+/* 状态 LED：左上角；绿常亮=完成，橙 steps 闪=流式 */
+.st{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.st.done{background:var(--led-green)}
+.st.stream{background:var(--amber);animation:blink 1s linear infinite}
+@keyframes blink{0%,50%{opacity:1}50.01%,100%{opacity:.15}}
+.msg>.st{position:absolute;top:-4px;left:-14px}
+/* 回放徽标：琥珀丝印章 */
+.rew{position:absolute;top:-11px;left:4px;font-size:9px;color:var(--amber);
+  border:1.5px solid var(--amber);border-radius:3px;padding:1px 6px;background:var(--screen)}
+/* 工具卡：工位牌塑料卡，上边接缝，内凹 lcd 子屏 */
+.tool{align-self:flex-start;width:min(620px,100%);background:var(--cap);border-radius:6px;
+  box-shadow:inset 0 1px 0 var(--seam-hi),0 1.5px 0 rgba(43,41,38,.18)}
+.tool-head{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;
+  text-align:left;border-radius:6px 6px 0 0;border-bottom:1px solid var(--seam-lo)}
+.arrow{color:var(--engrave-ink);font-size:10px}
+.tdesc{font-size:12px;color:var(--silk-2)}
+.tstat{margin-left:auto;display:flex;align-items:center;gap:6px}
+.tstat .st{width:7px;height:7px}
+.tool-body{margin:10px;background:var(--lcd);color:var(--lcd-ink);border-radius:4px;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.28);padding:10px 12px;
+  font-family:var(--f-mono);font-size:12.5px;line-height:1.55}
+.tool-body p.lbl{font-family:var(--f-silk);font-weight:600;font-size:9px;
+  letter-spacing:.16em;color:var(--lcd-dim);margin:0 0 3px}
+.tool-body pre{margin:0 0 9px;white-space:pre-wrap;word-break:break-all}
+.tool-body pre:last-child{margin-bottom:0}
+.tool-body .ln{color:var(--lcd-dim)}
+/* 审批卡 */
+.approve{align-self:flex-start;width:min(680px,100%);background:var(--cap);border-radius:6px;
+  box-shadow:inset 0 1px 0 var(--seam-hi),0 1.5px 0 rgba(43,41,38,.2)}
+.approve-head{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.approve-head .mono{font-size:11px;color:var(--silk-2);margin-left:auto}
+.stop{width:30px;height:30px;flex:none;border-radius:50%;border:2px solid var(--red);
+  color:var(--red);background:var(--cap);display:inline-flex;align-items:center;
+  justify-content:center;font-size:9px;
+  box-shadow:0 2px 0 rgba(0,0,0,.25);transition:transform .05s ease,box-shadow .05s ease}
+.stop-lb{margin-left:-4px}
+/* diff：lcd 内凹子屏 */
+.diff{margin:0 12px 10px;background:var(--lcd);border-radius:4px;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.28);padding:10px 12px;
+  font-family:var(--f-mono);font-size:12.5px;line-height:1.55;overflow-x:auto}
+.diff .dln{white-space:pre;font-family:inherit;font-size:inherit}
+.diff .ctx{color:var(--lcd-dim)}
+.diff .add{color:var(--diff-add)}
+.diff .del{color:var(--diff-del)}
+/* 三键区：面板加厚分区（shell-deep 底 + 凹槽） */
+.keys{display:flex;gap:16px;align-items:flex-start;margin:0 12px 12px;padding:14px 16px 11px;
+  background:var(--shell-deep);border-radius:8px;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.22),inset 0 -1px 0 var(--seam-hi)}
+.keycol{display:flex;flex-direction:column;align-items:center}
+/* 实体键：物理行程 */
+.key{border-radius:999px;background:var(--cap);color:var(--silk);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:var(--travel);transition:transform .05s ease,box-shadow .05s ease}
+.key:hover,.pkey:hover,.send:hover,.stop:hover{transform:translateY(-1px)}
+.key:active,.pkey:active{transform:translateY(3px);box-shadow:0 0 0 rgba(0,0,0,0)}
+.key .dot{width:7px;height:7px;border-radius:50%;background:var(--led-green);
+  box-shadow:inset 0 1px 1px rgba(0,0,0,.3)}
+.key-lg{padding:12px 24px;font-weight:600;font-size:14px}
+.key-md{padding:9px 16px;font-size:13px}
+.key-red{background:var(--red);color:#FFF6F0;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.keycap-lb{margin-top:8px;font-size:9px}
+/* ============ 输入台：凹槽造型 ============ */
+.inputzone{border-top:1px solid var(--seam-lo);box-shadow:inset 0 1px 0 var(--seam-hi);
+  padding:12px 16px 14px;display:flex;flex-direction:column;gap:6px}
+.slot{display:flex;align-items:center;gap:12px;background:var(--shell-deep);
+  border:1px solid var(--line);border-radius:999px;min-height:64px;padding:5px 5px 5px 18px;
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.2),inset 0 -1px 0 var(--seam-hi)}
+.in-label{flex:none}
+.in{flex:1;min-width:0;border:0;outline:none;background:transparent;color:var(--silk);
+  font-size:14px;padding:8px 0}
+.in::placeholder{color:var(--silk-2);opacity:.75}
+.send{width:56px;height:56px;flex:none;border-radius:50%;background:var(--amber);
+  color:#FFF9F2;font-family:var(--f-silk);font-weight:600;font-size:15px;letter-spacing:.04em;
+  box-shadow:0 3px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.25);
+  transition:transform .05s ease,box-shadow .05s ease}
+.send:active,.stop:active{transform:translateY(3px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 0 0 rgba(0,0,0,0)}
+.hint{align-self:flex-end}
+/* ============ 空状态：信号待输入 ============ */
+.standby-core{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;padding:30px 0}
+.standby-led{width:10px;height:10px;border-radius:50%;background:var(--amber);
+  animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.22}}
+.sig{font-size:21px;font-weight:600;letter-spacing:.4em;text-indent:.4em;
+  color:var(--sig-ink);text-shadow:0 1px 0 var(--sig-hi)}
+.presets{border-top:1px solid var(--line);padding-top:16px;display:flex;
+  flex-direction:column;gap:10px;align-items:center}
+.preset-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.pkey{display:inline-flex;align-items:center;gap:8px;background:var(--cap);
+  border-radius:999px;padding:9px 16px;color:var(--silk);font-size:13px;
+  box-shadow:var(--travel);transition:transform .05s ease,box-shadow .05s ease}
+.pkey .ch{font-family:var(--f-mono);font-size:10px;color:var(--silk-2);letter-spacing:.12em}
+/* ============ 动效 L1：入场分区 60ms stagger ============ */
+@keyframes enter{from{opacity:0;transform:translateY(5px)}}
+.nameplate{animation:enter .3s ease backwards}
+.rack{animation:enter .3s ease backwards;animation-delay:60ms}
+.display{animation:enter .3s ease backwards;animation-delay:120ms}
+.inputzone{animation:enter .3s ease backwards;animation-delay:180ms}
+/* ============ 降级 ============ */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+@media (max-width:860px){
+  .chassis{grid-template-columns:1fr}
+  .rack{border-right:0;border-bottom:1px solid var(--seam-lo)}
+  .tapes{flex-direction:row;flex-wrap:wrap}
+  .tape{width:auto;flex:1 1 40%}
+  .model{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="docline silk">MODOU-1 · INSTRUMENT PANEL VISUAL · 方向 C · 亮壳为默认 · 拨杆切夜</p>
+
+  <!-- ============ FIG.1 待机 ============ -->
+  <p class="figcap"><span class="mono">FIG.1</span>待机 STANDBY — 空状态 · 预设频道</p>
+  <section class="device" aria-label="MODOU-1 待机状态">
+    <span class="screw tl" aria-hidden="true"></span><span class="screw tr" aria-hidden="true"></span>
+    <span class="screw bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
+    <header class="nameplate">
+      <span class="brand">墨斗 MODOU-1</span>
+      <span class="model silk">PORTABLE AI CONSOLE · MK-Ⅱ · SN 2609-114</span>
+      <button class="toggle" role="switch" aria-checked="false" title="昼 / 夜 主题拨杆">
+        <span class="t-label t-day">昼</span>
+        <span class="t-groove" aria-hidden="true"><span class="t-knob"></span></span>
+        <span class="t-label t-night">夜</span>
+      </button>
+    </header>
+    <div class="chassis">
+      <aside class="rack">
+        <div class="rack-head">
+          <div class="rh-l">
+            <span class="silk strong">Sessions</span>
+            <span class="silk">卡带架</span>
+          </div>
+          <div class="rh-r">
+            <div class="vu-top">
+              <span class="silk">Token</span>
+              <div class="vu-bar" aria-hidden="true">
+                <i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="o on"></i><i class="o on"></i><i class="o"></i><i class="r"></i><i class="r"></i>
+              </div>
+            </div>
+            <div class="vu-read">
+              <span class="seg" data-seg="24000" role="img" aria-label="已用 24000 tokens"></span>
+              <span class="silk">/32K</span>
+            </div>
+          </div>
+        </div>
+        <div class="tapes">
+          <button class="tape active"><i class="tled" aria-hidden="true"></i><span class="slot">重设计 · 方向C 对照稿</span><span class="holes" aria-hidden="true"><i></i><i></i></span></button>
+          <button class="tape"><i class="tled" aria-hidden="true"></i><span class="slot">/web 命令联调</span><span class="holes" aria-hidden="true"><i></i><i></i></span></button>
+          <button class="tape"><i class="tled" aria-hidden="true"></i><span class="slot">批量删除 bug 复现</span><span class="holes" aria-hidden="true"><i></i><i></i></span></button>
+          <button class="tape"><i class="tled" aria-hidden="true"></i><span class="slot">webui 字体子集实验</span><span class="holes" aria-hidden="true"><i></i><i></i></span></button>
+          <button class="tape new"><span class="silk">＋ 新卡带 NEW</span></button>
+        </div>
+      </aside>
+      <div class="main-col">
+        <div class="display">
+          <div class="standby-core">
+            <i class="standby-led" aria-hidden="true"></i>
+            <p class="sig">信号待输入</p>
+            <p class="silk sub">Standby · 选择卡带或按下预设频道</p>
+          </div>
+          <div class="presets">
+            <p class="silk">Preset CH · 预设频道</p>
+            <div class="preset-row">
+              <button class="pkey" data-fill="解释这段报错堆栈的成因与修法"><span class="ch">CH-01</span>解释报错堆栈</button>
+              <button class="pkey" data-fill="把 src/utils/date.ts 里的日期格式化抽成独立函数并补注释"><span class="ch">CH-02</span>抽取工具函数</button>
+              <button class="pkey" data-fill="为刚才的改动补一组单元测试"><span class="ch">CH-03</span>补单元测试</button>
+            </div>
+          </div>
+        </div>
+        <div class="inputzone">
+          <div class="slot">
+            <span class="silk in-label">Input</span>
+            <input id="stdA" class="in" type="text" placeholder="输入信号…（Enter 发送）" aria-label="输入指令">
+            <button class="send" title="发送（Enter）" aria-label="发送">►►</button>
+          </div>
+          <p class="hint silk">Enter ↵ 发送 · Esc 取消</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FIG.2 会话进行中 ============ -->
+  <p class="figcap"><span class="mono">FIG.2</span>会话进行中 LIVE — 样例对话 · 工位卡 · 审批 · 用量</p>
+  <section class="device pending" aria-label="MODOU-1 会话进行中，等待审批">
+    <span class="screw tl" aria-hidden="true"></span><span class="screw tr" aria-hidden="true"></span>
+    <span class="screw bl" aria-hidden="true"></span><span class="screw br" aria-hidden="true"></span>
+    <header class="nameplate">
+      <span class="brand">墨斗 MODOU-1</span>
+      <span class="model silk">PORTABLE AI CONSOLE · MK-Ⅱ · SN 2609-114</span>
+      <button class="toggle" role="switch" aria-checked="false" title="昼 / 夜 主题拨杆">
+        <span class="t-label t-day">昼</span>
+        <span class="t-groove" aria-hidden="true"><span class="t-knob"></span></span>
+        <span class="t-label t-night">夜</span>
+      </button>
+    </header>
+    <div class="chassis">
+      <aside class="rack">
+        <div class="rack-head">
+          <div class="rh-l">
+            <span class="silk strong">Sessions</span>
+            <span class="silk">卡带架</span>
+          </div>
+          <div class="rh-r">
+            <div class="vu-top">
+              <span class="silk">Token</span>
+              <div class="vu-bar" aria-hidden="true">
+                <i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="g on"></i><i class="o on"></i><i class="o on"></i><i class="o"></i><i class="r"></i><i class="r"></i>
+              </div>
+            </div>
+            <div class="vu-read">
+              <span class="seg" data-seg="24000" role="img" aria-label="已用 24000 tokens"></span>
+              <span class="silk">/32K</span>
+            </div>
+          </div>
+        </div>
+        <div class="tapes">
+          <button class="tape active"><i class="tled" aria-hidden="true"></i><span class="slot">重设计 · 方向C 对照稿</span><span class="holes" aria-hidden="true"><i></i><i></i></span></button>
+          <button class="tape"><i class="tled" aria-hidden="true"></i><span class="slot">/web 命令联调</span><span class="holes" aria-hidden="true"><i></i><i></i></span></button>
+          <button class="tape"><i class="tled" aria-hidden="true"></i><span class="slot">批量删除 bug 复现</span><span class="holes" aria-hidden="true"><i></i><i></i></span></button>
+          <button class="tape"><i class="tled" aria-hidden="true"></i><span class="slot">webui 字体子集实验</span><span class="holes" aria-hidden="true"><i></i><i></i></span></button>
+          <button class="tape new"><span class="silk">＋ 新卡带 NEW</span></button>
+        </div>
+      </aside>
+      <div class="main-col">
+        <div class="display">
+          <div class="scr-head">
+            <span class="chno">CH·02</span>
+            <span class="scr-title">date.ts 重构</span>
+            <span class="silk live-lb">Live</span>
+            <i class="st done" aria-hidden="true"></i>
+          </div>
+          <div class="msgs">
+            <div class="msg user">帮我把 src/utils/date.ts 里的日期格式化抽成独立函数，顺便补上注释。</div>
+            <div class="msg agent"><i class="st done" aria-hidden="true"></i><span class="rew silk">REW ◄◄</span>好的，先看一下这个文件的现状，再决定拆分方式。</div>
+            <div class="tool">
+              <button class="tool-head" aria-expanded="true">
+                <span class="arrow" aria-hidden="true">▾</span>
+                <span class="silk strong">Bash</span>
+                <span class="tdesc">读取 date.ts 现状</span>
+                <span class="tstat"><i class="st done" aria-hidden="true"></i><span class="silk">Done</span></span>
+              </button>
+              <div class="tool-body">
+                <p class="lbl">Params</p>
+                <pre>{"tool":"bash","command":"sed -n '1,40p' src/utils/date.ts","timeout":30}</pre>
+                <p class="lbl">Output</p>
+                <pre><span class="ln">  1</span>  import { pad } from './string';
+<span class="ln"> 12</span>  export function fmt(d: Date) {
+<span class="ln"> 13</span>    return d.toISOString().slice(0, 10);
+<span class="ln"> 14</span>  }</pre>
+              </div>
+            </div>
+            <div class="msg agent"><i class="st done" aria-hidden="true"></i>文件不长。建议把格式化一并抽出为 formatDate，保持原有导出不变。</div>
+            <div class="msg agent"><i class="st stream" aria-hidden="true"></i>正在应用修改——已完成重命名与注释，等待你对下方 diff 的批准。</div>
+            <div class="approve">
+              <div class="approve-head">
+                <i class="st stream" aria-hidden="true"></i>
+                <span class="silk strong">需要批准 · Approve</span>
+                <span class="mono">+4 −3 · src/utils/date.ts</span>
+                <button class="stop" title="停止本轮（Esc）" aria-label="停止本轮">■</button>
+                <span class="silk stop-lb">停止</span>
+              </div>
+              <div class="diff">
+                <p class="dln ctx">@@ -12,6 +12,14 @@</p>
+                <p class="dln del">- export function fmt(d: Date) {</p>
+                <p class="dln del">-   return d.toISOString().slice(0, 10);</p>
+                <p class="dln del">- }</p>
+                <p class="dln add">+ export function formatDate(d: Date): string {</p>
+                <p class="dln add">+   // 统一输出 YYYY-MM-DD（本地时区）</p>
+                <p class="dln add">+   const p = (n: number) =&gt; String(n).padStart(2, '0');</p>
+                <p class="dln add">+   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;</p>
+                <p class="dln add">+ }</p>
+              </div>
+              <div class="keys">
+                <div class="keycol">
+                  <button class="key key-lg"><i class="dot" aria-hidden="true"></i>批准</button>
+                  <span class="keycap-lb silk">写入 2 处修改</span>
+                </div>
+                <div class="keycol">
+                  <button class="key key-md">批准全部</button>
+                  <span class="keycap-lb silk">本会话不再询问</span>
+                </div>
+                <div class="keycol">
+                  <button class="key key-md key-red">驳回</button>
+                  <span class="keycap-lb silk">退回并附言</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="inputzone">
+          <div class="slot">
+            <span class="silk in-label">Input</span>
+            <input id="stdB" class="in" type="text" placeholder="输入信号…（Enter 发送）" aria-label="输入指令">
+            <button class="send" title="发送（Enter）" aria-label="发送">►►</button>
+          </div>
+          <p class="hint silk">Enter ↵ 发送 · Esc 取消</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="colophon silk">MODOU-1 Visual Spec · L1 Motion · 单文件自包含 · 0 外链资源</p>
+</div>
+<script>
+(function(){
+  var toggles = Array.prototype.slice.call(document.querySelectorAll('.toggle'));
+  function setNight(on){
+    document.body.classList.toggle('night', on);
+    toggles.forEach(function(x){
+      x.classList.toggle('on', on);
+      x.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+  }
+  // 预览钩子：#night 直接进入夜壳
+  if (location.hash === '#night') setNight(true);
+  // 主题拨杆：两台样机同步，滑块 150ms
+  toggles.forEach(function(t){
+    t.addEventListener('click', function(){
+      setNight(!document.body.classList.contains('night'));
+    });
+  });
+  // 预设频道：按下即填入输入台
+  var input = document.getElementById('stdA');
+  document.querySelectorAll('.pkey').forEach(function(b){
+    b.addEventListener('click', function(){
+      if (input){ input.value = b.getAttribute('data-fill'); input.focus(); }
+    });
+  });
+  // 段码屏：内联 SVG 七段管逐段绘制，灭段留 ghost 底
+  var MAP = {'0':'abcdef','1':'bc','2':'abged','3':'abgcd','4':'fgbc','5':'afgcd',
+             '6':'afgcde','7':'abc','8':'abcdefg','9':'abcdfg'};
+  var P = {
+    a:'3.2,1.2 9.8,1.2 10.8,2.2 9.8,3.2 3.2,3.2 2.2,2.2',
+    b:'10.4,3 11.4,3.8 11.4,9.2 10.4,10 9.4,9.2 9.4,3.8',
+    c:'10.4,12 11.4,12.8 11.4,18.2 10.4,19 9.4,18.2 9.4,12.8',
+    d:'3.2,18.8 9.8,18.8 10.8,19.8 9.8,20.8 3.2,20.8 2.2,19.8',
+    e:'2.6,12 3.6,12.8 3.6,18.2 2.6,19 1.6,18.2 1.6,12.8',
+    f:'2.6,3 3.6,3.8 3.6,9.2 2.6,10 1.6,9.2 1.6,3.8',
+    g:'3.2,10.4 9.8,10.4 10.8,11.4 9.8,12.4 3.2,12.4 2.2,11.4'
+  };
+  document.querySelectorAll('.seg').forEach(function(el){
+    var s = el.getAttribute('data-seg') || '';
+    var html = '';
+    for (var i = 0; i < s.length; i++){
+      var on = MAP[s[i]] || '';
+      html += '<svg class="segd" viewBox="0 0 14 22" aria-hidden="true">';
+      for (var k in P){
+        html += '<polygon points="' + P[k] + '" class="' + (on.indexOf(k) > -1 ? 'on' : 'off') + '"/>';
+      }
+      html += '</svg>';
+    }
+    el.innerHTML = html;
+  });
+})();
+</script>
+</body>
+</html>

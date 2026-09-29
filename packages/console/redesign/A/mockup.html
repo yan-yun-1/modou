@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark light">
-<title>墨斗 Modou 控制台</title>
+<title>晒图 BLUEPRINT · 墨斗视觉稿 · 方向 A</title>
 <style>
 /* ============================================================
    晒图 BLUEPRINT — 靛蓝工程制图
@@ -422,36 +422,394 @@ body::after{
   .anim{animation:none;opacity:1}
   .stamp.run,.dot,.streaming .rule::after{animation:none}
 }
-
-
-/* —— 追加：事件驱动状态（replay/通知/新建目录/回放徽标） —— */
-.replay-badge{
-  display:inline-block;margin:0 0 18px;padding:3px 9px;
-  font:700 10px var(--f-num);letter-spacing:.2em;color:var(--bp-line-dim);
-  border:1px dashed var(--bp-line-dim);
-}
-.notice{
-  display:flex;align-items:center;justify-content:space-between;gap:14px;
-  padding:6px 32px;flex:none;
-  border-top:1px solid var(--bp-line-faint);border-bottom:1px solid var(--bp-line-faint);
-  background:var(--bp-bg-deep);font:13px var(--f-zh);color:var(--bp-line);
-}
-.notice button{font:11px var(--f-num);letter-spacing:.14em;color:var(--bp-line-dim)}
-.msg.error .rule{background:var(--bp-mark)}
-.msg.error p{color:var(--bp-mark)}
-.msg.streaming .rule{background:repeating-linear-gradient(to bottom,var(--bp-line) 0 6px,transparent 6px 11px)}
-.msg.streaming .rule::after{
-  content:"";position:absolute;top:calc(100% + 42px);left:-3px;
-  border-left:4px solid transparent;border-right:4px solid transparent;
-  border-top:6px solid var(--bp-cyan);animation:blink 1.1s steps(1) infinite;
-}
-.si .del{font:11px var(--f-num);color:var(--bp-line-dim);opacity:0;transition:opacity .15s;justify-self:end}
-.si:hover .del{opacity:1}
-.si .del:hover{color:var(--bp-mark)}
 </style>
 </head>
 <body>
-  <div id="app"></div>
-  <script src="/assets/index.js"></script>
+
+<!-- ════════ SHEET 01 · 会话 · 制图中 ════════ -->
+<div class="board">
+
+  <!-- 图纸目录 -->
+  <aside class="index anim" style="--i:1">
+    <div class="ph"><b>图纸目录</b><span class="en">SHEET INDEX</span></div>
+    <nav class="ilist">
+      <button class="si"><span class="no">T-01</span><span class="nm">/web 命令一键起控制台</span><span class="dt">09-27</span></button>
+      <button class="si"><span class="no">T-02</span><span class="nm">批量删除端点补齐</span><span class="dt">09-28</span></button>
+      <button class="si active"><span class="no">T-03</span><span class="nm">会话列表越删越多修复</span><span class="dt">09-29</span></button>
+      <button class="si"><span class="no">T-04</span><span class="nm">审批卡三键签章</span><span class="dt">09-29</span></button>
+      <button class="si"><span class="no">T-05</span><span class="nm">晒图令牌迁移</span><span class="dt">09-28</span></button>
+      <button class="si"><span class="no">T-06</span><span class="nm">磷光屏归档</span><span class="dt">09-21</span></button>
+    </nav>
+    <div class="pf">
+      <button class="new">＋ 新图纸 NEW</button>
+      <span class="cnt">6 SHEETS · 2026-09-29</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <!-- 标题栏 = 横向图签 -->
+    <header class="head anim" style="--i:0">
+      <div class="cell brand">
+        <span class="v">墨斗</span>
+        <span class="en">MODOU · ENGINEERING CONSOLE</span>
+      </div>
+      <div class="cell"><span class="k">图号 Sheet</span><span class="v mono">T-03</span></div>
+      <div class="cell"><span class="k">图名 Subject</span><span class="v">会话列表越删越多修复</span></div>
+      <div class="cell"><span class="k">比例 Scale</span><span class="v mono">1:1</span></div>
+      <div class="cell"><span class="k">日期 Date</span><span class="v mono">2026-09-29</span></div>
+      <div class="cell status"><span class="k">状态 Status</span><span class="v"><span class="stamp run">RUN</span>&nbsp;制图中</span></div>
+    </header>
+
+    <span class="cm tl" aria-hidden="true"></span>
+    <span class="cm tr" aria-hidden="true"></span>
+    <span class="cm bl" aria-hidden="true"></span>
+    <span class="cm br" aria-hidden="true"></span>
+
+    <!-- 消息流 = 一张连续图纸 -->
+    <div class="flow">
+
+      <section class="msg usr anim" style="--i:2">
+        <div class="gut"><span class="ann">A-01</span></div>
+        <div class="rule"></div>
+        <div class="bd">
+          <div class="uframe">
+            <span class="tag">USR</span>
+            <p>历史会话批量删除之后列表没有刷新，窗口里越删越多，帮我定位一下原因。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="msg agt anim" style="--i:3">
+        <div class="gut"><span class="ann">A-02</span></div>
+        <div class="rule"></div>
+        <div class="bd"><p>先查删除接口和前端调用链。</p></div>
+      </section>
+
+      <!-- 工序卡 -->
+      <section class="msg agt anim" style="--i:4">
+        <div class="gut"><span class="ann">A-03</span></div>
+        <div class="rule"></div>
+        <div class="bd">
+          <div class="card dbl">
+            <header>
+              <span class="num">T-07</span>
+              <span class="tool">bash</span>
+              <span class="desc">检索 bulk-delete 调用链</span>
+              <span class="stamp ok">验讫</span>
+            </header>
+            <div class="params">
+              <div class="prow"><span class="k">命令</span><span class="v">grep -rn "bulk-delete" packages/server/src</span></div>
+              <div class="prow"><span class="k">目录</span><span class="v">packages/server</span></div>
+              <div class="prow"><span class="k">退出码</span><span class="v num">0 · 耗时 0.4s</span></div>
+            </div>
+            <div class="codewrap">
+              <div class="lnos">01<br>02<br>03<br>04<br>05</div>
+              <pre class="code">routes.ts:142   router.post("/api/sessions/bulk-delete", handler)
+routes.ts:158   const removed = await store.removeMany(ids)
+store.ts:96     removeMany → tx.delete(session).in(ids)
+index.js:884    fetch("/api/sessions/bulk-delete", { method:"POST", … })
+index.js:902    setSelected(new Set())   <b>// ← 只清选中，列表未重建</b></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="msg agt anim" style="--i:5">
+        <div class="gut"><span class="ann">A-04</span></div>
+        <div class="rule"></div>
+        <div class="bd">
+          <p>服务端返回 200，删除本身没问题。问题在 <code class="ref">index.js:902</code>——删除成功后只清空了选中集，没有重建列表，旧节点仍留在 DOM 里，所以看起来越删越多。已拟好变更单，请签章：</p>
+        </div>
+      </section>
+
+      <!-- 签章处 -->
+      <section class="msg agt anim" style="--i:6">
+        <div class="gut"><span class="ann">A-05</span></div>
+        <div class="rule"></div>
+        <div class="bd">
+          <div class="approve" id="apCard">
+            <header>
+              <b>签章处</b>
+              <span class="en">APPROVAL</span>
+              <span class="chg">CHG-0912</span>
+              <button class="void" data-void>作 废</button>
+            </header>
+            <div class="params">
+              <div class="prow"><span class="k">变更内容</span><span class="v" style="font-family:var(--f-zh)">删除成功回调补发列表重建（renderList）</span></div>
+              <div class="prow"><span class="k">影响文件</span><span class="v">packages/server/webui/assets/index.js</span></div>
+              <div class="prow"><span class="k">行数增减</span><span class="v num">+2 −1</span></div>
+            </div>
+            <pre class="diff"><span class="ctx">    .then(res =&gt; res.json())</span>
+<span class="ctx">-   setSelected(new Set())</span>
+<span class="add">+   setSelected(new Set())</span>
+<span class="add">+   if (removed.length) renderList()</span>
+<span class="ctx">    refreshCounts()</span></pre>
+            <div class="seals">
+              <button class="seal" data-seal="已签章">批准</button>
+              <button class="seal dbl2" data-seal="已签章">批准全部</button>
+              <button class="seal reject" data-seal="驳回">驳回</button>
+              <span class="hint">三选一 · 批准后自动铺晒归档</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="msg agt streaming anim" style="--i:7">
+        <div class="gut"><span class="ann">A-06</span></div>
+        <div class="rule"></div>
+        <div class="bd"><p>收到签章——CHG-0912 已并入，正在重新铺晒图…</p></div>
+      </section>
+
+    </div>
+
+    <!-- 图签块 = 用量材料表 -->
+    <div class="tblock anim" style="--i:9">
+      <div class="tb-head"><b>用量</b><span class="en">MATERIALS</span><span class="sh">T-03</span></div>
+      <div class="tb-bar"><i class="in" style="width:62%"></i><i class="out" style="width:27%"></i></div>
+      <div class="tb-row"><span class="k">输入 IN</span><span class="v">4,213</span></div>
+      <div class="tb-row"><span class="k">输出 OUT</span><span class="v">1,842</span></div>
+      <div class="tb-row total"><span class="k">合计 SUM</span><span class="v">6,055</span></div>
+      <div class="tb-ctl">
+        <button class="rew" data-rew>REW ◄◄</button>
+        <div class="flip" role="group" aria-label="主题切换">
+          <button class="on" data-t="dark">晒图</button>
+          <button data-t="light">白图</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 输入台 -->
+    <div class="dock anim" style="--i:10">
+      <div class="ruler" aria-hidden="true"></div>
+      <div class="inline">
+        <input id="cmd1" class="cmd" type="text" placeholder="输入指令，按 Enter 出图…" spellcheck="false" autocomplete="off">
+        <span class="keys">↑ 修订 · Esc 取消</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ 装订条 ════════ -->
+<div class="strip">
+  <span class="l">Sheet 01 / 02 · T-03 · <span class="zh">会话 · 制图中</span></span>
+  <span class="r">Blueprint · Direction A · 2026-09-29 · Scale 1:1</span>
+</div>
+
+<!-- ════════ SHEET 02 · 空状态 ════════ -->
+<div class="board">
+
+  <aside class="index anim" style="--i:1">
+    <div class="ph"><b>图纸目录</b><span class="en">SHEET INDEX</span></div>
+    <nav class="ilist">
+      <button class="si blank">＋ 新图纸 NEW SHEET</button>
+    </nav>
+    <div class="pf">
+      <span class="cnt">0 SHEETS · 尚无归档</span>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="head anim" style="--i:0">
+      <div class="cell brand">
+        <span class="v">墨斗</span>
+        <span class="en">MODOU · ENGINEERING CONSOLE</span>
+      </div>
+      <div class="cell"><span class="k">图号 Sheet</span><span class="v mono">B-00</span></div>
+      <div class="cell"><span class="k">图名 Subject</span><span class="v">空白图样</span></div>
+      <div class="cell"><span class="k">比例 Scale</span><span class="v mono">1:1</span></div>
+      <div class="cell"><span class="k">日期 Date</span><span class="v mono">2026-09-29</span></div>
+      <div class="cell status"><span class="k">状态 Status</span><span class="v">待图 NO DATA</span></div>
+    </header>
+
+    <span class="cm tl" aria-hidden="true"></span>
+    <span class="cm tr" aria-hidden="true"></span>
+    <span class="cm bl" aria-hidden="true"></span>
+    <span class="cm br" aria-hidden="true"></span>
+
+    <div class="flow">
+      <div class="hero">
+        <div class="stage">
+          <svg class="blp anim" style="--i:2" viewBox="0 0 1100 540" width="1100" height="540" aria-hidden="true">
+            <!-- 十字中心线 -->
+            <line class="x" x1="0" y1="270" x2="1100" y2="270"/>
+            <line class="x" x1="575" y1="0" x2="575" y2="540"/>
+            <line class="c2" x1="441" y1="136" x2="709" y2="404"/>
+            <line class="c2" x1="709" y1="136" x2="441" y2="404"/>
+            <!-- 圆规刻度圆 -->
+            <circle class="c1" cx="575" cy="270" r="170"/>
+            <circle class="c2" cx="575" cy="270" r="110"/>
+            <circle class="ticks" cx="575" cy="270" r="178" stroke-dasharray="1 14.53"/>
+            <circle class="ctr" cx="575" cy="270" r="3"/>
+            <!-- 度数标注 -->
+            <text x="575" y="76" text-anchor="middle">000°</text>
+            <text x="785" y="274" text-anchor="start">090°</text>
+            <text x="575" y="484" text-anchor="middle">180°</text>
+            <text x="365" y="274" text-anchor="end">270°</text>
+            <!-- 示例指令引出线 -->
+            <polyline class="ldr" points="370,116 430,116 455,150"/>
+            <circle class="pt" cx="455" cy="150" r="2.5"/>
+            <polyline class="ldr" points="734,108 690,108 662,122"/>
+            <circle class="pt" cx="662" cy="122" r="2.5"/>
+            <polyline class="ldr" points="714,444 676,444 662,418"/>
+            <circle class="pt" cx="662" cy="418" r="2.5"/>
+          </svg>
+
+          <div class="copy anim" style="--i:3">
+            <h2>尚无图样</h2>
+            <div class="dash"></div>
+            <p>——输入第一条指令开始制图</p>
+          </div>
+
+          <button class="ex ex1 anim" style="--i:4" data-cmd="梳理 packages/console 的会话存储结构">
+            <span class="no">01</span><span class="tx">梳理 packages/console 的会话存储结构</span>
+          </button>
+          <button class="ex ex2 anim" style="--i:5" data-cmd="修复删除后列表不刷新的问题">
+            <span class="no">02</span><span class="tx">修复删除后列表不刷新的问题</span>
+          </button>
+          <button class="ex ex3 anim" style="--i:6" data-cmd="为审批卡加一次盖章动画">
+            <span class="no">03</span><span class="tx">为审批卡加一次盖章动画</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tblock anim" style="--i:7">
+      <div class="tb-head"><b>用量</b><span class="en">MATERIALS</span><span class="sh">B-00</span></div>
+      <div class="tb-bar empty"></div>
+      <div class="tb-row"><span class="k">输入 IN</span><span class="v">0</span></div>
+      <div class="tb-row"><span class="k">输出 OUT</span><span class="v">0</span></div>
+      <div class="tb-row total"><span class="k">合计 SUM</span><span class="v">0</span></div>
+      <div class="tb-ctl">
+        <button class="rew" disabled>REW ◄◄</button>
+        <div class="flip" role="group" aria-label="主题切换">
+          <button class="on" data-t="dark">晒图</button>
+          <button data-t="light">白图</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dock anim" style="--i:8">
+      <div class="ruler" aria-hidden="true"></div>
+      <div class="inline">
+        <input id="cmd2" class="cmd" type="text" placeholder="输入指令，按 Enter 出图…" spellcheck="false" autocomplete="off">
+        <span class="keys">↑ 修订 · Esc 取消</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ 装订条 ════════ -->
+<div class="strip last">
+  <span class="l">Sheet 02 / 02 · B-00 · <span class="zh">空状态 BLANK</span></span>
+  <span class="r">End of Set · <span class="zh">图纸集完</span> · MODOU</span>
+</div>
+
+<script>
+/* 主题翻转：晒图 ↔ 白图 */
+document.querySelectorAll('.flip button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.documentElement.dataset.theme = b.dataset.t;
+    document.querySelectorAll('.flip button').forEach(function(x){
+      x.classList.toggle('on', x.dataset.t === b.dataset.t);
+    });
+  });
+});
+
+/* 签章：批准 / 批准全部 / 驳回 / 作废 → 一次性盖章动画 */
+(function(){
+  var card = document.getElementById('apCard');
+  if(!card) return;
+  function seal(txt, red){
+    if(card.dataset.sealed) return;
+    card.dataset.sealed = '1';
+    var s = document.createElement('span');
+    s.className = 'stamped' + (red ? ' red' : '');
+    s.textContent = txt;
+    card.appendChild(s);
+    card.querySelectorAll('.seal,[data-void]').forEach(function(x){ x.disabled = true; });
+  }
+  card.querySelectorAll('[data-seal]').forEach(function(b){
+    b.addEventListener('click',function(){ seal(b.dataset.seal, b.classList.contains('reject')); });
+  });
+  card.querySelector('[data-void]').addEventListener('click',function(){
+    seal('作废', true); card.classList.add('voided');
+  });
+})();
+
+/* REW ◄◄：重新铺晒图 = 重播入场 stagger */
+document.querySelectorAll('[data-rew]').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.anim').forEach(function(el){
+      el.style.animation = 'none';
+      void el.offsetWidth;
+      el.style.animation = '';
+    });
+  });
+});
+
+/* 空状态示例指令：点击回填输入台 */
+document.querySelectorAll('.ex').forEach(function(e){
+  e.addEventListener('click',function(){
+    var inp = document.getElementById('cmd2');
+    if(inp){ inp.value = e.dataset.cmd; inp.focus(); }
+  });
+});
+
+/* A-0x 标注 = 图纸引用键：点击复制「图号 · 标注」，治愈 v2 行号「无交互」之弊 */
+document.querySelectorAll('.ann').forEach(function(a){
+  a.setAttribute('tabindex','0');
+  a.title = '点击复制图号引用';
+  a.addEventListener('click',function(){
+    var ref = 'T-03 · ' + a.textContent.trim();
+    try{ if(navigator.clipboard) navigator.clipboard.writeText(ref); }catch(err){}
+    a.classList.add('copied');
+    setTimeout(function(){ a.classList.remove('copied'); }, 900);
+  });
+  a.addEventListener('keydown',function(e){ if(e.key==='Enter') a.click(); });
+});
+
+/* 输入台命令行为：↑↓ 修订历史召回 · Enter 出图脉冲 · Esc 红铅笔作废闪示 */
+(function(){
+  var SEED = {
+    cmd1:['为 bulk-delete 补一组回归测试','复查 index.js:902 的 renderList 调用','定位批量删除后列表不刷新的问题'],
+    cmd2:['为审批卡加一次盖章动画','修复删除后列表不刷新的问题','梳理 packages/console 的会话存储结构']
+  };
+  Object.keys(SEED).forEach(function(id){
+    var inp = document.getElementById(id);
+    if(!inp) return;
+    var hist = SEED[id].slice(), idx = hist.length, draft = '';
+    var box = inp.parentElement;               /* .inline */
+    var keys = box.querySelector('.keys');
+    var keysTxt = keys ? keys.textContent : '';
+    function pulse(){
+      box.classList.add('pulse');
+      setTimeout(function(){ box.classList.remove('pulse'); }, 420);
+    }
+    function voidFlash(){
+      if(!keys) return;
+      keys.textContent = '✕ 已取消 · 划掉';
+      keys.classList.add('void-flash');
+      setTimeout(function(){ keys.textContent = keysTxt; keys.classList.remove('void-flash'); }, 1100);
+    }
+    inp.addEventListener('keydown',function(e){
+      if(e.key==='ArrowUp'){
+        e.preventDefault();
+        if(idx===hist.length) draft = inp.value;
+        if(idx>0){ idx--; inp.value = hist[idx]; }
+      }else if(e.key==='ArrowDown'){
+        e.preventDefault();
+        if(idx<hist.length-1){ idx++; inp.value = hist[idx]; }
+        else{ idx = hist.length; inp.value = draft; }
+      }else if(e.key==='Enter' && inp.value.trim()){
+        hist.push(inp.value.trim()); idx = hist.length; draft = '';
+        pulse(); inp.value = '';
+      }else if(e.key==='Escape' && inp.value){
+        inp.value = ''; draft = ''; idx = hist.length;
+        voidFlash();
+      }
+    });
+  });
+})();
+</script>
 </body>
 </html>
