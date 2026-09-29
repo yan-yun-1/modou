@@ -3,68 +3,133 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#060a08" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23060a08'/%3E%3Crect x='5' y='5' width='6' height='6' fill='%2358f0a6'/%3E%3C/svg%3E" />
   <title>墨斗 Modou 控制台</title>
   <style>
-    /* ============ 令牌（DESIGN.md §1） ============ */
+    /* ================================================================
+       令牌（DESIGN.md §6.1 · v2 磷光屏 PHOSPHOR）
+       暗色＝深夜机房绿黑屏；亮色＝热敏打印纸。全部 hex/rgba 只许出现在本段。
+       ================================================================ */
     :root {
       color-scheme: dark;
-      --bg0: #101113; --bg1: #16171a; --bg2: #1b1d21; --bg3: #23252b;
-      --sun: #0b0c0f;
-      --t1: #e8e6df; --t2: #a3a198; --t3: #6d6b64;
-      --line: #282a30; --line2: #3a3d45;
-      --acc: #e0532f; --acc-h: #f0653f; --acc-bg: rgba(224,83,47,.13);
-      --err: #cf5b66; --err-bg: rgba(207,91,102,.10);
-      --dadd: #7fa477; --ddel: #b96c6c;
-      --code: #d3d1ca;
+      /* 表面：明度阶差 ≥1.9:1，elevation 可感 */
+      --bg0: #060a08; --bg1: #0a120e; --bg2: #0e1712; --bg3: #15221a;
+      --sun: #030604;
+      /* 文字：磷光衰减灰绿（正文不用纯绿保可读） */
+      --t1: #c9e6d5; --t2: #8fb3a0; --t3: #6f917f;
+      --line: #1b2b22; --line2: #2c4436;
+      /* P1 磷绿＝执行/批准/焦点；绛只做错误面 */
+      --acc: #58f0a6; --acc-h: #7bf5b8; --acc-bg: rgba(88, 240, 166, .12);
+      --acc-bar: rgba(88, 240, 166, .45);
+      --on-acc: #04120b; --on-err: #1a0d0f;
+      --err: #e07a72; --err-bg: rgba(224, 122, 114, .10);
+      --dadd: #7fd49a; --ddel: #e08a80;
+      --code: #b8d9c6;
+      --grid: rgba(88, 240, 166, .05);
+      /* 深度词汇：内描高光 / 投影 / 辉光（辉光只许强调元素） */
+      --hi: rgba(255, 255, 255, .04);
+      --glow: 0 0 10px rgba(88, 240, 166, .35);
+      --glow-soft: 0 0 18px rgba(88, 240, 166, .14);
+      --shadow-head: 0 4px 16px rgba(0, 0, 0, .35);
+      --shadow-card: 0 1px 2px rgba(0, 0, 0, .45), inset 0 1px 0 var(--hi);
+      --shadow-pop: 0 8px 20px rgba(0, 0, 0, .4);
+      --shadow-panel: 0 12px 32px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .4);
+      --shadow-dock: 0 8px 24px rgba(0, 0, 0, .42);
+      --shadow-btn: 0 2px 10px rgba(0, 0, 0, .3), inset 0 1px 0 var(--hi);
+      /* 屏幕材质：暗＝扫描线（opacity ≤.35 防摩尔纹）；亮＝坐标网格纸 */
+      --ovl: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, .22) 2px 3px);
+      --ovl-size: auto;
+      --ovl-o: .28;
+      --halo: radial-gradient(1100px 520px at 50% -8%, rgba(88, 240, 166, .06), transparent 65%);
       --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
       --r0: 0; --r1: 2px;
       --t-fast: .15s; --t-med: .25s; --t-slow: .45s;
       --ease: cubic-bezier(.2, .8, .2, 1);
-      --mono: "Cascadia Code", "JetBrains Mono", "Sarasa Mono SC", ui-monospace, "SF Mono", Consolas, "Courier New", monospace;
+      --mono: "Cascadia Code", "JetBrains Mono", "Sarasa Mono SC", ui-monospace, "SF Mono", Consolas, "Noto Sans Mono CJK SC", "Microsoft YaHei", monospace;
       --sans: "Source Han Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
     }
     @media (prefers-color-scheme: light) {
-      :root {
+      :root:not([data-theme="dark"]) {
         color-scheme: light;
-        --bg0: #f2f0e9; --bg1: #faf9f3; --bg2: #fffffd; --bg3: #eceade;
-        --sun: #1b1c20;
-        --t1: #27251e; --t2: #6a685d; --t3: #999789;
-        --line: #dbd7c9; --line2: #c2beae;
-        --acc: #b93d1c; --acc-h: #9d3113; --acc-bg: rgba(185,61,28,.10);
-        --err: #a63a45; --err-bg: rgba(166,58,69,.08);
-        --dadd: #3d7a45; --ddel: #a44f4f;
+        --bg0: #f4f1e8; --bg1: #faf7ee; --bg2: #fdfbf3; --bg3: #eae4d3;
+        --sun: #efe8d6;
+        --t1: #1d2b24; --t2: #52685c; --t3: #54665c;
+        --line: #d8d2bf; --line2: #bcb49c;
+        --acc: #0d7a4f; --acc-h: #0a6440; --acc-bg: rgba(13, 122, 79, .10);
+        --acc-bar: #0d7a4f;
+        --on-acc: #f7f4ea; --on-err: #fdf5f4;
+        --err: #9c3d3d; --err-bg: rgba(156, 61, 61, .08);
+        --dadd: #276b3d; --ddel: #a44f42;
+        --code: #33463b;
+        --grid: rgba(29, 43, 36, .055);
+        --hi: rgba(255, 255, 255, .65);
+        --glow: none; --glow-soft: none;
+        --shadow-head: 0 4px 16px rgba(58, 48, 28, .08);
+        --shadow-card: 0 1px 2px rgba(58, 48, 28, .10), inset 0 1px 0 var(--hi);
+        --shadow-pop: 0 6px 16px rgba(58, 48, 28, .12);
+        --shadow-panel: 0 12px 32px rgba(58, 48, 28, .18), 0 2px 8px rgba(58, 48, 28, .10);
+        --shadow-dock: 0 8px 24px rgba(58, 48, 28, .12);
+        --shadow-btn: 0 2px 10px rgba(58, 48, 28, .12), inset 0 1px 0 var(--hi);
+        --ovl: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+        --ovl-size: 24px 24px;
+        --ovl-o: 1;
+        --halo: radial-gradient(1100px 520px at 50% -8%, rgba(13, 122, 79, .05), transparent 65%);
       }
     }
     :root[data-theme="light"] {
       color-scheme: light;
-      --bg0: #f2f0e9; --bg1: #faf9f3; --bg2: #fffffd; --bg3: #eceade;
-      --sun: #1b1c20;
-      --t1: #27251e; --t2: #6a685d; --t3: #999789;
-      --line: #dbd7c9; --line2: #c2beae;
-      --acc: #b93d1c; --acc-h: #9d3113; --acc-bg: rgba(185,61,28,.10);
-      --err: #a63a45; --err-bg: rgba(166,58,69,.08);
-      --dadd: #3d7a45; --ddel: #a44f4f;
-    }
-    :root[data-theme="dark"] {
-      color-scheme: dark;
-      --bg0: #101113; --bg1: #16171a; --bg2: #1b1d21; --bg3: #23252b;
-      --sun: #0b0c0f;
-      --t1: #e8e6df; --t2: #a3a198; --t3: #6d6b64;
-      --line: #282a30; --line2: #3a3d45;
-      --acc: #e0532f; --acc-h: #f0653f; --acc-bg: rgba(224,83,47,.13);
-      --err: #cf5b66; --err-bg: rgba(207,91,102,.10);
-      --dadd: #7fa477; --ddel: #b96c6c;
-      --code: #d3d1ca;
+      --bg0: #f4f1e8; --bg1: #faf7ee; --bg2: #fdfbf3; --bg3: #eae4d3;
+      --sun: #efe8d6;
+      --t1: #1d2b24; --t2: #52685c; --t3: #54665c;
+      --line: #d8d2bf; --line2: #bcb49c;
+      --acc: #0d7a4f; --acc-h: #0a6440; --acc-bg: rgba(13, 122, 79, .10);
+      --acc-bar: #0d7a4f;
+      --on-acc: #f7f4ea; --on-err: #fdf5f4;
+      --err: #9c3d3d; --err-bg: rgba(156, 61, 61, .08);
+      --dadd: #276b3d; --ddel: #a44f42;
+      --code: #33463b;
+      --grid: rgba(29, 43, 36, .055);
+      --hi: rgba(255, 255, 255, .65);
+      --glow: none; --glow-soft: none;
+      --shadow-head: 0 4px 16px rgba(58, 48, 28, .08);
+      --shadow-card: 0 1px 2px rgba(58, 48, 28, .10), inset 0 1px 0 var(--hi);
+      --shadow-pop: 0 6px 16px rgba(58, 48, 28, .12);
+      --shadow-panel: 0 12px 32px rgba(58, 48, 28, .18), 0 2px 8px rgba(58, 48, 28, .10);
+      --shadow-dock: 0 8px 24px rgba(58, 48, 28, .12);
+      --shadow-btn: 0 2px 10px rgba(58, 48, 28, .12), inset 0 1px 0 var(--hi);
+      --ovl: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      --ovl-size: 24px 24px;
+      --ovl-o: 1;
+      --halo: radial-gradient(1100px 520px at 50% -8%, rgba(13, 122, 79, .05), transparent 65%);
     }
 
-    /* ============ 基础（§1.3/1.4/1.5） ============ */
+    /* ================================================================
+       基础（§1.3-1.5 v2）
+       ================================================================ */
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
+    html {
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+      scrollbar-color: var(--line2) transparent;
+    }
     body {
       font-family: var(--sans); font-size: 15px; line-height: 1.7; letter-spacing: .02em;
-      background: var(--bg0); color: var(--t1);
+      color: var(--t1);
+      background: var(--halo), var(--bg0); background-attachment: fixed;
       display: flex; flex-direction: column;
     }
+    /* CRT 扫描线 / 热敏纸坐标网格：固定层、不拦截事件（含面板，营造屏幕一体感） */
+    body::after {
+      content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 100;
+      background-image: var(--ovl); background-size: var(--ovl-size); opacity: var(--ovl-o);
+    }
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-thumb { background: var(--line2); border: 2px solid var(--bg0); border-radius: 5px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--t3); }
+    ::-webkit-scrollbar-track { background: transparent; }
+    /* mono 隔离 body 字距：等宽字体加字距属排版错误 */
+    pre, code, kbd, .mono, textarea, input { letter-spacing: normal; }
     .mono { font-family: var(--mono); }
     button, textarea, select, input { font: inherit; color: inherit; }
     button { border: none; background: none; cursor: pointer; padding: 0; }
@@ -72,200 +137,387 @@
     button:disabled { opacity: .45; cursor: default; }
     :focus { outline: none; }
     :focus-visible { box-shadow: 0 0 0 3px var(--acc-bg); border-color: var(--acc); }
-    ::selection { background: var(--acc-bg); }
+    ::selection { background: var(--acc-bg); color: var(--t1); }
+    kbd {
+      font-family: var(--mono); font-size: 12px; line-height: 1; font-weight: 500;
+      color: var(--t2); background: var(--bg3); border: 1px solid var(--line2);
+      border-bottom-width: 2px; border-radius: 3px; padding: 2px 5px 1px;
+    }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
     }
 
-    /* ============ 组件（§2） ============ */
-    /* —— 顶栏 §2.1 —— */
+    /* ================================================================
+       组件（§2 v2 · 按 default/hover/active/disabled/focus/动效 六态验收）
+       ================================================================ */
+    /* —— 顶栏：状态栏（§2.1 v2）—— */
     header {
       display: flex; align-items: center; gap: var(--s3); padding: 0 var(--s4);
       height: 52px; flex: none; background: var(--bg1); border-bottom: 1px solid var(--line);
-      position: relative; z-index: 20;
+      box-shadow: var(--shadow-head); position: relative; z-index: 20;
     }
-    .seal { width: 20px; height: 20px; border-radius: 2px; background: var(--acc); color: var(--bg0);
-            font-family: var(--mono); font-size: 13px; font-weight: 700;
-            display: flex; align-items: center; justify-content: center; flex: none; }
-    .wordmark { font-family: var(--mono); font-size: 13px; letter-spacing: .12em; color: var(--t1); }
+    .seal {
+      width: 20px; height: 20px; border-radius: 2px; background: var(--acc); color: var(--on-acc);
+      font-family: var(--mono); font-size: 13px; font-weight: 700; text-shadow: var(--glow);
+      display: flex; align-items: center; justify-content: center; flex: none;
+    }
+    .wordmark { font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: .12em; color: var(--t1); }
+    .led {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--t3); opacity: .55; flex: none;
+      transition: background var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+    }
+    .led.on { background: var(--acc); opacity: 1; box-shadow: var(--glow); animation: pulse 2s ease-in-out infinite; }
+    .status-txt {
+      font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--t2);
+      font-variant-numeric: tabular-nums; min-width: 48px;
+    }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
     header .spacer { flex: 1; }
-    .btn { border-radius: var(--r1); padding: 6px 14px; font-size: 14px;
-           border: 1px solid var(--line2); color: var(--t2); background: transparent;
-           transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
-                       background var(--t-fast) var(--ease); }
-    .btn:hover { border-color: var(--acc); color: var(--t1); }
-    .btn.primary { background: var(--acc); border-color: var(--acc); color: #fff; }
-    .btn.primary:hover { background: var(--acc-h); border-color: var(--acc-h); }
+
+    .btn {
+      border-radius: var(--r1); padding: 6px 14px; font-size: 13px; font-weight: 500; font-family: var(--mono);
+      border: 1px solid var(--line2); color: var(--t2); background: transparent;
+      transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease),
+                  background var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+    }
+    .btn:hover { border-color: var(--acc); color: var(--acc); background: var(--acc-bg); }
+    .btn.primary {
+      background: var(--acc); border-color: var(--acc); color: var(--on-acc); font-weight: 600;
+      box-shadow: var(--shadow-btn);
+    }
+    .btn.primary:hover { background: var(--acc-h); border-color: var(--acc-h); color: var(--on-acc); box-shadow: var(--shadow-btn), var(--glow-soft); }
     .btn.acc { border-color: var(--acc); color: var(--acc); background: transparent; }
-    .btn.acc:hover { background: var(--acc); color: #fff; }
+    .btn.acc:hover { background: var(--acc); color: var(--on-acc); box-shadow: var(--glow-soft); }
     .btn.ghost { border-color: var(--line2); background: transparent; color: var(--t2); }
-    .btn.ghost:hover { border-color: var(--err); color: var(--err); }
-    .btn.icon { padding: 5px 10px; display: inline-flex; align-items: center; gap: 6px;
-                font-family: var(--mono); font-size: 13px; max-width: 300px; }
+    .btn.ghost:hover { border-color: var(--err); color: var(--err); background: var(--err-bg); }
+    .btn.icon {
+      padding: 5px 10px; display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 13px; max-width: 300px;
+    }
     .btn.icon .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .btn.icon .caret { font-size: 10px; color: var(--t3); flex: none; }
+    .btn.icon .caret { font-size: 12px; color: var(--t3); flex: none; }
     .btn.icon svg { width: 12px; height: 12px; flex: none; }
 
-    /* —— 通知条 §2.1 —— */
+    /* —— 通知条（§2.1）：下滑入 + 整条可点 —— */
     .notice {
       display: flex; align-items: center; justify-content: space-between; gap: var(--s3);
       padding: 6px var(--s4); background: var(--acc-bg); color: var(--t1); font-size: 13px;
-      border-bottom: 1px solid var(--line); flex: none;
+      border-bottom: 1px solid var(--line); flex: none; cursor: pointer;
+      animation: noticeIn var(--t-med) var(--ease) both;
     }
     .notice button { color: var(--t2); font-size: 12px; }
+    .notice button:hover { color: var(--t1); }
+    @keyframes noticeIn { from { transform: translateY(-100%); opacity: 0; } }
 
-    /* —— 会话面板 §2.2/§3 —— */
+    /* —— 会话面板（§2.2/§3）：锚定挂载层承担入场动效，.panel 本体静态化 —— */
     .session-anchor { position: relative; }
+    .panel-mount { position: absolute; top: calc(100% + 8px); right: 0; width: 420px; max-width: 86vw; z-index: 30; }
     .panel {
-      position: absolute; top: calc(100% + 8px); right: 0; width: 420px; max-width: 86vw;
-      background: var(--bg2); border: 1px solid var(--line2); border-radius: var(--r0);
-      box-shadow: 0 8px 28px rgba(0,0,0,.28); z-index: 30; overflow: hidden;
+      width: 100%; background: var(--bg2); border: 1px solid var(--line2); border-radius: var(--r0);
+      box-shadow: var(--shadow-panel); overflow: hidden;
     }
-    .panel .filter { display: block; width: 100%; border: none; border-bottom: 1px solid var(--line);
-                     background: var(--bg1); padding: 8px var(--s3); font-family: var(--mono); font-size: 13px; }
+    .panel .filter {
+      display: block; width: 100%; border: none; border-bottom: 1px solid var(--line);
+      background: var(--bg1); padding: 8px var(--s3); font-family: var(--mono); font-size: 13px;
+    }
     .panel .filter:focus { box-shadow: none; border-bottom-color: var(--acc); }
     .panel .list { max-height: 380px; overflow-y: auto; }
-    .panel .group-label { font-family: var(--mono); font-size: 12px; color: var(--t3);
-                          padding: 8px var(--s3) 2px; }
-    .panel .group-head { display: flex; align-items: center; justify-content: space-between;
-                         padding: 8px var(--s3) 2px; }
+    .panel .group-label { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--t3); padding: 8px var(--s3) 2px; }
+    .panel .group-head { display: flex; align-items: center; justify-content: space-between; padding: 8px var(--s3) 2px; }
     .panel .group-head .group-label { padding: 0; }
-    .panel .group-head .select-all { display: flex; align-items: center; gap: 4px;
-                                     font-family: var(--mono); font-size: 12px; color: var(--t2);
-                                     cursor: pointer; }
+    .panel .group-head .select-all {
+      display: flex; align-items: center; gap: 4px; font-family: var(--mono);
+      font-size: 12px; color: var(--t2); cursor: pointer;
+    }
     .panel .group-head .select-all input { accent-color: var(--acc); margin: 0; }
-    .panel .bulk-bar { display: flex; align-items: center; gap: var(--s2); padding: 6px var(--s3);
-                       border-top: 1px solid var(--line); font-family: var(--mono); font-size: 12px;
-                       color: var(--t2); }
-    .panel .bulk-bar .danger { background: var(--err); color: #fff; border-radius: var(--r1);
-                               padding: 3px 10px; font-size: 12px; }
+    .panel .bulk-bar {
+      display: flex; align-items: center; gap: var(--s2); padding: 6px var(--s3);
+      border-top: 1px solid var(--line); font-family: var(--mono); font-size: 12px; color: var(--t2);
+    }
+    .panel .bulk-bar .danger {
+      background: var(--err); color: var(--on-err); border-radius: var(--r1);
+      padding: 3px 10px; font-size: 12px; font-weight: 500;
+    }
+    .panel .bulk-bar .danger:hover { background: var(--err); filter: brightness(1.1); }
     .panel .bulk-bar .ghost { color: var(--t3); font-size: 12px; }
+    .panel .bulk-bar .ghost:hover { color: var(--t1); }
     .panel .bulk-bar .bulk-err { color: var(--err); font-size: 12px; }
-    .panel .row .line1, .panel .row .line2 { padding-right: 22px; }
-    .panel .row { display: block; width: 100%; text-align: left; padding: 7px var(--s3); position: relative;
-                  border-left: 2px solid transparent; transition: background var(--t-fast) var(--ease); cursor: pointer; }
-    .panel .row .row-close { position: absolute; right: 8px; bottom: 7px; font-family: var(--mono);
-                             font-size: 11px; color: var(--t3); border: none; background: none;
-                             padding: 2px 4px; border-radius: var(--r1); opacity: 0;
-                             transition: opacity var(--t-fast) var(--ease); }
+    .panel .row {
+      display: block; width: 100%; text-align: left; padding: 7px var(--s3); position: relative;
+      border-left: 2px solid transparent; transition: background var(--t-fast) var(--ease); cursor: pointer;
+    }
+    .panel .row .row-close {
+      position: absolute; right: 8px; bottom: 7px; font-family: var(--mono); font-size: 12px;
+      color: var(--t3); border: none; background: none; padding: 2px 4px; border-radius: var(--r1);
+      opacity: 0; transition: opacity var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+    }
     .panel .row:hover .row-close { opacity: 1; }
     .panel .row .row-close:hover { color: var(--err); background: var(--err-bg); }
     .panel .row:hover, .panel .row.kbd-active { background: var(--bg3); }
     .panel .row.current { border-left-color: var(--acc); background: var(--bg2); }
     .panel .row .line1 { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--t1); }
     .panel .row .line1 .preview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-    .panel .row .line1 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc);
-                              animation: pulse 2s ease-in-out infinite; flex: none; }
+    .panel .row .line1 .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--acc);
+      box-shadow: var(--glow); animation: pulse 2s ease-in-out infinite; flex: none;
+    }
     .panel .row .line2 { font-family: var(--mono); font-size: 12px; color: var(--t3); padding-right: 20px; }
     .panel .empty { padding: var(--s4); text-align: center; color: var(--t3); font-size: 13px; }
-    .panel .kbd-bar { border-top: 1px solid var(--line); padding: 6px var(--s3);
-                      font-family: var(--mono); font-size: 11px; color: var(--t3); }
+    .panel .kbd-bar {
+      border-top: 1px solid var(--line); padding: 6px var(--s3);
+      font-family: var(--mono); font-size: 12px; color: var(--t3);
+    }
 
-    /* —— 主列/空状态 §2.3 —— */
+    /* —— 主列 / 空状态：开机自检（§2.3 v2 签名屏）—— */
     main { flex: 1; overflow-y: auto; }
     .col { max-width: 860px; margin: 0 auto; padding: var(--s4); display: flex; flex-direction: column; gap: 10px; }
-    .empty-state { display: flex; flex-direction: column; align-items: center; gap: var(--s3);
-                   padding: var(--s6) var(--s4); margin-top: 12vh; text-align: center; }
-    .empty-state .snapline { width: 220px; height: 14px; }
+    .empty-state {
+      display: flex; flex-direction: column; gap: var(--s3);
+      padding: var(--s6) var(--s4); margin: 14vh auto 0; width: min(100%, 620px); text-align: left;
+    }
+    .boot {
+      font-family: var(--mono); font-size: 13px; color: var(--t2);
+      border: 1px solid var(--line); border-left: 2px solid var(--acc); background: var(--bg1);
+      box-shadow: var(--shadow-card); padding: 14px 16px; width: 100%; max-width: 48ch;
+    }
+    .boot .bl {
+      display: flex; align-items: baseline; gap: 6px; overflow: hidden; white-space: nowrap;
+      max-width: 100%; animation: type .38s steps(19, end) both;
+    }
+    .boot .bl:nth-child(1) { animation-delay: .05s; }
+    .boot .bl:nth-child(2) { animation-delay: .35s; }
+    .boot .bl:nth-child(3) { animation-delay: .65s; }
+    .boot .bl:nth-child(4) { animation-delay: .95s; }
+    .boot .bl:nth-child(5) { animation-delay: 1.25s; }
+    @keyframes type { from { max-width: 0%; } }
+    .boot .bl-t { color: var(--t1); font-weight: 600; letter-spacing: .08em; }
+    .boot .dots { flex: 1; min-width: 12px; border-bottom: 1px dotted var(--line2); transform: translateY(-3px); }
+    .boot .ok { color: var(--acc); font-weight: 700; text-shadow: var(--glow); }
+    .boot-wait {
+      margin: 8px 0 0; font-size: 20px; font-weight: 600; color: var(--t1);
+      animation: fadeOnly var(--t-slow) var(--ease) 1.6s both;
+    }
+    .wcaret { color: var(--acc); text-shadow: var(--glow); margin-left: 2px; animation: cursor 1.1s steps(2) infinite; }
+    .boot-cwd { margin: 0; font-family: var(--mono); font-size: 12px; color: var(--t3); animation: fadeOnly var(--t-slow) var(--ease) 1.9s both; }
+    @keyframes fadeOnly { from { opacity: 0; transform: translateY(4px); } }
+    .chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s2); animation: fadeOnly var(--t-slow) var(--ease) 2.15s both; }
+    .chip-btn {
+      font-family: var(--mono); font-size: 12px; color: var(--t2); background: var(--bg1);
+      border: 1px solid var(--line2); border-radius: var(--r1); padding: 5px 10px;
+      transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+    }
+    .chip-btn:hover { border-color: var(--acc); color: var(--acc); box-shadow: var(--glow-soft); }
+    .new-row { display: flex; gap: var(--s2); align-items: stretch; margin-top: var(--s2); animation: fadeOnly var(--t-slow) var(--ease) 2.3s both; }
+    .empty-state input {
+      width: 260px; border: 1px solid var(--line2); border-radius: var(--r1);
+      background: var(--bg1); padding: 6px 10px; font-size: 13px; font-family: var(--mono);
+    }
+    .empty-state input:focus-visible { box-shadow: 0 0 0 3px var(--acc-bg); border-color: var(--acc); }
+    .empty-state .hint { font-family: var(--mono); font-size: 12px; color: var(--t3); animation: fadeOnly var(--t-slow) var(--ease) 2.45s both; }
+    .empty-session {
+      display: flex; flex-direction: column; align-items: center; gap: var(--s3);
+      padding: 14vh var(--s4) 0; text-align: center;
+    }
+    .empty-session .snapline { width: 220px; height: 14px; }
     @keyframes snapIn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-    .empty-state .snapline .solid-line { transform-origin: left center; animation: snapIn .45s var(--ease) .6s both; }
-    .empty-state h2 { font-size: 20px; font-weight: 600; margin: 0; }
-    .empty-state p { margin: 0; color: var(--t2); }
-    .empty-state .new-row { display: flex; gap: var(--s2); align-items: stretch; }
-    .empty-state input { width: 260px; border: 1px solid var(--line2); border-radius: var(--r1);
-                         background: var(--bg1); padding: 6px 10px; font-size: 14px; }
-    .empty-state .hint { font-family: var(--mono); font-size: 12px; color: var(--t3); }
-    .empty-session { display: flex; flex-direction: column; align-items: center; gap: var(--s3);
-                     padding: 14vh var(--s4) 0; text-align: center; }
+    .empty-session .snapline .solid-line { transform-origin: left center; animation: snapIn .45s var(--ease) .5s both; }
     .empty-session p { margin: 0; color: var(--t2); }
     .empty-session .hint { font-family: var(--mono); font-size: 12px; color: var(--t3); }
-    .replay-badge { text-align: center; font-family: var(--mono); font-size: 12px; color: var(--t3); padding: 2px 0; }
+    .replay-badge {
+      margin: 0 auto; width: fit-content; font-family: var(--mono); font-size: 12px; color: var(--t3);
+      border: 1px dashed var(--line2); border-radius: var(--r1); padding: 2px 10px;
+    }
 
-    /* —— 消息 §2.4 —— */
-    .msg.user { align-self: flex-end; max-width: 78%; background: var(--bg3); border: 1px solid var(--line);
-                border-radius: var(--r1); padding: 8px 12px; white-space: pre-wrap; word-break: break-word; }
-    .msg.assistant { align-self: stretch; border-left: 2px solid var(--line2); padding: 2px 0 2px 14px;
-                     white-space: pre-wrap; word-break: break-word; }
-    .msg.error { background: var(--err-bg); border-left: 2px solid var(--err); padding: 8px 12px;
-                 white-space: pre-wrap; word-break: break-word; color: var(--t1); }
+    /* —— 消息流：gutter 行号 + 磷光条（§2.4 v2 签名屏）—— */
+    #messages { display: flex; flex-direction: column; gap: 12px; padding: var(--s2) 0 var(--s5); }
+    .ln-row { display: grid; grid-template-columns: 30px 1fr; gap: 12px; }
+    .ln-row::before {
+      content: attr(data-ln); font-family: var(--mono); font-size: 12px; font-weight: 500;
+      color: var(--t3); text-align: right; padding-top: 3px; font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+    .ln-row[data-ln="$"]::before { color: var(--acc); }
+    .msg.user {
+      justify-self: end; max-width: 78%; background: var(--bg3); border: 1px solid var(--line);
+      border-radius: var(--r1); padding: 8px 12px; box-shadow: var(--shadow-card); position: relative;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .msg.assistant {
+      align-self: stretch; border-left: 2px solid var(--acc-bar); padding: 2px 0 2px 14px;
+      position: relative; word-break: break-word;
+    }
+    .msg.error {
+      background: var(--err-bg); border-left: 2px solid var(--err); padding: 8px 12px;
+      position: relative; white-space: pre-wrap; word-break: break-word; color: var(--t1);
+    }
     .msg.error::before { content: "✕ "; font-family: var(--mono); font-size: 12px; color: var(--err); }
-    .msg .who { display: block; font-family: var(--mono); font-size: 11px; color: var(--t3);
-                letter-spacing: .08em; margin-bottom: 2px; }
+    .msg .who {
+      display: block; font-family: var(--mono); font-size: 12px; font-weight: 500;
+      color: var(--t3); letter-spacing: .08em; margin-bottom: 2px;
+    }
     .msg.user .who { text-align: right; }
-    .msg.assistant.streaming::after { content: "▍"; color: var(--acc); animation: cursor 1.1s steps(2) infinite; }
+    .msg.assistant.streaming::after {
+      content: "▍"; color: var(--acc); text-shadow: var(--glow); animation: cursor 1.1s steps(2) infinite;
+    }
     @keyframes cursor { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    /* 受控 markdown 子集（§6.4）：p/code/strong/围栏代码块 */
+    .md p { margin: 0 0 8px; }
+    .md p:last-child { margin-bottom: 0; }
+    .md strong { font-weight: 600; color: var(--t1); }
+    .md code, .msg code {
+      font-family: var(--mono); font-size: 13px; color: var(--code);
+      background: var(--sun); border: 1px solid var(--line); border-radius: var(--r1); padding: 1px 5px;
+    }
+    /* 复制钮：hover 显形（触屏常显）；代码块/消息通用 */
+    .copy {
+      position: absolute; top: 4px; right: 4px; width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--t3); background: var(--bg2); border: 1px solid var(--line2); border-radius: var(--r1);
+      opacity: 0; transition: opacity var(--t-fast) var(--ease), color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+    }
+    .msg.user .copy { top: -26px; right: -2px; }
+    .msg:hover > .copy, .codeblock:hover > .copy, .copy:focus-visible, .copy.done { opacity: 1; }
+    .copy:hover { color: var(--acc); border-color: var(--acc); }
+    .copy.done { color: var(--acc); }
+    @media (hover: none) { .copy { opacity: .7; } }
+    .codeblock { position: relative; }
+    .codeblock > pre {
+      margin: 0; background: var(--sun); color: var(--code); border-left: 2px solid var(--line);
+      font-family: var(--mono); font-size: 13px; padding: 8px 12px;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .md .codeblock { margin: 8px 0; }
+    /* 回到底部浮标：sticky 贴滚动口下缘 */
+    .jump {
+      position: sticky; bottom: 10px; align-self: center; z-index: 6; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-family: var(--mono); font-size: 12px; color: var(--t1);
+      background: var(--bg2); border: 1px solid var(--line2); border-radius: 999px; padding: 5px 12px;
+      box-shadow: var(--shadow-pop);
+      transition: border-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+    }
+    .jump:hover { border-color: var(--acc); color: var(--acc); }
 
-    /* —— 工具卡 §2.5 —— */
-    .tool { border: 1px solid var(--line); border-radius: var(--r0); background: var(--bg2); }
-    .tool-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer;
-                 font-family: var(--mono); font-size: 13px; color: var(--t1); }
+    /* —— 工具卡（§2.5 v2）：[tool] 行内 chip 语汇，hover 六态补齐 —— */
+    .tool { border: 1px solid var(--line); border-radius: var(--r0); background: var(--bg2); box-shadow: var(--shadow-card); }
+    .tool-head {
+      display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer;
+      font-family: var(--mono); font-size: 13px; color: var(--t1);
+      transition: background var(--t-fast) var(--ease);
+    }
+    .tool-head:hover { background: var(--bg3); }
+    .tool.pending .tool-head { cursor: default; }
     .tool-head .st { color: var(--t2); flex: none; }
-    .tool-head .st.pending { color: var(--acc); animation: pulse 2s ease-in-out infinite; }
-    .tool-head .chip { font-size: 11px; border: 1px solid var(--line2); border-radius: var(--r1);
-                       padding: 0 6px; color: var(--t2); flex: none; }
+    .tool-head .st.pending { color: var(--acc); text-shadow: var(--glow); animation: pulse 2s ease-in-out infinite; }
+    .tool-head .chip {
+      font-size: 12px; font-weight: 500; border: 1px solid var(--line2); border-radius: var(--r1);
+      padding: 0 6px; color: var(--t2); flex: none;
+    }
     .tool-head .text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tool-head .arrow { color: var(--t3); transition: transform var(--t-med) var(--ease); flex: none; }
     .tool.open .tool-head .arrow { transform: rotate(90deg); }
     .tool-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows var(--t-med) var(--ease); }
     .tool.open .tool-body { grid-template-rows: 1fr; }
-    .tool-body > pre { overflow: hidden; margin: 0; background: var(--sun); color: var(--code);
-                       border-left: 2px solid var(--line); font-family: var(--mono); font-size: 13px;
-                       padding: 0 10px; white-space: pre-wrap; word-break: break-word; min-height: 0; }
-    .tool.open .tool-body > pre { padding-top: 8px; padding-bottom: 8px; }
+    .tool-body > .codeblock { min-height: 0; overflow: hidden; }
 
-    /* —— 审批卡 §2.6 —— */
-    .approval { border: 1px solid var(--line2); border-top: none; background: var(--bg2); position: relative; }
-    .approval .snap { height: 2px; background: repeating-linear-gradient(90deg, var(--acc) 0 6px, transparent 6px 10px);
-                      position: relative; overflow: hidden; }
-    .approval .snap-solid { position: absolute; inset: 0; background: var(--acc);
-                             transform: scaleX(0); transform-origin: left center; }
+    /* —— 审批卡（§2.6 v2）：kbd 键帽 + 应答过渡 —— */
+    .approval {
+      border: 1px solid var(--line2); border-top: none; background: var(--bg2); position: relative;
+      box-shadow: var(--shadow-card); transition: opacity var(--t-slow) var(--ease);
+    }
+    .approval .snap {
+      height: 2px; background: repeating-linear-gradient(90deg, var(--acc) 0 6px, transparent 6px 10px);
+      position: relative; overflow: hidden;
+    }
+    .approval .snap-solid {
+      position: absolute; inset: 0; background: var(--acc);
+      transform: scaleX(0); transform-origin: left center;
+    }
     .approval.answered .snap-solid { transform: scaleX(1); }
     .approval.denied .snap-solid { background: var(--line2); }
     .approval.answered { opacity: .68; }
     .approval .head { display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; }
-    .approval .stamp { background: var(--acc); color: #fff; font-family: var(--mono); font-size: 11px;
-                       padding: 1px 6px; border-radius: var(--r1); flex: none; }
-    .approval .stamp.done { background: var(--line2); }
-    .approval .stamp.done { background: var(--line2); }
+    .approval .stamp {
+      background: var(--acc); color: var(--on-acc); font-family: var(--mono); font-size: 12px;
+      font-weight: 600; padding: 1px 6px; border-radius: var(--r1); flex: none; box-shadow: var(--glow);
+    }
+    .approval .stamp.done { background: var(--line2); color: var(--t2); box-shadow: none; }
     .approval .name { font-family: var(--mono); font-size: 13px; }
     .approval .reason { padding: 0 12px; color: var(--t2); }
     .approval .diff .add { color: var(--dadd); }
     .approval .diff .del { color: var(--ddel); }
     .approval .diff .meta { color: var(--t3); }
-    .approval .diff { margin: 8px 12px; padding: 8px 10px; background: var(--sun); color: var(--code);
-                      border-left: 2px solid var(--line); font-family: var(--mono); font-size: 13px;
-                      overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+    .approval .diff {
+      margin: 8px 12px; padding: 8px 10px; background: var(--sun); color: var(--code);
+      border-left: 2px solid var(--line); font-family: var(--mono); font-size: 13px;
+      overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+    }
     .approval .buttons { display: flex; gap: 8px; padding: 0 12px 10px; }
+    .approval .buttons kbd { margin-left: 8px; }
     .approval.answered .buttons { display: none; }
     .approval .status-line { padding: 0 12px 10px; font-family: var(--mono); font-size: 13px; }
     .approval .status-line.ok { color: var(--t1); }
     .approval .status-line.no { color: var(--t2); }
 
-    /* —— 输入条 §2.7 —— */
-    footer { flex: none; max-width: 860px; width: 100%; margin: 0 auto; padding: var(--s3) var(--s4) var(--s4); }
-    .dock { border: 1px solid var(--line2); border-radius: var(--r1); background: var(--bg1);
-            padding: 8px 10px 6px; transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
-    .dock:focus-within { border-color: var(--acc); box-shadow: 0 0 0 3px var(--acc-bg); }
-    .dock textarea { display: block; width: 100%; border: none; background: transparent; resize: vertical;
-                     min-height: 48px; font-size: 15px; line-height: 1.7; }
+    /* —— 输入台：命令栏（§2.7 v2 签名屏）—— */
+    footer { flex: none; max-width: 860px; width: 100%; margin: 0 auto; padding: var(--s3) var(--s4) var(--s4); position: relative; z-index: 2; }
+    .dock {
+      position: relative; border: 1px solid var(--line2); border-radius: var(--r1); background: var(--bg1);
+      padding: 10px 12px 8px 30px; box-shadow: var(--shadow-dock);
+      transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+    }
+    .dock::before {
+      content: "❯"; position: absolute; left: 12px; top: 9px;
+      font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--acc); text-shadow: var(--glow);
+    }
+    .dock:focus-within {
+      border-color: var(--acc);
+      box-shadow: var(--shadow-dock), 0 0 0 3px var(--acc-bg), var(--glow-soft);
+      animation: dockGlow .5s var(--ease);
+    }
+    @keyframes dockGlow { from { box-shadow: var(--shadow-dock), 0 0 0 0 var(--acc-bg), 0 0 0 0 var(--glow-soft); } }
+    .dock textarea {
+      display: block; width: 100%; border: none; background: transparent; resize: none;
+      min-height: 26px; max-height: 180px; font-size: 15px; line-height: 1.7; overflow-y: auto;
+    }
     .dock textarea:focus { box-shadow: none; }
     .dock textarea:disabled { opacity: .5; }
     .dock .bar { display: flex; align-items: center; gap: var(--s2); margin-top: 4px; }
-    .dock .bar .kbd-hint { font-family: var(--mono); font-size: 11px; color: var(--t3); flex: 1; }
-    .usage { display: flex; justify-content: flex-end; gap: 6px; font-family: var(--mono); font-size: 12px;
-             color: var(--t1); font-variant-numeric: tabular-nums; border-top: 1px solid var(--line);
-             margin-top: var(--s2); padding-top: 6px; }
+    .dock .bar .kbd-hint { font-family: var(--mono); font-size: 12px; color: var(--t3); flex: 1; }
+
+    /* —— 用量条（§2.8）—— */
+    .usage {
+      display: flex; justify-content: flex-end; gap: 6px; font-family: var(--mono); font-size: 12px;
+      color: var(--t1); font-variant-numeric: tabular-nums; border-top: 1px solid var(--line);
+      margin-top: var(--s2); padding-top: 6px;
+    }
     .usage .up, .usage .down { color: var(--t3); }
     .usage .cost { color: var(--t2); }
 
-    /* —— 令牌门 §2.9 —— */
-    .token-gate { max-width: 420px; margin: 18vh auto 0; border: 1px solid var(--line2);
-                  background: var(--bg2); padding: var(--s5); display: flex; flex-direction: column; gap: var(--s3); }
-    .token-gate h2 { margin: 0; font-family: var(--mono); font-size: 15px; letter-spacing: .08em; }
-    .token-gate p { margin: 0; color: var(--t2); font-size: 14px; }
-    .token-gate input { border: 1px solid var(--line2); border-radius: var(--r1); background: var(--bg1);
-                        padding: 8px 10px; font-family: var(--mono); font-size: 14px; }
+    /* —— 令牌门（§2.9）—— */
+    .token-gate {
+      max-width: 420px; margin: 18vh auto 0; border: 1px solid var(--line2); border-left: 2px solid var(--acc);
+      background: var(--bg2); padding: var(--s5); display: flex; flex-direction: column; gap: var(--s3);
+      box-shadow: var(--shadow-panel); animation: fadeOnly var(--t-slow) var(--ease) both;
+    }
+    .token-gate h2 { margin: 0; font-family: var(--mono); font-size: 15px; font-weight: 600; letter-spacing: .08em; }
+    .token-gate p { margin: 0; color: var(--t2); font-size: 13px; }
+    .token-gate input {
+      border: 1px solid var(--line2); border-radius: var(--r1); background: var(--bg1);
+      padding: 8px 10px; font-family: var(--mono); font-size: 13px;
+    }
+
+    /* —— 窄屏 —— */
+    @media (max-width: 640px) {
+      header { gap: var(--s2); padding: 0 var(--s3); }
+      .status-txt { display: none; }
+      .col { padding: var(--s3); }
+      .empty-state { margin-top: 8vh; }
+      .new-row input { flex: 1; width: auto; min-width: 0; }
+      .ln-row { grid-template-columns: 22px 1fr; gap: 8px; }
+      .msg.user { max-width: 92%; }
+      .panel-mount { width: min(420px, 94vw); }
+    }
   </style>
 </head>
 <body>
