@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { render, type JSX } from "preact";
 import {
+  applyEventToView,
   applyLiveEvent,
   emptyState,
   emptyView,
@@ -12,75 +13,60 @@ import {
   setSessions,
   type ConsoleState,
   type ModouEvent,
-  type RenderItem,
-  type SessionView,
+  type SessionSummary,
 } from "./state.js";
-import { ModouClient, saveToken, type SessionSummary } from "./client.js";
-import { DiffBlock, MessageList, ToolItem, ApprovalItem } from "./MessageLog.js";
+import { ModouClient, saveToken } from "./client.js";
+import { Icon, MessageList, relTime } from "./MessageLog.js";
 
 /**
- * plan-web 重设计 v2（方向 A 晒图 BLUEPRINT）：左图纸目录 + 右图纸主体。
- * 消息=编号标注+基准线；工具=双线框工序卡；审批=签章处（盖章动画）；
- * 用量=图签块材料表；输入=刻度边条命令台。状态变更全走 state.ts 纯函数。
+ * 重设计 v3「中性面阶」：左会话侧栏 260px + 右主列（52px 顶栏 / 消息流 / 驻底输入台），
+ * 内容列 768px 居中，零横向滚动；视觉分层=一档底色差 + 1px 线，强调色仅一枚靛蓝。
+ * 状态变更全走 state.ts 纯函数；主题 data-theme + localStorage + theme-color 同步。
  */
 
 const client = new ModouClient(() => (location.origin === "null" ? "http://127.0.0.1:4711" : location.origin));
 
-// 主题（晒图/白图）：默认晒图，localStorage 覆写
+// ---------- 主题（dark 默认，localStorage 覆写；theme-color 随主题同步） ----------
+
+function syncThemeColor(): void {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg-app").trim();
+  if (bg) meta.setAttribute("content", bg);
+}
+
+function applyTheme(theme: "dark" | "light"): void {
+  document.documentElement.dataset.theme = theme;
+  try {
+    localStorage.setItem("modou.theme", theme);
+  } catch {
+    /* 存储不可用则仅内存生效 */
+  }
+  syncThemeColor();
+}
+
 (function initTheme() {
   try {
     const saved = localStorage.getItem("modou.theme");
-    if (saved === "light" || saved === "dark") {
-      document.documentElement.dataset.theme = saved;
-    }
+    if (saved === "light" || saved === "dark") document.documentElement.dataset.theme = saved;
   } catch {
-    /* 存储不可用则晒图默认 */
+    /* 存储不可用则暗色默认（基准：暗默认、亮可选，机制沿用） */
   }
+  syncThemeColor();
 })();
 
-// ---------- 空状态：圆规刻度圆 ----------
+// ---------- 展示辅助 ----------
 
-function SnapHero({ onPick }: { onPick: (cmd: string) => void }): JSX.Element {
-  const samples = [
-    "梳理 packages/console 的会话存储结构",
-    "修复删除后列表不刷新的问题",
-    "为审批卡加一次盖章动画",
-  ];
-  return (
-    <div class="hero">
-      <div class="stage">
-        <svg class="blp" viewBox="0 0 1100 540" aria-hidden="true">
-          <line class="x" x1="0" y1="270" x2="1100" y2="270" />
-          <line class="x" x1="575" y1="0" x2="575" y2="540" />
-          <line class="c2" x1="441" y1="136" x2="709" y2="404" />
-          <line class="c2" x1="709" y1="136" x2="441" y2="404" />
-          <circle class="c1" cx="575" cy="270" r="170" />
-          <circle class="c2" cx="575" cy="270" r="110" />
-          <circle class="ticks" cx="575" cy="270" r="178" stroke-dasharray="1 14.53" />
-          <circle class="ctr" cx="575" cy="270" r="3" />
-          <text x="575" y="76" text-anchor="middle">000°</text>
-          <text x="785" y="274" text-anchor="start">090°</text>
-          <text x="575" y="484" text-anchor="middle">180°</text>
-          <text x="365" y="274" text-anchor="end">270°</text>
-          <polyline class="ldr" points="370,116 430,116 455,150" />
-          <polyline class="ldr" points="734,108 690,108 662,122" />
-          <polyline class="ldr" points="714,444 676,444 662,418" />
-        </svg>
-        <div class="copy">
-          <h2>尚无图样</h2>
-          <div class="dash" />
-          <p>——输入第一条指令开始制图</p>
-        </div>
-        {samples.map((cmd, i) => (
-          <button class={`ex ex${i + 1}`} onClick={() => onPick(cmd)} key={i}>
-            <span class="no">{`0${i + 1}`}</span>
-            <span class="tx">{cmd}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+/** ≥1000 一位小数 k 缩写（DESIGN.md §6.6#7）；相对时间 relTime 见 MessageLog.tsx（消息流共用） */
+function kfmt(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
 }
+
+const SAMPLES = [
+  "梳理 packages/console 的会话存储结构",
+  "修复删除后列表不刷新的问题",
+  "为发送失败补一条可见的错误通知",
+];
 
 // ---------- 令牌门 ----------
 
@@ -93,19 +79,23 @@ function TokenGate({ onSaved }: { onSaved: () => void }): JSX.Element {
     }
   };
   return (
-    <div class="token-gate">
-      <h2>⌘ 需要访问令牌</h2>
-      <p>此服务开启了 Bearer 鉴权。输入 modou serve 启动时打印的 token：</p>
-      <input
-        type="password"
-        placeholder="token"
-        value={value}
-        onInput={(e) => setValue((e.target as HTMLInputElement).value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-      />
-      <button class="sealbtn" onClick={submit}>
-        保存并继续
-      </button>
+    <div class="gate">
+      <div class="gatecard">
+        <h2>需要访问令牌</h2>
+        <p>此服务开启了 Bearer 鉴权。输入 modou serve 启动时打印的 token：</p>
+        <input
+          type="password"
+          placeholder="token"
+          value={value}
+          onInput={(e) => setValue((e.target as HTMLInputElement).value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) submit();
+          }}
+        />
+        <button class="abtn primary" onClick={submit}>
+          保存并继续
+        </button>
+      </div>
     </div>
   );
 }
@@ -116,7 +106,8 @@ function App(): JSX.Element {
   const [state, setState] = useState<ConsoleState>(emptyState());
   const [cwd, setCwd] = useState("");
   const [input, setInput] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [sideOpen, setSideOpen] = useState(true);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const subsRef = useRef(new Map<string, { dispose(): void; attempts: number }>());
 
   const refreshSessions = useCallback(async () => {
@@ -216,9 +207,17 @@ function App(): JSX.Element {
     [input, state.currentId, cwd, newSession, subscribe],
   );
 
+  /** 审批应答：乐观写入（幂等，复用 approval_result 分支）+ 回执发送 */
   const answerApproval = useCallback(
     (requestId: string, granted: boolean, remembered: boolean) => {
-      if (state.currentId) void client.answerApproval(state.currentId, requestId, granted, remembered);
+      if (!state.currentId) return;
+      void client.answerApproval(state.currentId, requestId, granted, remembered);
+      setState((s) => {
+        const view = s.views[s.currentId!];
+        if (!view) return s;
+        const next = applyEventToView(view, { type: "approval_result", id: requestId, granted });
+        return { ...s, views: { ...s.views, [s.currentId!]: next } };
+      });
     },
     [state.currentId],
   );
@@ -239,11 +238,35 @@ function App(): JSX.Element {
   );
 
   const currentView = state.currentId ? (state.views[state.currentId] ?? emptyView(state.currentId)) : null;
-  const currentSummary = state.sessions.find((s: SessionSummary) => s.sessionId === state.currentId) ?? null;
+  const busy = currentView?.busy === true;
+  const replayMode = currentView?.replay === true;
   const earliestPending = currentView?.items.find(
     (it) => it.kind === "approval" && it.status === "pending" && it.id,
   );
-  const today = new Date().toISOString().slice(0, 10);
+  const pendingId = replayMode ? null : (earliestPending?.id ?? null);
+
+  // 键盘 1/2/3 应答（三闸：isComposing / e.repeat / 回放早退；输入框聚焦不触发）
+  useEffect(() => {
+    if (!pendingId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.isComposing || e.repeat || e.keyCode === 229) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "1") answerApproval(pendingId, false, false);
+      else if (e.key === "2") answerApproval(pendingId, true, false);
+      else if (e.key === "3") answerApproval(pendingId, true, true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pendingId, answerApproval]);
+
+  // 输入台行数自适应（max-height 200px 由 CSS 限）
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [input]);
 
   if (state.needsToken) {
     return (
@@ -256,193 +279,169 @@ function App(): JSX.Element {
     );
   }
 
+  const usage = currentView?.usage ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+  const total = usage.inputTokens + usage.outputTokens;
+
   return (
-    <>
-      <div class="board">
-        <aside class="index">
-          <div class="ph">
-            <b>图纸目录</b>
-            <span class="en">SHEET INDEX</span>
-          </div>
-          <nav class="ilist">
-            {state.sessions.map((s: SessionSummary, i: number) => (
-              <button
-                key={s.sessionId}
-                class={"si" + (s.sessionId === state.currentId ? " active" : "")}
-                onClick={() => void openSession(s.sessionId)}
-              >
-                <span class="no">{`T-${String(state.sessions.length - i).padStart(2, "0")}`}</span>
-                <span class="nm">{s.preview || `空会话 ${s.sessionId.slice(0, 8)}`}</span>
-                <span
-                  class="del"
-                  title="删除此图纸（不可恢复）"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteSession(s.sessionId);
-                  }}
-                >
-                  ✕
-                </span>
-              </button>
-            ))}
-            <button class="si blank" onClick={() => void newSession(cwd)}>
-              ＋ 新图纸 NEW SHEET
-            </button>
-          </nav>
-          <div class="pf">
-            <span class="cnt">
-              {state.sessions.length} SHEETS · {today}
+    <div class="board" data-side={sideOpen ? "open" : "closed"}>
+      <aside class="side">
+        <div class="sidehead">
+          <span class="sidetitle">会话{state.sessions.length > 0 ? ` · ${state.sessions.length}` : ""}</span>
+          <button class="iconbtn" title="新建会话" onClick={() => void newSession(cwd)}>
+            <Icon>
+              <path d="M12 5v14M5 12h14" />
+            </Icon>
+          </button>
+        </div>
+        <nav class="slist">
+          {state.sessions.length === 0 && <div class="sempty">暂无会话</div>}
+          {state.sessions.map((s: SessionSummary) => {
+            const preview = s.preview.trim();
+            const time = s.updatedAt ? relTime(s.updatedAt) : "—";
+            return (
+              <div key={s.sessionId} class={"srow" + (s.sessionId === state.currentId ? " active" : "")}>
+                <button class="sopen" onClick={() => void openSession(s.sessionId)}>
+                  <span class="l1">{preview || `空会话 ${s.sessionId.slice(0, 8)}`}</span>
+                  <span class="l2">{preview ? `${time} · ${s.sessionId.slice(0, 8)}` : time}</span>
+                </button>
+                <button class="sdel" title="删除此会话（不可恢复）" aria-label="删除此会话" onClick={() => deleteSession(s.sessionId)}>
+                  <Icon size={12}>
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </Icon>
+                </button>
+              </div>
+            );
+          })}
+        </nav>
+      </aside>
+
+      <div class="main">
+        <header class="top">
+          <button class="iconbtn" title={sideOpen ? "收起侧栏" : "展开侧栏"} onClick={() => setSideOpen((v) => !v)}>
+            <Icon>
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M9 4v16" />
+            </Icon>
+          </button>
+          <span class="brand">墨斗</span>
+          <span class="topstatus">
+            <span class={"sdot" + (busy ? " run" : "")} />
+            {currentView ? (busy ? "生成中" : "空闲") : "待机"}
+          </span>
+          <button
+            class="iconbtn"
+            title="切换主题"
+            onClick={() => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark")}
+          >
+            <span class="icon-sun">
+              <Icon>
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+              </Icon>
             </span>
+            <span class="icon-moon">
+              <Icon>
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </Icon>
+            </span>
+          </button>
+        </header>
+
+        {state.notice && (
+          <div class="notice" role="status">
+            <span class="ntext">{state.notice}</span>
+            <button class="iconbtn" title="关闭通知" onClick={() => setState((s) => setNotice(s, null))}>
+              <Icon>
+                <path d="M18 6L6 18M6 6l12 12" />
+              </Icon>
+            </button>
           </div>
-        </aside>
+        )}
 
-        <div class="main">
-          <header class="head">
-            <div class="cell brand">
-              <span class="v">墨斗</span>
-              <span class="en">MODOU · ENGINEERING CONSOLE</span>
-            </div>
-            <div class="cell">
-              <span class="k">图号 Sheet</span>
-              <span class="v mono">{state.currentId ? state.currentId.slice(0, 14) : "B-00"}</span>
-            </div>
-            <div class="cell">
-              <span class="k">图名 Subject</span>
-              <span class="v">{currentSummary?.preview ?? "空白图样"}</span>
-            </div>
-            <div class="cell">
-              <span class="k">日期 Date</span>
-              <span class="v mono">{today}</span>
-            </div>
-            <div class="cell status">
-              <span class="k">状态 Status</span>
-              <span class="v">
-                {currentView?.busy ? (
-                  <>
-                    <span class="stamp run">RUN</span>&nbsp;制图中
-                  </>
-                ) : currentView ? (
-                  <>
-                    <span class="dot" />
-                    已停笔
-                  </>
-                ) : (
-                  "待图 NO DATA"
-                )}
-              </span>
-            </div>
-          </header>
-
-          <span class="cm tl" aria-hidden="true" />
-          <span class="cm tr" aria-hidden="true" />
-          <span class="cm bl" aria-hidden="true" />
-          <span class="cm br" aria-hidden="true" />
-
-          {currentView ? (
-            <>
-              {currentView.replay && <div class="replay-badge">⟲ 只读回放 · SERVER 重启后的归档图纸</div>}
-              <MessageList view={currentView} sessionId={state.currentId!} onAnswer={answerApproval} />
-            </>
-          ) : (
-            <div class="flow">
-              <SnapHero onPick={(cmd) => void send(cmd)} />
-            </div>
-          )}
-
-          <div class="tblock">
-            <div class="tb-head">
-              <b>用量</b>
-              <span class="en">MATERIALS</span>
-              <span class="sh">{state.currentId ? state.currentId.slice(0, 4).toUpperCase() : "B-00"}</span>
-            </div>
-            <div class="tb-bar">
-              <i
-                class="in"
-                style={`width:${
-                  currentView && currentView.usage.inputTokens + currentView.usage.outputTokens > 0
-                    ? Math.min(
-                        72,
-                        (currentView.usage.inputTokens / (currentView.usage.inputTokens + currentView.usage.outputTokens)) * 100,
-                      )
-                    : 0
-                }%`}
-              />
-              <i
-                class="out"
-                style={`width:${
-                  currentView && currentView.usage.inputTokens + currentView.usage.outputTokens > 0
-                    ? Math.min(
-                        60,
-                        (currentView.usage.outputTokens / (currentView.usage.inputTokens + currentView.usage.outputTokens)) * 100,
-                      )
-                    : 0
-                }%`}
-              />
-            </div>
-            <div class="tb-row">
-              <span class="k">输入 IN</span>
-              <span class="v">{currentView?.usage.inputTokens ?? 0}</span>
-            </div>
-            <div class="tb-row">
-              <span class="k">输出 OUT</span>
-              <span class="v">{currentView?.usage.outputTokens ?? 0}</span>
-            </div>
-            <div class="tb-row total">
-              <span class="k">合计 SUM</span>
-              <span class="v">{currentView ? (currentView.usage.inputTokens + currentView.usage.outputTokens).toFixed(0) : "0"}</span>
-            </div>
-            <div class="tb-ctl">
-              <button class="rew" disabled={!currentView?.replay} onClick={() => void openSession(state.currentId!)}>
-                REW ◄◄
-              </button>
-              <div class="flip" role="group" aria-label="主题切换">
-                <button class="on" onClick={() => (document.documentElement.dataset.theme = "dark")}>晒图</button>
-                <button onClick={() => (document.documentElement.dataset.theme = "light")}>白图</button>
+        {currentView ? (
+          <MessageList
+            key={currentView.sessionId}
+            view={currentView}
+            onAnswer={answerApproval}
+            onReplay={() => void openSession(state.currentId!)}
+          />
+        ) : (
+          <div class="flow">
+            <div class="empty">
+              <h2>开始一个新会话</h2>
+              <p>输入第一条指令，或从下面的示例开始</p>
+              <div class="exlist">
+                {SAMPLES.map((cmd) => (
+                  <button
+                    class="excard"
+                    key={cmd}
+                    onClick={() => {
+                      setInput(cmd);
+                      inputRef.current?.focus();
+                    }}
+                  >
+                    {cmd}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
+        )}
 
-          <div class="dock">
-            <div class="ruler" aria-hidden="true" />
-            <div class="inline">
-              <input
+        <div class="bottom">
+          <div class="col">
+            {total > 0 && (
+              <div class="usage">
+                <span class="ubar" aria-hidden="true">
+                  <i class="in" style={`width:${(usage.inputTokens / total) * 100}%`} />
+                  <i class="out" style={`width:${(usage.outputTokens / total) * 100}%`} />
+                </span>
+                <span>
+                  ↑ <b>{kfmt(usage.inputTokens)}</b> ↓ <b>{kfmt(usage.outputTokens)}</b> · 合计{" "}
+                  <b>{kfmt(total)}</b> · ${usage.costUsd.toFixed(4)}
+                </span>
+              </div>
+            )}
+            <div class="dock">
+              <textarea
                 ref={inputRef}
-                class="cmd"
-                type="text"
-                placeholder="输入指令，按 Enter 出图…"
+                rows={1}
+                placeholder="输入指令…"
                 spellcheck={false}
-                autocomplete="off"
                 value={input}
-                disabled={currentView?.busy === true}
-                onInput={(e) => setInput((e.target as HTMLInputElement).value)}
+                onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && input.trim()) void send();
-                  if (e.key === "Escape" && input) setInput("");
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    if (e.isComposing || e.keyCode === 229) return;
+                    e.preventDefault();
+                    if (busy) return; // 生成中可预输入，Enter 不发送（取消钮在本轮出口）
+                    if (input.trim()) void send();
+                  } else if (e.key === "Escape" && input) {
+                    setInput("");
+                  }
                 }}
               />
-              <span class="keys">
-                {earliestPending ? "1 驳回 · 2 批准 · 3 批准全部" : "Enter 出图 · Esc 清空"}
-              </span>
+              <div class="dockfoot">
+                <span class="dockhint">
+                  {pendingId ? "1 拒绝 · 2 允许 · 3 总是允许" : "Enter 发送 · Shift+Enter 换行"}
+                </span>
+                {busy ? (
+                  <button class="send cancel" title="取消本轮" onClick={cancelTurn}>
+                    取消
+                  </button>
+                ) : (
+                  <button class="send" title="发送" disabled={!input.trim()} onClick={() => void send()}>
+                    <Icon>
+                      <path d="M12 19V5M5 12l7-7 7 7" />
+                    </Icon>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
-      {state.notice && (
-        <div class="strip">
-          <span class="l">{state.notice}</span>
-          <button class="r" onClick={() => setState((s) => setNotice(s, null))}>
-            关闭 CLOSE ✕
-          </button>
-        </div>
-      )}
-      <div class="strip">
-        <span class="l">
-          {state.currentId ? `Sheet · ${state.currentId.slice(0, 14)} · ` : ""}
-          <span class="zh">{currentView?.busy ? "会话 · 制图中" : "墨斗 · 待图"}</span>
-        </span>
-        <span class="r">Blueprint · Direction A · {today} · Scale 1:1</span>
-      </div>
-    </>
+    </div>
   );
 }
 
