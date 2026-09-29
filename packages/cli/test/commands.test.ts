@@ -87,3 +87,10 @@ describe("/plan", () => {
     expect((result as { text: string }).text).toContain("用法");
   });
 });
+
+describe("parseCommand /web", () => {
+  it("parses with optional cwd", () => {
+    expect(parseCommand("/web")).toEqual({ action: "web", cwd: undefined });
+    expect(parseCommand("/web E:\proj")).toEqual({ action: "web", cwd: "E:\proj" });
+  });
+});

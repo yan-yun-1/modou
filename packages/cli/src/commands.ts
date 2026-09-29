@@ -14,6 +14,7 @@ export type CommandResult =
   | { action: "permission"; level?: "plan" | "default" | "yolo" }
   | { action: "help" }
   | { action: "mcp" }
+  | { action: "web"; cwd?: string }
   | { action: "init" }
   | { action: "skills" }
   | { action: "plan"; task: string };
@@ -24,6 +25,7 @@ export const SLASH_COMMANDS: { name: string; hint: string }[] = [
   { name: "/init", hint: "生成 AGENTS.md 模板" },
   { name: "/skills", hint: "查看能力包" },
   { name: "/mcp", hint: "MCP server 状态" },
+  { name: "/web", hint: "启动 Web 控制台（浏览器打开）" },
   { name: "/cost", hint: "用量与成本" },
   { name: "/checkpoints", hint: "回滚点列表" },
   { name: "/rollback", hint: "恢复回滚点" },
@@ -118,6 +120,10 @@ export function parseCommand(input: string, usage: UsageTotals): CommandResult {
     }
     case "mcp":
       return { action: "mcp" };
+    case "web": {
+      const dir = arg.trim();
+      return { action: "web", cwd: dir === "" ? undefined : dir };
+    }
     case "init":
       return { action: "init" };
     case "skills":

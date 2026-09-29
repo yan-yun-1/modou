@@ -98,6 +98,7 @@ modou -p "运行 pnpm test 并总结失败原因"
 | `/init` | 生成 AGENTS.md 项目约定模板（已存在不覆盖） |
 | `/skills` | 查看已发现的 Skills 能力包 |
 | `/mcp` | 查看 MCP server 连接状态与工具数 |
+| `/web [目录]` | 启动 Web 控制台并打开浏览器（服务随 TUI 退出关闭） |
 | `/cost` | 查看本会话 token 用量与成本明细 |
 | `/checkpoints` / `/rollback <n>` | 回滚点列表 / 恢复 |
 | `/sessions` / `/resume <id>` | 列出历史会话 / 恢复指定会话 |

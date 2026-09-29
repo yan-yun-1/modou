@@ -11,7 +11,23 @@ import {
 } from "@modou-dev/core";
 import { ApprovalBridge } from "./approval-bridge.js";
 import type { McpStatus } from "./loop-factory.js";
+import { spawn } from "node:child_process";
 import { parseCommand } from "./commands.js";
+
+/** plan-web：按平台用系统默认浏览器打开 URL */
+function openInBrowser(url: string): void {
+  try {
+    if (process.platform === "win32") {
+      spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore", windowsHide: true });
+    } else if (process.platform === "darwin") {
+      spawn("open", [url], { detached: true, stdio: "ignore" });
+    } else {
+      spawn("xdg-open", [url], { detached: true, stdio: "ignore" });
+    }
+  } catch {
+    /* 打开失败不打断 TUI；用户可手动复制 URL */
+  }
+}
 import { initAgentsMd } from "./init.js";
 import { loadSkills } from "@modou-dev/core";
 import {
@@ -172,6 +188,14 @@ export function ModouApp({
   onUsageChange,
 }: ModouAppProps) {
   const { exit } = useApp();
+  /** plan-web：/web 拉起的控制台 server（随 TUI 退出关闭） */
+  const webServerRef = useRef<{ url: string; close: () => Promise<void> } | null>(null);
+  useEffect(
+    () => () => {
+      void webServerRef.current?.close().catch(() => {});
+    },
+    [],
+  );
   const [items, setItems] = useState<DisplayItem[]>([]);
   const [streaming, setStreaming] = useState("");
   const [busy, setBusy] = useState(false);
@@ -603,6 +627,49 @@ export function ModouApp({
       }
       if (command.action === "help") {
         setPendingHelp(true);
+        return;
+      }
+      if (command.action === "web") {
+        // plan-web：TUI 内一键拉起 Web 控制台——复用本进程已有实例则重开浏览器
+        if (webServerRef.current) {
+          openInBrowser(webServerRef.current.url);
+          setItems((prev) => [
+            ...prev,
+            { kind: "assistant", text: `Web 控制台已在运行：${webServerRef.current!.url}（已重新打开浏览器）` },
+          ]);
+          return;
+        }
+        setItems((prev) => [...prev, { kind: "assistant", text: "正在启动 Web 控制台…" }]);
+        void (async () => {
+          try {
+            const { ModouServer } = await import("@modou-dev/server");
+            const server = new ModouServer({
+              port: 0,
+              createSessionDefaults: { home },
+              // /web <dir>：控制台新会话的默认项目目录（覆盖 body.cwd；未指定则用 TUI cwd）
+              createSessionOverrides: command.cwd ? () => ({ cwd: command.cwd }) : undefined,
+            });
+            const { port } = await server.start();
+            const url = `http://127.0.0.1:${port}`;
+            webServerRef.current = { url, close: () => server.close() };
+            openInBrowser(url);
+            setItems((prev) => [
+              ...prev,
+              {
+                kind: "assistant",
+                text:
+                  `Web 控制台已启动：${url}（浏览器已打开）
+` +
+                  "控制台与会话共享同一存储；服务随 TUI 退出而关闭。",
+              },
+            ]);
+          } catch (error) {
+            setItems((prev) => [
+              ...prev,
+              { kind: "error", text: `Web 控制台启动失败：${(error as Error).message}` },
+            ]);
+          }
+        })();
         return;
       }
       if (command.action === "mcp") {
