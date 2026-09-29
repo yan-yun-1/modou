@@ -31,15 +31,16 @@ export interface SessionPanelProps {
   onClose: () => void;
   /** 关闭活跃会话（DELETE；仅注册表内会话可关） */
   onCloseSession?: (sessionId: string) => void;
-  /** 批量删除（历史会话全选清理）；返回实际删除数，-1=失败（保留选择供重试） */
-  onBulkDelete?: (ids: string[]) => Promise<number>;
+  /** 清空全部历史会话（scope=all-history，含未显示的）；返回实际删除数，-1=失败 */
+  onBulkDeleteAll?: () => Promise<number>;
+  /** server 侧会话总数（列表仅显示最近 50） */
+  historyTotal?: number;
 }
 
-export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSession, onBulkDelete }: SessionPanelProps): JSX.Element {
+export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSession, onBulkDeleteAll, historyTotal = 0 }: SessionPanelProps): JSX.Element {
   const [filter, setFilter] = useState("");
   const [kbdIndex, setKbdIndex] = useState(0);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [armed, setArmed] = useState(false);
+  const [selectAll, setSelectAll] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const filterRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -155,18 +156,10 @@ export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSess
             <label class="select-all">
               <input
                 type="checkbox"
-                checked={history.length > 0 && history.every((s) => selected.has(s.sessionId))}
+                checked={selectAll}
                 onChange={(e) => {
-                  const checked = (e.target as HTMLInputElement).checked;
-                  setSelected((prev) => {
-                    const next = new Set(prev);
-                    for (const s of history) {
-                      if (checked) next.add(s.sessionId);
-                      else next.delete(s.sessionId);
-                    }
-                    return next;
-                  });
-                  setArmed(false);
+                  setSelectAll((e.target as HTMLInputElement).checked);
+                  setBulkError(null);
                 }}
               />
               全选
@@ -175,32 +168,26 @@ export function SessionPanel({ sessions, currentId, onOpen, onClose, onCloseSess
         )}
         {history.map(renderRow)}
       </div>
-      {selected.size > 0 && onBulkDelete ? (
+      {selectAll && onBulkDeleteAll ? (
         <div class="bulk-bar">
-          <span class="mono">已选 {selected.size} 个</span>
+          <span class="mono">将删除全部历史会话{historyTotal > 50 ? `（共 ${historyTotal} 个，含未显示的）` : ""}</span>
           <button
-            class={armed ? "danger" : ""}
+            class="danger"
             onClick={() => {
-              if (!armed) {
-                setArmed(true);
-                return;
-              }
-              void onBulkDelete([...selected]).then((deleted) => {
+              void onBulkDeleteAll().then((deleted) => {
                 if (deleted < 0) {
                   setBulkError("删除失败——请重启 modou serve 后重试");
-                  setArmed(false);
                   return;
                 }
-                setSelected(new Set());
-                setArmed(false);
+                setSelectAll(false);
                 setBulkError(null);
               });
             }}
           >
-            {armed ? `确认删除 ${selected.size} 个（不可恢复）` : "删除所选"}
+            确认清空（不可恢复）
           </button>
-          <button class="ghost" onClick={() => { setSelected(new Set()); setArmed(false); setBulkError(null); }}>
-            取消选择
+          <button class="ghost" onClick={() => { setSelectAll(false); setBulkError(null); }}>
+            取消
           </button>
           {bulkError && <span class="bulk-err">{bulkError}</span>}
         </div>

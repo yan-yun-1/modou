@@ -78,11 +78,22 @@ export class ModouClient {
     }
   }
 
-  async listSessions(): Promise<SessionSummary[]> {
+  async listSessions(): Promise<{ sessions: SessionSummary[]; total: number }> {
     const res = await this.#request("/sessions");
-    if (!res.ok) return [];
-    const body = (await res.json()) as { sessions?: SessionSummary[] };
-    return body.sessions ?? [];
+    if (!res.ok) return { sessions: [], total: 0 };
+    const body = (await res.json()) as { sessions?: SessionSummary[]; total?: number };
+    return { sessions: body.sessions ?? [], total: body.total ?? 0 };
+  }
+
+  /** 清空全部历史会话（scope=all-history；活跃会话保留）。返回实际删除数 */
+  async bulkDeleteAllHistory(): Promise<number> {
+    const res = await this.#request("/sessions/bulk-delete", {
+      method: "POST",
+      body: JSON.stringify({ scope: "all-history" }),
+    });
+    if (!res.ok) return -1;
+    const body = (await res.json()) as { deleted?: number };
+    return body.deleted ?? 0;
   }
 
   /** 创建会话；400/401 返回错误文案（cwd 不存在等） */

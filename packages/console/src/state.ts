@@ -62,6 +62,8 @@ export interface SessionView {
 
 export interface ConsoleState {
   sessions: SessionSummary[];
+  /** server 侧会话总数（列表仅显示最近 50；总数供"清空全部历史"展示） */
+  totalSessions: number;
   /** 会话视图按 id 索引；回放/订阅按需创建 */
   views: Record<string, SessionView>;
   currentId: string | null;
@@ -77,7 +79,7 @@ import type { SessionSummary } from "./client.js";
 export type { SessionSummary };
 
 export function emptyState(): ConsoleState {
-  return { sessions: [], views: {}, currentId: null, needsToken: false, notice: null };
+  return { sessions: [], totalSessions: 0, views: {}, currentId: null, needsToken: false, notice: null };
 }
 
 export function emptyView(sessionId: string): SessionView {
@@ -199,8 +201,8 @@ export function applyLiveEvent(state: ConsoleState, sessionId: string, event: Mo
 }
 
 /** 会话列表刷新 */
-export function setSessions(state: ConsoleState, sessions: SessionSummary[]): ConsoleState {
-  return { ...state, sessions };
+export function setSessions(state: ConsoleState, sessions: SessionSummary[], total = 0): ConsoleState {
+  return { ...state, sessions, totalSessions: total };
 }
 
 /** 切换/创建当前会话 */

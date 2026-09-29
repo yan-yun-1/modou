@@ -285,7 +285,7 @@ export class ModouServer {
       }
       sessions.push({ sessionId: sid, active: this.#sessions.has(sid), preview });
     }
-    this.#json(res, 200, { sessions });
+    this.#json(res, 200, { sessions, total: ids.length });
   }
 
   async #history(id: string, res: ServerResponse): Promise<void> {
@@ -311,6 +311,19 @@ export class ModouServer {
   /** plan-web：批量删除——活跃会话走完整关闭，其余删历史文件。ids 上限 5000 */
   async #bulkDelete(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const body = (await this.#readJson(req)) ?? {};
+    // plan-web：scope=all-history——清空全部非活跃会话（活跃会话不碰），
+    // 一次请求删完，避免"删 50 冒 50"的窗口循环
+    if (body.scope === "all-history") {
+      const store = this.#options.store ?? new SessionStore();
+      const all = await store.list();
+      let deleted = 0;
+      for (const id of all) {
+        if (this.#sessions.has(id)) continue;
+        await store.delete(id).catch(() => {});
+        deleted += 1;
+      }
+      return this.#json(res, 200, { ok: true, deleted, total: all.length });
+    }
     const raw = Array.isArray(body.ids) ? body.ids : [];
     const ids = raw
       .filter((x): x is string => typeof x === "string" && SESSION_ID_PATTERN.test(x))

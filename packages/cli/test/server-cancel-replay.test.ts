@@ -304,6 +304,40 @@ describe("历史只读回放（A4）", () => {
     expect(server.sessionCount).toBe(0);
   });
 
+  it("scope=all-history：清空全部非活跃会话，活跃会话保留", async () => {
+    server = startServer(textModel("x"));
+    const baseUrl = `http://127.0.0.1:${(await server.start()).port}`;
+    // 建 3 个会话：c1 跑一轮后重启使其非活跃；c2/c3 保持活跃
+    const c1 = await (await fetch(`${baseUrl}/sessions`, { method: "POST" })).json();
+    const sse1 = collectSse(baseUrl, c1.sessionId);
+    await new Promise((r) => setTimeout(r, 100));
+    await fetch(`${baseUrl}/sessions/${c1.sessionId}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ input: "x" }),
+    });
+    await sse1.waitFor((e) => e.type === "assistant_message");
+    sse1.stop();
+    await server.close();
+    server = startServer(textModel("y"));
+    const base2 = `http://127.0.0.1:${(await server.start()).port}`;
+    const c2 = await (await fetch(`${base2}/sessions`, { method: "POST" })).json();
+    const c3 = await (await fetch(`${base2}/sessions`, { method: "POST" })).json();
+
+    const bulk = await fetch(`${base2}/sessions/bulk-delete`, {
+      method: "POST",
+      body: JSON.stringify({ scope: "all-history" }),
+    });
+    const body = (await bulk.json()) as { deleted: number; total: number };
+    expect(bulk.status).toBe(200);
+    expect(body.total).toBe(3);
+    expect(body.deleted).toBe(1); // 只有非活跃的 c1 被清；活跃 c2/c3 保留
+
+    const list = (await (await fetch(`${base2}/sessions`)).json()) as { sessions: { sessionId: string }[] };
+    expect(list.sessions.some((s) => s.sessionId === c1.sessionId)).toBe(false);
+    expect(list.sessions.some((s) => s.sessionId === c2.sessionId)).toBe(true);
+    expect(list.sessions.some((s) => s.sessionId === c3.sessionId)).toBe(true);
+  });
+
   it("不存在的会话仍 404", async () => {
     server = startServer(textModel("x"));
     const baseUrl = `http://127.0.0.1:${(await server.start()).port}`;

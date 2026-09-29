@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   applyEventToView,
+  emptyState,
   emptyView,
   markBusy,
   replayEvents,
@@ -82,7 +83,7 @@ describe("applyEventToView（B2 状态层）", () => {
       { type: "assistant_message", text: "我是墨斗" },
       { type: "usage", inputTokens: 10, outputTokens: 5, costUsd: 0.01 },
     ];
-    const state = replayEvents({ sessions: [], views: {}, currentId: null, needsToken: false, notice: null }, "s1", events);
+    const state = replayEvents(emptyState(), "s1", events);
     expect(state.views["s1"]!.busy).toBe(false);
   });
 
@@ -92,7 +93,7 @@ describe("applyEventToView（B2 状态层）", () => {
       { type: "text_delta", delta: "应被跳过" },
       { type: "assistant_message", text: "最终文本" },
     ];
-    const state = replayEvents({ sessions: [], views: {}, currentId: null, needsToken: false, notice: null }, "s1", events);
+    const state = replayEvents(emptyState(), "s1", events);
     const v = state.views["s1"]!;
     expect(v.replay).toBe(true);
     expect(v.items.filter((i) => i.kind === "assistant")).toHaveLength(1);
@@ -102,13 +103,13 @@ describe("applyEventToView（B2 状态层）", () => {
 
 describe("会话切换与 busy（B3）", () => {
   it("setCurrent 为新会话建空视图", () => {
-    const state = setCurrent({ sessions: [], views: {}, currentId: null, needsToken: false, notice: null }, "s9");
+    const state = setCurrent(emptyState(), "s9");
     expect(state.currentId).toBe("s9");
     expect(state.views["s9"]?.items).toEqual([]);
   });
 
   it("markBusy 置位后由 turnEnd usage 清除", () => {
-    let state = setCurrent({ sessions: [], views: {}, currentId: null, needsToken: false, notice: null }, "s1");
+    let state = setCurrent(emptyState(), "s1");
     state = markBusy(state, "s1");
     expect(state.views["s1"]?.busy).toBe(true);
     state = { ...state, views: { ...state.views, ["s1"]: applyEventToView(state.views["s1"]!, { type: "usage", turnEnd: true }) } };

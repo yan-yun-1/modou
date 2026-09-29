@@ -288,8 +288,8 @@ function App(): JSX.Element {
   }, [theme]);
 
   const refreshSessions = useCallback(async () => {
-    const sessions = await client.listSessions();
-    setState((s) => setSessions(s, sessions));
+    const { sessions, total } = await client.listSessions();
+    setState((s) => setSessions(s, sessions, total));
   }, []);
 
   const subscribe = useCallback(
@@ -482,17 +482,17 @@ function App(): JSX.Element {
                   if (ok) subsRef.current.delete(id);
                 });
               }}
-              onBulkDelete={async (ids) => {
-                const deleted = await client.bulkDelete(ids);
+              onBulkDeleteAll={async () => {
+                const deleted = await client.bulkDeleteAllHistory();
                 if (deleted > 0) {
-                  for (const id of ids) subsRef.current.delete(id);
-                  setState((s) =>
-                    s.currentId && ids.includes(s.currentId) ? setCurrent(s, null) : s,
-                  );
+                  // 清空历史后当前会话可能已被删——回到无会话态
+                  setState((s) => (s.currentId && !s.sessions.some((x) => x.sessionId === s.currentId) ? setCurrent(s, null) : s));
                   void refreshSessions();
+                  subsRef.current.clear();
                 }
                 return deleted;
               }}
+              historyTotal={state.totalSessions}
             />
           )}
         </span>
