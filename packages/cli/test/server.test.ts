@@ -1,6 +1,6 @@
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { LanguageModel, ModouEvent } from "@modou-dev/core";
 import { SessionStore } from "@modou-dev/core";
@@ -97,6 +97,104 @@ describe("ModouServer（F18）", () => {
       await s2.close();
     }
   });
+
+  // Phase F1（plan-web）：目录浏览端点 + fsAllowRoots 白名单
+  it("GET /fs/dirs：列子目录（跳过 dotfiles 与文件），缺省 path=进程目录", async () => {
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const root = await mkdtemp(join(tmpdir(), "fs-dirs-"));
+    await mkdir(join(root, "alpha"));
+    await mkdir(join(root, ".hidden"));
+    await writeFile(join(root, "file.txt"), "x");
+    const res = await fetch(`${baseUrl}/fs/dirs?path=${encodeURIComponent(root)}`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { path: string; parent: string | null; dirs: { name: string; path: string }[] };
+    expect(body.path).toBe(resolve(root));
+    expect(body.dirs).toEqual([{ name: "alpha", path: join(resolve(root), "alpha") }]);
+    expect(body.parent).toBe(dirname(resolve(root)));
+    const def = await fetch(`${baseUrl}/fs/dirs`);
+    expect(def.status).toBe(200);
+    expect(((await def.json()) as { path: string }).path).toBe(resolve(process.cwd()));
+  });
+
+  it("GET /fs/dirs：不存在 400、非目录 400", async () => {
+    const { writeFile } = await import("node:fs/promises");
+    const file = join(dir, "plain.txt");
+    await writeFile(file, "x");
+    const notExist = await fetch(`${baseUrl}/fs/dirs?path=${encodeURIComponent(join(dir, "nope"))}`);
+    expect(notExist.status).toBe(400);
+    const notDir = await fetch(`${baseUrl}/fs/dirs?path=${encodeURIComponent(file)}`);
+    expect(notDir.status).toBe(400);
+  });
+
+  it("fsAllowRoots：/fs/dirs 与 POST /sessions cwd 越界一律 403，穿越样本不逃逸", async () => {
+    const outside = await mkdtemp(join(tmpdir(), "fs-out-"));
+    const s2 = new ModouServer({
+      port: 0,
+      fsAllowRoots: [dir],
+      createSessionDefaults: {
+        home,
+        settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "sk-test", permissionMode: "default" },
+      },
+      createSessionOverrides: () => ({ model: textModel("你好，我是墨斗"), cwd: dir }),
+    });
+    const { port: port2 } = await s2.start();
+    const base2 = `http://127.0.0.1:${port2}`;
+    try {
+      expect((await fetch(`${base2}/fs/dirs?path=${encodeURIComponent(dir)}`)).status).toBe(200);
+      // 越界样本：直出界外 / .. 上跳 / 反斜杠 URL 编码变体
+      for (const p of [outside, join(dir, "..", "fs-out-x"), "..\\..\\etc"]) {
+        const res = await fetch(`${base2}/fs/dirs?path=${encodeURIComponent(p)}`);
+        expect(res.status).toBe(403);
+      }
+      const denied = await fetch(`${base2}/sessions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cwd: outside }),
+      });
+      expect(denied.status).toBe(403);
+      // 未指定 cwd 回落进程目录（白名单外）同样 403，防绕过
+      const noCwd = await fetch(`${base2}/sessions`, { method: "POST" });
+      expect(noCwd.status).toBe(403);
+      // 界内 .. 归一后仍在界内 → 正常创建
+      const inside = await fetch(`${base2}/sessions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cwd: join(dir, "sub", "..") }),
+      });
+      expect(inside.status).toBe(201);
+    } finally {
+      await s2.close();
+    }
+  });
+
+  it.skipIf(process.platform !== "win32")(
+    "fsAllowRoots：Windows 盘符大小写归一（小写盘符 cwd 不误判越界）",
+    async () => {
+      const s2 = new ModouServer({
+        port: 0,
+        fsAllowRoots: [dir],
+        createSessionDefaults: {
+          home,
+          settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "sk-test", permissionMode: "default" },
+        },
+        createSessionOverrides: () => ({ model: textModel("你好，我是墨斗"), cwd: dir }),
+      });
+      const { port: port2 } = await s2.start();
+      const base2 = `http://127.0.0.1:${port2}`;
+      try {
+        const lowerDrive = dir.replace(/^[A-Z]:/, (m) => m.toLowerCase());
+        expect(lowerDrive).not.toBe(dir);
+        const res = await fetch(`${base2}/sessions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ cwd: lowerDrive }),
+        });
+        expect(res.status).toBe(201);
+      } finally {
+        await s2.close();
+      }
+    },
+  );
 
   it("full turn: POST message → SSE receives assistant_message → history replay", async () => {
     const create = await fetch(`${baseUrl}/sessions`, { method: "POST" });

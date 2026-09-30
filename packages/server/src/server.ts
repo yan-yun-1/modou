@@ -1,7 +1,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, realpathSync, statSync } from "node:fs";
+import { readdir, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { dirname, extname, join, resolve, sep } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ModouEvent } from "@modou-dev/core";
 import { VERSION } from "@modou-dev/core";
@@ -39,6 +40,11 @@ export interface ModouServerOptions {
   store?: import("@modou-dev/sdk").SessionStore;
   /** plan-web A7：并发会话上限（默认 8，超出 429）——每会话真实成本为 MCP/LSP/模型连接 */
   maxSessions?: number;
+  /**
+   * Phase F1（plan-web）：目录白名单（CLI --fs-allow-root 可重复）。空/未配置 = 不限（本地单用户默认）。
+   * 配置后 /fs/dirs 与会话 cwd（含缺省回落 process.cwd()）越界一律 403——部署期收紧手段。
+   */
+  fsAllowRoots?: string[];
   /** 透传给 createSession 的默认项（home/settings/model 注入等，测试用） */
   createSessionDefaults?: Omit<CreateSessionOptions, "cwd">;
   /** 每会话覆盖项工厂（按请求体 body.cwd 等），测试注入 model 用 */
@@ -76,6 +82,28 @@ export function resolveWebRoot(explicit?: string): string | undefined {
     return published;
   }
   return undefined;
+}
+
+/** Phase F1：目录归一——realpath 优先（Windows 盘符大小写/符号链接一并归一），不存在回退 resolve */
+function normalizeDir(p: string): string {
+  try {
+    return realpathSync(p);
+  } catch {
+    return resolve(p);
+  }
+}
+
+/**
+ * Phase F1：白名单越界判定（导出以便测试）。roots 空 = 不限。
+ * realpath 归一后 path.relative：以 ".." 开头或为绝对路径即越界。
+ */
+export function isPathAllowed(target: string, roots: string[] | undefined): boolean {
+  if (!roots || roots.length === 0) return true;
+  const t = normalizeDir(target);
+  return roots.some((root) => {
+    const rel = relative(normalizeDir(root), t);
+    return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
+  });
 }
 
 interface SessionEntry {
@@ -175,6 +203,10 @@ export class ModouServer {
       if (req.method === "GET" && url.pathname === "/health") {
         return this.#json(res, 200, { ok: true, version: VERSION });
       }
+      // Phase F1（plan-web）：目录浏览（控制台选择项目目录；fsAllowRoots 白名单越界 403）
+      if (url.pathname === "/fs/dirs" && req.method === "GET") {
+        return await this.#listDirs(url, res);
+      }
       if (url.pathname === "/sessions") {
         if (req.method === "POST") {
           return await this.#createSession(req, res);
@@ -242,8 +274,18 @@ export class ModouServer {
     let chosenAbs: string | undefined;
     if (chosenCwd) {
       chosenAbs = resolve(chosenCwd);
+      // Phase F1：白名单越界 403 先于存在性 400——避免白名单外的存在性探测
+      if (!isPathAllowed(chosenAbs, this.#options.fsAllowRoots)) {
+        return this.#json(res, 403, { error: `cwd 越界：${chosenAbs} 不在 fs-allow-root 白名单内` });
+      }
       if (!existsSync(chosenAbs) || !statSync(chosenAbs).isDirectory()) {
         return this.#json(res, 400, { error: `cwd 不存在或不是目录：${chosenAbs}` });
+      }
+    } else if (this.#options.fsAllowRoots?.length) {
+      // 缺省 cwd 由 SDK 回落 process.cwd()，同样受白名单约束（防绕过）
+      const fallback = resolve(process.cwd());
+      if (!isPathAllowed(fallback, this.#options.fsAllowRoots)) {
+        return this.#json(res, 403, { error: `未指定 cwd 时回落进程目录 ${fallback} 不在 fs-allow-root 白名单内` });
       }
     }
     const session = await createSession({
@@ -266,6 +308,31 @@ export class ModouServer {
       cwd: chosenAbs,
       cwdWarning,
     });
+  }
+
+  /** Phase F1：列子目录（仅目录、跳过 dotfiles）；缺省 path = 进程启动目录 */
+  async #listDirs(url: URL, res: ServerResponse): Promise<void> {
+    const raw = url.searchParams.get("path") ?? process.cwd();
+    const abs = resolve(raw);
+    if (!isPathAllowed(abs, this.#options.fsAllowRoots)) {
+      return this.#json(res, 403, { error: `path 越界：${abs} 不在 fs-allow-root 白名单内` });
+    }
+    let st;
+    try {
+      st = await stat(abs);
+    } catch {
+      return this.#json(res, 400, { error: `目录不存在：${abs}` });
+    }
+    if (!st.isDirectory()) {
+      return this.#json(res, 400, { error: `不是目录：${abs}` });
+    }
+    const entries = await readdir(abs, { withFileTypes: true });
+    const dirs = entries
+      .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+      .map((e) => ({ name: e.name, path: join(abs, e.name) }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    const parent = dirname(abs);
+    this.#json(res, 200, { path: abs, parent: parent === abs ? null : parent, dirs });
   }
 
   /** 会话列表：最近 50 个，标出本进程活跃会话，附首条用户消息预览 */

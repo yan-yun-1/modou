@@ -29,7 +29,13 @@ export function buildProgram(): Command {
     .option("--auth-token <t>", "Bearer 鉴权 token（除 /health 外全部 401 保护）")
     .option("--auth", "自动生成随机 token 并打印（等价 --auth-token <随机>）")
     .option("--max-sessions <n>", "并发会话上限（超出 429）", "8")
-    .action(async (options: { port: string; host: string; authToken?: string; auth?: boolean; maxSessions: string }) => {
+    .option(
+      "--fs-allow-root <dir>",
+      "目录白名单（可重复）：配置后 /fs/dirs 与会话 cwd 越界一律 403；缺省不限（本地单用户）",
+      (v: string, prev: string[]) => [...prev, v],
+      [] as string[],
+    )
+    .action(async (options: { port: string; host: string; authToken?: string; auth?: boolean; maxSessions: string; fsAllowRoots: string[] }) => {
       const { randomBytes } = await import("node:crypto");
       // plan-web A1：--auth > --auth-token > 环境变量 MOUDOU_TOKEN > 关闭
       const authToken =
@@ -42,6 +48,8 @@ export function buildProgram(): Command {
         host: options.host,
         authToken,
         maxSessions: Number(options.maxSessions),
+        // plan-web Phase F1：目录白名单（空数组视为未配置 = 不限根）
+        ...(options.fsAllowRoots.length ? { fsAllowRoots: options.fsAllowRoots } : {}),
         // plan-web A6：注入 home——remembered 审批落盘 permissionRules 与 models.json
         // 生效的前提（loop-factory 的 onRemember 接线以 options.home 为条件）
         createSessionDefaults: { home: homedir() },
