@@ -176,4 +176,4 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | F2 最近目录 | ✅ 建会话落盘 <home>/cwd-recents.json（realpath 归一去重置顶上限 8，落盘失败不阻塞）；GET /fs/recents 回 serveCwd+recents（过滤不存在/白名单外，损坏容错）；server 12/12 | 2026-09-30 |
 | F3 目录选择弹层 | ✅ DirPicker.tsx（最近 chips 单击即建/面包屑两步/手输 Enter；400/403 内联回显，Esc/遮罩关闭）+ client 单例导出；浏览器实测：浏览往返/快选即建即关；顺带修 commander 驼峰键名（fsAllowRoot） | 2026-09-30 |
 | F4 cwd 展示 | ✅ SessionView.cwd（创建响应记入，replay 不显示）+ 输入台上方 mono chip；state 测试 12/12 | 2026-09-30 |
-| F5 文档与回归 | ✅ README 控制台节（目录选择 + --fs-allow-root）；全量测试见验收记录表末行 | 2026-09-30 |
+| F5 文档与回归 | ✅ README 控制台节（目录选择 + --fs-allow-root）；全量测试 turbo 8/8 包绿（core 204 / cli 212 / console 12 / lsp 12 等），eval 14/14 达基线（glm-4.5-air） | 2026-09-30 |
