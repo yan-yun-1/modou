@@ -58,6 +58,8 @@ export interface SessionView {
   busy: boolean;
   /** 历史回放模式（重启后只读） */
   replay: boolean;
+  /** Phase F4：工作目录（创建响应回传的解析 cwd；replay 旧会话无此数据则不显示） */
+  cwd?: string;
 }
 
 export interface ConsoleState {
@@ -209,6 +211,13 @@ export function setSessions(state: ConsoleState, sessions: SessionSummary[], tot
 export function setCurrent(state: ConsoleState, sessionId: string | null): ConsoleState {
   const views = sessionId && !state.views[sessionId] ? { ...state.views, [sessionId]: emptyView(sessionId) } : state.views;
   return { ...state, views, currentId: sessionId };
+}
+
+/** Phase F4：记录会话工作目录（创建响应回传的解析 cwd） */
+export function setViewCwd(state: ConsoleState, sessionId: string, cwd: string): ConsoleState {
+  const view = state.views[sessionId];
+  if (!view) return state;
+  return { ...state, views: { ...state.views, [sessionId]: { ...view, cwd } } };
 }
 
 /** 发送前：把用户消息立即本地回显并置 busy（202 后的真实 user_message 事件到来时不重复） */

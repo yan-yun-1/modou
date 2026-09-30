@@ -6,6 +6,7 @@ import {
   markBusy,
   replayEvents,
   setCurrent,
+  setViewCwd,
   type ModouEvent,
 } from "./state.js";
 
@@ -114,5 +115,15 @@ describe("会话切换与 busy（B3）", () => {
     expect(state.views["s1"]?.busy).toBe(true);
     state = { ...state, views: { ...state.views, ["s1"]: applyEventToView(state.views["s1"]!, { type: "usage", turnEnd: true }) } };
     expect(state.views["s1"]?.busy).toBe(false);
+  });
+});
+
+describe("工作目录展示（Phase F4）", () => {
+  it("setViewCwd 记录 cwd；视图不存在时为无操作", () => {
+    let state = setCurrent(emptyState(), "s1");
+    state = setViewCwd(state, "s1", "E:\repo");
+    expect(state.views["s1"]?.cwd).toBe("E:\repo");
+    const untouched = setViewCwd(state, "ghost", "E:\nowhere");
+    expect(untouched).toBe(state);
   });
 });

@@ -11,6 +11,7 @@ import {
   setNeedsToken,
   setNotice,
   setSessions,
+  setViewCwd,
   type ConsoleState,
   type ModouEvent,
   type SessionSummary,
@@ -59,6 +60,11 @@ function applyTheme(theme: "dark" | "light"): void {
 /** ≥1000 一位小数 k 缩写（DESIGN.md §6.6#7）；相对时间 relTime 见 MessageLog.tsx（消息流共用） */
 function kfmt(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
+}
+
+/** Phase F4：cwd chip 文案——过长时头部省略保尾部（目录尾部更有区分度） */
+function cwdLabel(p: string): string {
+  return p.length > 44 ? "…" + p.slice(-42) : p;
 }
 
 const SAMPLES = [
@@ -171,6 +177,7 @@ function App(): JSX.Element {
       }
       const created = result.sessionId;
       setState((s) => setCurrent(s, created));
+      if (result.cwd) setState((s) => setViewCwd(s, created, result.cwd!));
       if (result.cwdWarning) setState((s) => setNotice(s, result.cwdWarning ?? null));
       await refreshSessions();
       subscribe(created);
@@ -297,7 +304,6 @@ function App(): JSX.Element {
 
   const usage = currentView?.usage ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 };
   const total = usage.inputTokens + usage.outputTokens;
-
   return (
     <div class="board" data-side={sideOpen ? "open" : "closed"}>
       <aside class="side">
@@ -407,6 +413,11 @@ function App(): JSX.Element {
 
         <div class="bottom">
           <div class="col">
+            {currentView?.cwd && (
+              <div class="cwdchip" title={currentView.cwd}>
+                {cwdLabel(currentView.cwd)}
+              </div>
+            )}
             <div class="dock">
               <textarea
                 ref={inputRef}
