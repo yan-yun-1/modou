@@ -66,6 +66,19 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 - SSE 周期心跳（15s comment ping）——现状仅连接时一次 retry: 2000（server.ts:207），反代会掐长连接
 - `--max-sessions`（默认 8，超出 429）——现状 sessionCount 只是 getter、创建无配额（server.ts:44-46），每会话真实成本为 MCP 子进程 + LSP hub + 模型连接
 
+### 项目目录选择（Phase F，2026-09-30 用户提出并拍板）
+
+现状：控制台 `cwd` 状态存在但零输入入口（console/src/main.tsx:107 `useState("")`，setCwd 无调用）——网页建的每个会话都跑在 serve 启动目录，换项目必须重启 serve。API 层已就绪（A5：body.cwd 优先、目录不存在 400，server.ts:233-246），缺的只是选择 UI 与服务端浏览能力。
+
+**形态与边界（用户拍板：两个都做；本地默认不限根；部署期用白名单收紧）**：
+- 浏览器无法枚举服务器文件系统 → 目录浏览必须 server 支撑：`GET /fs/dirs?path=<abs>` 列子目录（仅目录不列文件；跳过 dotfiles；`resolve` 归一化后 `stat` 校验，不存在/非目录 400）；响应 `{path, parent, dirs:[{name,path}]}`。
+- **白名单 `--fs-allow-root <dir>`（可重复）/ `ModouServerOptions.fsAllowRoots?: string[]`**：默认空 = 不限（本地单用户定位，用户拍板）；配置后 ①`/fs/dirs` 请求路径越界 403 ②`POST /sessions` 的 body.cwd 越界 403（opt-in 行为变更，部署场景的安全边界）③recents 过滤越界项。越界判定 `path.relative(root, p)` 以 `..`/绝对结果为准；Windows 盘符大小写归一（两侧 resolve 后 toLowerCase 比较，LSP URI 归一化同款先例）。
+- **最近目录**：POST /sessions 成功创建后把解析出的绝对 cwd 去重置顶写入 `<defaults.home>/cwd-recents.json`（上限 8 条；home 未注入的库内嵌用场景自动禁用）；`GET /fs/recents` 返回 `{serveCwd, recents}`（serveCwd = server 进程 process.cwd()，作为默认目录）。
+- **console 交互**：「+ 新会话」改为打开目录选择弹层（esbuild iife 单文件内新增，零新依赖）：最近目录 chips **单击即建会话**（主快路径）；目录浏览器两步（面包屑可点跳级 + 上级 + 子目录行 + 「在此新建」确认）；手动路径输入 Enter 即建，400/403 错误文案内联回显；Esc/遮罩关闭。空态「开始一个新会话」流程不变（Enter 直接在 serve 目录建，零摩擦默认），旁加「目录：…（更改）」chip 唤起弹层。
+- **cwd 可见性**：会话创建时把响应体里 A5 回传的解析 cwd 记入视图状态，输入台上方 mono 小字 chip 显示（中段截断、hover 全路径）；replay 旧会话拿不到则不显示（客户端记录，不强改 server 契约）。
+- 安全面评估：`POST /sessions` 本就接受任意 cwd（"在任意目录建会话"能力已存在），新端点新增的只是文件系统结构枚举；鉴权开启时自然被 token 保护（#handle 统一校验，/health 豁免不变），未开鉴权的本地默认与现有 GET /sessions 同风险级；白名单为部署期收紧手段。
+- 测试：/fs/dirs 正常列/400 非目录/dotfile 跳过；fsAllowRoots 配置后 dirs 越界 403、sessions cwd 越界 403、穿越样本（`..`/URL 编码）不逃逸；recents 创建落盘/去重置顶/上限 8/白名单过滤；console 状态纯函数沿用现有 vitest 面，弹层 DOM 人工实测。
+
 ## 四、任务分解（TDD，一任务一提交，预计 17 任务）
 
 **Phase A：server 增补（先服务端——前端依赖托管与鉴权；以 packages/cli/test/server.test.ts:9-244 五链路为回归基线扩展；一任务一提交，A3-A6 互不依赖各自独立测试与回滚）**
@@ -95,6 +108,14 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 - E2 文档：README（控制台一节 + 鉴权用法）、dev.md 架构/结构补 console、PRD 附录 A + F21 状态与 6.2 结构图补行、backlog-m5 #4 处置记录、**server changelog 明示 cwd 行为变更**（坏目录 400 而非静默回退，A5）、本文档验收记录回填
 - E3 回归与发布：eval 14/14 + 全部测试绿；@modou-dev/server 发版；**扩展 check-pack（或新增脚本）断言 tarball 含 package/webui/index.html**（check-pack.mts:44-51 现仅扫 package/package.json，验不了文件清单）
 
+**Phase F：项目目录选择（2026-09-30 拍板：两个都做、默认不限根、部署期白名单；预计 5 任务约 1 天）**
+验收（自包含，不改动上方 F21 七条）：① 未配 fsAllowRoots 时本地行为不限根、默认目录 = serve 启动目录；② 配置后 /fs/dirs 与 POST /sessions cwd 越界一律 403，`..`/URL 编码穿越样本不逃逸；③ recents 去重置顶、上限 8、落盘重启仍在；④ 控制台可「最近快选 / 浏览 / 手输」三种方式指定目录建会话，坏路径错误内联可见；⑤ 会话 cwd 在输入台上方可见；⑥ server/console 全量测试绿后一提交一任务。
+- F1 server 目录浏览端点：`GET /fs/dirs?path=`（resolve+stat 校验、仅目录、跳过 dotfiles、parent 计算）；`fsAllowRoots` 选项 + CLI `serve --fs-allow-root`（可重复）；白名单校验同时挂到 /fs/dirs 与 POST /sessions body.cwd（越界 403）；集成测试含穿越样本与盘符大小写归一
+- F2 server 最近目录：POST /sessions 成功后落盘 `<home>/cwd-recents.json`（去重置顶、上限 8）；`GET /fs/recents` 返回 `{serveCwd, recents}`；白名单配置时过滤越界项；集成测试（tmp home）
+- F3 console 目录选择弹层：client 层 `listDirs/getCwdRecents` 两方法 + 弹层组件（最近 chips 单击即建 / 面包屑浏览器两步确认 / 手输 Enter 即建；400/403 内联回显；Esc/遮罩关闭）；「+ 新会话」改挂弹层，空态加「目录：…（更改）」chip
+- F4 console cwd 可见：创建响应的解析 cwd 记入视图状态，输入台上方 mono chip（中段截断 hover 全路径）；replay 无则不显示
+- F5 文档与回归：README 控制台节补目录选择与 `--fs-allow-root`；本文档验收记录回填；server+console 全量测试绿
+
 ## 五、明确不做（顺延）
 
 - **F22 云任务沙箱与按用量计费、官方模型网关订阅**：独立商业化线，需云基础设施与支付渠道（docs/PRD.md:178,335；docs/backlog-m5.md:10-11）
@@ -105,6 +126,7 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 - **MCP 管理操作界面**（启停/工具浏览/配置编辑）：默认只读展示，管理操作视拍板追加（backlog-m5 #4）
 - **setThinking/预算控制端点与 UI**：LoopBundle 已备好（loop-factory.ts:168-170,305-310），接线顺延
 - **VS Code 插件 token 适配、控制台 npm 发布**：插件在未开鉴权 serve 下现状可用；console 产物随 server 分发
+- **目录选择顺延项（Phase F 明确不做）**：隐藏文件（dotfiles）浏览与开关、目录收藏/书签、跨机远程目录（SSH/容器内路径）、fsAllowRoots 之外的部署加固（TLS/反代/多租户隔离——延续上方鉴权顺延项）
 - 桌面 GUI、fork 编辑器、向量索引/RAG、A2A、core 热切换模型（延续，docs/PRD.md:181-186；docs/backlog-m5.md:37-38）
 
 ## 六、执行方式与配合点
@@ -121,6 +143,7 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 5. **前端技术栈**——✅ **改为 Preact**（原默认 vanilla TS；理由见关键设计，esbuild jsx automatic）
 6. **鉴权形态**——✅ 确认默认：单 token Bearer、opt-in 默认关、仅 localhost；远程暴露顺延
 7. **排期**——✅ 确认控制台先行；F22/网关订阅后续另行决策
+8. **项目目录选择（Phase F，2026-09-30）**——✅ 两个都做（浏览端点 + 最近目录/选择器 UI 全上）；**本地默认不限根**；白名单 `--fs-allow-root` 随 F1 一并实现但默认空，部署期再配置收紧
 
 ## 七、验收记录
 
@@ -146,3 +169,6 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | UI 重设计 | ✅ 动态工作流产出规格+视觉稿（独立评审通过）→ Preact 落地（a01d0f7）→ 用户验收通过；实测反馈三轮修复（回放 404 噪声 b8032e0 / 列表排序 72c8afc / 回放 busy a3f37d8 / 状态灯与空态 5a4ab05） | 2026-09-29 |
 | UI 重设计第三轮 | ✅ 三方向并行视觉稿（晒图/孔版/仪器面板）→ 用户选晒图 → 落地（c40f521）；后续用户仍不满意 | 2026-09-29 |
 | UI 重设计第四轮（主流化） | ✅ 转向主流高级感路线（对标 Claude/ChatGPT/Linear，放弃主题概念化）：基准提炼→重写真实 UI→质量门→审计循环（1dac6ad）；用户停止工作流后由主代理收尾（构建/console 11 测全绿），浏览器实测：暗色空状态示例卡/历史会话消息流/续跑均正常 | 2026-09-29 |
+| 布局微调两轮 | ✅ 侧栏新会话钮（钉底→列表尾 acfdd84→**列表顶部** 5a979ae，会话列其下）+ 用量条输入台下方水平居中（acfdd84）；浏览器截图验证 | 2026-09-30 |
+| 回归修复：删除活跃会话 | ✅ 5a979ae：DELETE /sessions/:id 活跃/非活跃语义统一为彻底删历史文件（原活跃分支只关不删，界面删除"复活"），补集成测试（server 6/6） | 2026-09-30 |
+| Phase F 拍板 | ✅ 项目目录选择：两个都做 / 本地默认不限根 / 部署期 --fs-allow-root 白名单；任务 F1-F5 定稿（见四 Phase F） | 2026-09-30 |
