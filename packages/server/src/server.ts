@@ -378,8 +378,15 @@ export class ModouServer {
       return this.#json(res, 400, { error: `不是目录：${abs}` });
     }
     const entries = await readdir(abs, { withFileTypes: true });
+    // Phase F3 反馈：过滤系统目录（$RECYCLE.BIN 等 $ 前缀、System Volume Information）与 dotfiles
     const dirs = entries
-      .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+      .filter(
+        (e) =>
+          e.isDirectory() &&
+          !e.name.startsWith(".") &&
+          !e.name.startsWith("$") &&
+          e.name !== "System Volume Information",
+      )
       .map((e) => ({ name: e.name, path: join(abs, e.name) }))
       .sort((a, b) => a.name.localeCompare(b.name));
     const parent = dirname(abs);

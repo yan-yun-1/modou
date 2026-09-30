@@ -310,10 +310,10 @@ function App(): JSX.Element {
         <div class="sidehead">
           <span class="sidetitle">会话{state.sessions.length > 0 ? ` · ${state.sessions.length}` : ""}</span>
         </div>
+        <button class="snew" onClick={() => setPickerOpen(true)}>
+          ＋ 新会话
+        </button>
         <nav class="slist">
-          <button class="snew" onClick={() => setPickerOpen(true)}>
-            ＋ 新会话
-          </button>
           {state.sessions.length === 0 && <div class="sempty">暂无会话</div>}
           {state.sessions.map((s: SessionSummary) => {
             const preview = s.preview.trim();
