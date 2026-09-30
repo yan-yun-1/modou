@@ -310,7 +310,10 @@ export class ModouServer {
     });
     const entry: SessionEntry = { session, busy: false, sseClients: new Set() };
     this.#sessions.set(session.sessionId, entry);
-    await this.#recordCwd(normalizeDir(chosenAbs ?? process.cwd()));
+    const effectiveCwd = normalizeDir(chosenAbs ?? process.cwd());
+    await this.#recordCwd(effectiveCwd);
+    // F7：会话→目录索引（列表每行标注所属项目）
+    await this.#rememberSessionCwd(session.sessionId, effectiveCwd);
     this.#json(res, 201, {
       sessionId: session.sessionId,
       contextWindow: session.contextWindow,
@@ -324,6 +327,50 @@ export class ModouServer {
   get #recentsFile(): string | undefined {
     const home = this.#options.createSessionDefaults?.home;
     return home ? join(home, ".modou", "cwd-recents.json") : undefined;
+  }
+
+  /** F7：会话→项目目录索引（与 store 同目录；/sessions 每行标注所属项目用） */
+  get #cwdIndexFile(): string {
+    const store = this.#options.store ?? new SessionStore();
+    return join(store.baseDir, "cwd-index.json");
+  }
+
+  async #readCwdIndex(): Promise<Record<string, string>> {
+    try {
+      const parsed: unknown = JSON.parse(await readFile(this.#cwdIndexFile, "utf8"));
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const out: Record<string, string> = {};
+        for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+          if (typeof v === "string") out[k] = v;
+        }
+        return out;
+      }
+    } catch {
+      // 缺失/损坏 → 空
+    }
+    return {};
+  }
+
+  async #rememberSessionCwd(sessionId: string, abs: string): Promise<void> {
+    const index = await this.#readCwdIndex();
+    index[sessionId] = abs;
+    try {
+      await mkdir(dirname(this.#cwdIndexFile), { recursive: true });
+      await writeFile(this.#cwdIndexFile, JSON.stringify(index, null, 2));
+    } catch {
+      // 写失败静默：索引是便利功能
+    }
+  }
+
+  async #forgetSessionCwd(sessionId: string): Promise<void> {
+    const index = await this.#readCwdIndex();
+    if (!(sessionId in index)) return;
+    delete index[sessionId];
+    try {
+      await writeFile(this.#cwdIndexFile, JSON.stringify(index, null, 2));
+    } catch {
+      // 同上
+    }
   }
 
   async #readRecents(): Promise<string[]> {
@@ -458,11 +505,12 @@ export class ModouServer {
     this.#json(res, 200, { path: abs, parent: parent === abs ? null : parent, dirs });
   }
 
-  /** 会话列表：最近 50 个，标出本进程活跃会话，附首条用户消息预览 */
+  /** 会话列表：最近 50 个，标出本进程活跃会话，附首条用户消息预览与所属项目目录（F7 索引） */
   async #list(res: ServerResponse): Promise<void> {
     const store = this.#options.store ?? new SessionStore();
     const ids = await store.list();
-    const sessions: { sessionId: string; active: boolean; preview: string }[] = [];
+    const cwdIndex = await this.#readCwdIndex();
+    const sessions: { sessionId: string; active: boolean; preview: string; cwd?: string }[] = [];
     // store.list 现为最新在前（plan-web 修复），取前 50 即最近 50
     for (const sid of ids.slice(0, 50)) {
       let preview: string;
@@ -473,7 +521,8 @@ export class ModouServer {
       } catch {
         preview = "（会话文件损坏，无法预览）";
       }
-      sessions.push({ sessionId: sid, active: this.#sessions.has(sid), preview });
+      const cwd = cwdIndex[sid];
+      sessions.push({ sessionId: sid, active: this.#sessions.has(sid), preview, ...(cwd ? { cwd } : {}) });
     }
     this.#json(res, 200, { sessions, total: ids.length });
   }
@@ -510,6 +559,7 @@ export class ModouServer {
       for (const id of all) {
         if (this.#sessions.has(id)) continue;
         await store.delete(id).catch(() => {});
+        await this.#forgetSessionCwd(id);
         deleted += 1;
       }
       return this.#json(res, 200, { ok: true, deleted, total: all.length });
@@ -532,6 +582,7 @@ export class ModouServer {
       }
       // 批量删除 = 彻底删除：活跃会话关闭后同样移除历史文件
       await store.delete(id).catch(() => {});
+      await this.#forgetSessionCwd(id);
       deleted += 1;
     }
     this.#json(res, 200, { ok: true, deleted, requested: ids.length });
@@ -550,6 +601,7 @@ export class ModouServer {
     }
     // 删除语义与 bulk-delete 一致：活跃会话关闭后同样移除历史文件（不可恢复）
     await store.delete(id).catch(() => {});
+    await this.#forgetSessionCwd(id);
     this.#json(res, 200, { ok: true, deletedHistory: true });
   }
 

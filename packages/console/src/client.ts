@@ -36,6 +36,8 @@ export interface SessionSummary {
   preview: string;
   /** server 未提供（plan-web §3.5 服务端待办）；当前恒 undefined，时间位显示「—」 */
   updatedAt?: number;
+  /** F7：所属项目目录（创建时 server 落索引；旧会话/他端会话无则缺省） */
+  cwd?: string;
 }
 
 export interface ModouEvent {

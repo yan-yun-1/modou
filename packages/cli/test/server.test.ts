@@ -286,6 +286,58 @@ describe("ModouServer（F18）", () => {
     }
   });
 
+  // F7（plan-web 反馈）：会话→项目目录索引，多项目混排时每行可辨所属项目
+  it("GET /sessions 附每会话 cwd；删除后索引同步清除", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const storeDir = await mkdtemp(join(tmpdir(), "srv-store3-"));
+    const store = new SessionStore(storeDir);
+    const a = await mkdtemp(join(tmpdir(), "proj-a-"));
+    const b = await mkdtemp(join(tmpdir(), "proj-b-"));
+    const s2 = new ModouServer({
+      port: 0,
+      store,
+      maxSessions: 20,
+      createSessionDefaults: {
+        home,
+        settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "sk-test", permissionMode: "default" },
+      },
+      createSessionOverrides: () => ({ model: textModel("你好，我是墨斗"), cwd: dir }),
+    });
+    const { port: port2 } = await s2.start();
+    const base2 = `http://127.0.0.1:${port2}`;
+    const create = async (cwd: string): Promise<string> => {
+      const r = await fetch(`${base2}/sessions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cwd }),
+      });
+      expect(r.status).toBe(201);
+      return ((await r.json()) as { sessionId: string }).sessionId;
+    };
+    try {
+      const idA = await create(a);
+      await create(b);
+      const listed = (await fetch(`${base2}/sessions`).then((r) => r.json())) as {
+        sessions: { sessionId: string; cwd?: string }[];
+      };
+      const byId = new Map(listed.sessions.map((s) => [s.sessionId, s]));
+      expect(byId.get(idA)?.cwd).toBe(a);
+      // 索引文件与 store 同目录
+      const index = JSON.parse(await readFile(join(storeDir, "cwd-index.json"), "utf8")) as Record<string, string>;
+      expect(Object.values(index)).toEqual(expect.arrayContaining([a, b]));
+      // 删除后索引同步清除
+      await fetch(`${base2}/sessions/${idA}`, { method: "DELETE" });
+      const after = JSON.parse(await readFile(join(storeDir, "cwd-index.json"), "utf8")) as Record<string, string>;
+      expect(after[idA]).toBeUndefined();
+      const listed2 = (await fetch(`${base2}/sessions`).then((r) => r.json())) as {
+        sessions: { sessionId: string; cwd?: string }[];
+      };
+      expect(listed2.sessions.find((s) => s.sessionId === idA)).toBeUndefined();
+    } finally {
+      await s2.close();
+    }
+  });
+
   it("full turn: POST message → SSE receives assistant_message → history replay", async () => {
     const create = await fetch(`${baseUrl}/sessions`, { method: "POST" });
     const { sessionId } = (await create.json()) as { sessionId: string };

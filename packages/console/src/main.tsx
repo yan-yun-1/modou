@@ -67,6 +67,12 @@ function cwdLabel(p: string): string {
   return p.length > 44 ? "…" + p.slice(-42) : p;
 }
 
+/** F7：项目名 = 路径末段（会话行标注所属项目用） */
+function lastSeg(p: string): string {
+  const segs = p.split(/[\\/]+/).filter(Boolean);
+  return segs[segs.length - 1] ?? p;
+}
+
 const SAMPLES = [
   "梳理 packages/console 的会话存储结构",
   "修复删除后列表不刷新的问题",
@@ -318,11 +324,22 @@ function App(): JSX.Element {
           {state.sessions.map((s: SessionSummary) => {
             const preview = s.preview.trim();
             const time = s.updatedAt ? relTime(s.updatedAt) : "—";
+            const proj = s.cwd ? lastSeg(s.cwd) : null;
             return (
               <div key={s.sessionId} class={"srow" + (s.sessionId === state.currentId ? " active" : "")}>
                 <button class="sopen" onClick={() => void openSession(s.sessionId)}>
                   <span class="l1">{preview || `空会话 ${s.sessionId.slice(0, 8)}`}</span>
-                  <span class="l2">{preview ? `${time} · ${s.sessionId.slice(0, 8)}` : time}</span>
+                  <span class="l2">
+                    {proj ? (
+                      <>
+                        <b>{proj}</b> · {time}
+                      </>
+                    ) : preview ? (
+                      `${time} · ${s.sessionId.slice(0, 8)}`
+                    ) : (
+                      time
+                    )}
+                  </span>
                 </button>
                 <button class="sdel" title="删除此会话（不可恢复）" aria-label="删除此会话" onClick={() => deleteSession(s.sessionId)}>
                   <Icon size={12}>

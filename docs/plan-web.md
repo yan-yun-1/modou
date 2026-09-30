@@ -179,3 +179,4 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | F5 文档与回归 | ✅ README 控制台节（目录选择 + --fs-allow-root）；全量测试 turbo 8/8 包绿（core 204 / cli 212 / console 12 / lsp 12 等），eval 14/14 达基线（glm-4.5-air） | 2026-09-30 |
 | F6 系统目录对话框 | ✅ POST /fs/pick：serve 弹原生选择框（Win FolderBrowserDialog/macOS choose folder/Linux zenity；单例+10min 兜底回收，UTF-8 字节直写防中文乱码），弹层「系统对话框」按钮仅 localhost 显示；端到端实测选目录→建会话→cwd 显示与取消路径；recents 移至 ~/.modou/（b6f1e31 后续提交） | 2026-09-30 |
 | F6 反馈修复：对话框置顶 | ✅ 原生框挂置顶隐形属主窗体（无属主时被浏览器压住，用户以为没弹出）+ 弹层等待提示条；实测对话框直接抢前台、取消后复位 | 2026-09-30 |
+| F7 反馈：多项目混排可辨 | ✅ server 维护 cwd-index.json（store 同目录，创建落索引/删除同步清），/sessions 每行带 cwd；控制台会话行显示所属项目名（末段，与时间并列），底部状态条继续显示当前会话目录；集成测试覆盖索引落盘与删除清除（server 13/13） | 2026-09-30 |
