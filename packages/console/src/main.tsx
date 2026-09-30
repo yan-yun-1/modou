@@ -287,11 +287,6 @@ function App(): JSX.Element {
       <aside class="side">
         <div class="sidehead">
           <span class="sidetitle">会话{state.sessions.length > 0 ? ` · ${state.sessions.length}` : ""}</span>
-          <button class="iconbtn" title="新建会话" onClick={() => void newSession(cwd)}>
-            <Icon>
-              <path d="M12 5v14M5 12h14" />
-            </Icon>
-          </button>
         </div>
         <nav class="slist">
           {state.sessions.length === 0 && <div class="sempty">暂无会话</div>}
@@ -313,6 +308,14 @@ function App(): JSX.Element {
             );
           })}
         </nav>
+        <div class="sidefoot">
+          <button class="snew" onClick={() => void newSession(cwd)}>
+            <Icon size={14}>
+              <path d="M12 5v14M5 12h14" />
+            </Icon>
+            新会话
+          </button>
+        </div>
       </aside>
 
       <div class="main">
@@ -390,18 +393,6 @@ function App(): JSX.Element {
 
         <div class="bottom">
           <div class="col">
-            {total > 0 && (
-              <div class="usage">
-                <span class="ubar" aria-hidden="true">
-                  <i class="in" style={`width:${(usage.inputTokens / total) * 100}%`} />
-                  <i class="out" style={`width:${(usage.outputTokens / total) * 100}%`} />
-                </span>
-                <span>
-                  ↑ <b>{kfmt(usage.inputTokens)}</b> ↓ <b>{kfmt(usage.outputTokens)}</b> · 合计{" "}
-                  <b>{kfmt(total)}</b> · ${usage.costUsd.toFixed(4)}
-                </span>
-              </div>
-            )}
             <div class="dock">
               <textarea
                 ref={inputRef}
@@ -438,6 +429,18 @@ function App(): JSX.Element {
                 )}
               </div>
             </div>
+            {total > 0 && (
+              <div class="usage">
+                <span class="ubar" aria-hidden="true">
+                  <i class="in" style={`width:${(usage.inputTokens / total) * 100}%`} />
+                  <i class="out" style={`width:${(usage.outputTokens / total) * 100}%`} />
+                </span>
+                <span>
+                  ↑ <b>{kfmt(usage.inputTokens)}</b> ↓ <b>{kfmt(usage.outputTokens)}</b> · 合计{" "}
+                  <b>{kfmt(total)}</b> · ${usage.costUsd.toFixed(4)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

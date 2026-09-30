@@ -114,6 +114,12 @@ input,textarea,kbd,pre{font:inherit}
 /* ---------- 会话侧栏：行容器 + 打开钮/删除钮为兄弟节点（无交互嵌套） ---------- */
 .sidehead{display:flex;align-items:center;justify-content:space-between;padding:var(--s3) var(--s3) var(--s2)}
 .sidetitle{font-size:12px;font-weight:500;color:var(--text-3)}
+.sidefoot{border-top:1px solid var(--line-1);padding:var(--s2) var(--s3);flex:none}
+.snew{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;
+      padding:7px 0;border:1px dashed var(--line-2);border-radius:var(--r-md);
+      font-size:13px;color:var(--text-2);transition:color .15s,border-color .15s}
+.snew:hover{color:var(--text-1);border-color:var(--text-3)}
+.snew svg{width:14px;height:14px}
 .slist{flex:1;overflow-y:auto;overscroll-behavior:contain;min-height:0;padding-bottom:var(--s2)}
 .sempty{padding:var(--s5) 20px;font-size:12px;color:var(--text-3);text-align:center}
 .srow{position:relative;margin:2px 8px;border-radius:var(--r-md)}
@@ -232,6 +238,7 @@ html[data-theme="light"] .icon-moon{display:inline-flex}
 /* ---------- 底部：用量单行 + 输入台 ---------- */
 .bottom{flex:none;padding-bottom:var(--s5)}
 .bottom .col{display:flex;flex-direction:column;gap:var(--s2)}
+.bottom .usage{order:2;margin-top:var(--s1)}
 .usage{display:flex;justify-content:flex-end;align-items:center;gap:var(--s3);font-size:12px;font-family:var(--f-num);color:var(--text-3);font-variant-numeric:tabular-nums}
 .usage b{font-weight:500;color:var(--text-1)}
 .ubar{width:160px;height:4px;border-radius:var(--r-sm);background:var(--bg-hover);overflow:hidden;display:flex}
