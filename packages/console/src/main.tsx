@@ -307,15 +307,10 @@ function App(): JSX.Element {
               </div>
             );
           })}
-        </nav>
-        <div class="sidefoot">
           <button class="snew" onClick={() => void newSession(cwd)}>
-            <Icon size={14}>
-              <path d="M12 5v14M5 12h14" />
-            </Icon>
-            新会话
+            ＋ 新会话
           </button>
-        </div>
+        </nav>
       </aside>
 
       <div class="main">
