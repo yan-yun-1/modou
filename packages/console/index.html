@@ -302,8 +302,10 @@ html[data-theme="light"] .icon-moon{display:inline-flex}
 .dp-go{flex:none;padding:7px 14px;background:var(--accent);color:var(--on-accent);border-radius:var(--r-sm);font-size:13px;font-weight:500}
 .dp-go:hover{background:var(--accent-hover)}
 .dp-go:disabled{opacity:.5;cursor:not-allowed}
-/* 会话工作目录 chip（Phase F4）——输入台上方左侧 */
-.cwdchip{align-self:flex-start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-family:var(--f-mono);color:var(--text-3);padding:0 2px}
+/* 会话工作目录状态条（Phase F4→反馈改侧栏底部） */
+.sidefoot{flex:none;display:flex;align-items:center;gap:6px;min-width:0;border-top:1px solid var(--line-1);padding:8px var(--s3);font-size:12px;font-family:var(--f-mono);color:var(--text-3)}
+.sidefoot svg{flex:none}
+.sidefoot span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* 空态目录 chip（Phase F3） */
 .escwd{font-size:12px;font-family:var(--f-mono);color:var(--text-3);padding:4px 12px;border:1px dashed var(--line-2);border-radius:999px}
 .escwd:hover{color:var(--text-1);border-color:var(--text-3)}

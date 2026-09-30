@@ -333,6 +333,14 @@ function App(): JSX.Element {
             );
           })}
         </nav>
+        {currentView?.cwd && (
+          <div class="sidefoot" title={currentView.cwd}>
+            <Icon size={12}>
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            </Icon>
+            <span>{cwdLabel(currentView.cwd)}</span>
+          </div>
+        )}
       </aside>
 
       <div class="main">
@@ -413,11 +421,6 @@ function App(): JSX.Element {
 
         <div class="bottom">
           <div class="col">
-            {currentView?.cwd && (
-              <div class="cwdchip" title={currentView.cwd}>
-                {cwdLabel(currentView.cwd)}
-              </div>
-            )}
             <div class="dock">
               <textarea
                 ref={inputRef}
