@@ -196,6 +196,95 @@ describe("ModouServer（F18）", () => {
     },
   );
 
+  // Phase F2（plan-web）：最近目录 recents
+  it("GET /fs/recents：创建落盘、去重置顶、上限 8、serveCwd 回显", async () => {
+    const { readFile } = await import("node:fs/promises");
+    const storeDir = await mkdtemp(join(tmpdir(), "srv-store2-"));
+    const home2 = await mkdtemp(join(tmpdir(), "srv-home2-"));
+    const store = new SessionStore(storeDir);
+    const s2 = new ModouServer({
+      port: 0,
+      store,
+      maxSessions: 20,
+      createSessionDefaults: {
+        home: home2,
+        settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "sk-test", permissionMode: "default" },
+      },
+      createSessionOverrides: () => ({ model: textModel("你好，我是墨斗"), cwd: dir }),
+    });
+    const { port: port2 } = await s2.start();
+    const base2 = `http://127.0.0.1:${port2}`;
+    const recents = async (): Promise<{ serveCwd: string; recents: string[] }> => {
+      const r = await fetch(`${base2}/fs/recents`);
+      expect(r.status).toBe(200);
+      return r.json() as Promise<{ serveCwd: string; recents: string[] }>;
+    };
+    const create = async (cwd: string): Promise<void> => {
+      const r = await fetch(`${base2}/sessions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cwd }),
+      });
+      expect(r.status).toBe(201);
+    };
+    try {
+      const initial = await recents();
+      expect(initial.serveCwd).toBe(resolve(process.cwd()));
+      expect(initial.recents).toEqual([]);
+      const a = await mkdtemp(join(tmpdir(), "cwd-a-"));
+      const b = await mkdtemp(join(tmpdir(), "cwd-b-"));
+      await create(a);
+      expect((await recents()).recents).toEqual([a]);
+      await create(b);
+      expect((await recents()).recents).toEqual([b, a]);
+      await create(a);
+      expect((await recents()).recents).toEqual([a, b]);
+      // 上限 8：再建 7 个不同目录 → 共 9 个候选，最早者被挤出
+      const extra: string[] = [];
+      for (let i = 0; i < 7; i++) {
+        const d = await mkdtemp(join(tmpdir(), `cwd-x${i}-`));
+        extra.push(d);
+        await create(d);
+      }
+      const capped = (await recents()).recents;
+      expect(capped).toHaveLength(8);
+      expect(capped[0]).toBe(extra[6]);
+      expect(capped).not.toContain(b);
+      expect(capped).toContain(a);
+      // 落盘：文件在 home 下，重启可读
+      expect(JSON.parse(await readFile(join(home2, "cwd-recents.json"), "utf8"))).toEqual(capped);
+    } finally {
+      await s2.close();
+    }
+  });
+
+  it("GET /fs/recents：损坏文件容错为空 + 白名单过滤越界项", async () => {
+    const { writeFile } = await import("node:fs/promises");
+    const home3 = await mkdtemp(join(tmpdir(), "srv-home3-"));
+    const s3 = new ModouServer({
+      port: 0,
+      fsAllowRoots: [dir],
+      createSessionDefaults: {
+        home: home3,
+        settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "sk-test", permissionMode: "default" },
+      },
+      createSessionOverrides: () => ({ model: textModel("你好，我是墨斗"), cwd: dir }),
+    });
+    const { port: port3 } = await s3.start();
+    const base3 = `http://127.0.0.1:${port3}`;
+    try {
+      await writeFile(join(home3, "cwd-recents.json"), "not-json{");
+      const corrupted = (await fetch(`${base3}/fs/recents`).then((r) => r.json())) as { recents: string[] };
+      expect(corrupted.recents).toEqual([]);
+      const outside = await mkdtemp(join(tmpdir(), "fs-out2-"));
+      await writeFile(join(home3, "cwd-recents.json"), JSON.stringify([outside, dir]));
+      const filtered = (await fetch(`${base3}/fs/recents`).then((r) => r.json())) as { recents: string[] };
+      expect(filtered.recents).toEqual([dir]);
+    } finally {
+      await s3.close();
+    }
+  });
+
   it("full turn: POST message → SSE receives assistant_message → history replay", async () => {
     const create = await fetch(`${baseUrl}/sessions`, { method: "POST" });
     const { sessionId } = (await create.json()) as { sessionId: string };

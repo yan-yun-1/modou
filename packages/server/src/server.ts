@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync, realpathSync, statSync } from "node:fs";
-import { readdir, stat } from "node:fs/promises";
+import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -207,6 +207,10 @@ export class ModouServer {
       if (url.pathname === "/fs/dirs" && req.method === "GET") {
         return await this.#listDirs(url, res);
       }
+      // Phase F2（plan-web）：最近项目目录（建会话时落盘，控制台快选）
+      if (url.pathname === "/fs/recents" && req.method === "GET") {
+        return await this.#cwdRecents(res);
+      }
       if (url.pathname === "/sessions") {
         if (req.method === "POST") {
           return await this.#createSession(req, res);
@@ -301,6 +305,7 @@ export class ModouServer {
     });
     const entry: SessionEntry = { session, busy: false, sseClients: new Set() };
     this.#sessions.set(session.sessionId, entry);
+    await this.#recordCwd(normalizeDir(chosenAbs ?? process.cwd()));
     this.#json(res, 201, {
       sessionId: session.sessionId,
       contextWindow: session.contextWindow,
@@ -308,6 +313,52 @@ export class ModouServer {
       cwd: chosenAbs,
       cwdWarning,
     });
+  }
+
+  /** Phase F2：最近 cwd 落盘文件（defaults.home 注入时启用；库内嵌无 home 自动禁用） */
+  get #recentsFile(): string | undefined {
+    const home = this.#options.createSessionDefaults?.home;
+    return home ? join(home, "cwd-recents.json") : undefined;
+  }
+
+  async #readRecents(): Promise<string[]> {
+    const file = this.#recentsFile;
+    if (!file) return [];
+    try {
+      const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
+      if (Array.isArray(parsed)) return parsed.filter((x): x is string => typeof x === "string");
+    } catch {
+      // 缺失/损坏 → 视为空（测试覆盖损坏容错）
+    }
+    return [];
+  }
+
+  /** Phase F2：建会话成功后记录有效 cwd（realpath 归一去重置顶、上限 8）；落盘失败不阻塞建会话 */
+  async #recordCwd(abs: string): Promise<void> {
+    const file = this.#recentsFile;
+    if (!file) return;
+    const prev = await this.#readRecents();
+    const next = [abs, ...prev.filter((r) => r !== abs)].slice(0, 8);
+    try {
+      await writeFile(file, JSON.stringify(next, null, 2));
+    } catch {
+      // 写失败静默：recents 是便利功能，不阻断会话创建
+    }
+  }
+
+  /** Phase F2：GET /fs/recents → { serveCwd, recents }；过滤已不存在目录与白名单外目录 */
+  async #cwdRecents(res: ServerResponse): Promise<void> {
+    let recents = await this.#readRecents();
+    recents = recents.filter((r) => {
+      try {
+        return statSync(r).isDirectory();
+      } catch {
+        return false;
+      }
+    });
+    const roots = this.#options.fsAllowRoots;
+    if (roots?.length) recents = recents.filter((r) => isPathAllowed(r, roots));
+    this.#json(res, 200, { serveCwd: process.cwd(), recents });
   }
 
   /** Phase F1：列子目录（仅目录、跳过 dotfiles）；缺省 path = 进程启动目录 */
