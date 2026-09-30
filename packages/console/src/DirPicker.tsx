@@ -173,6 +173,7 @@ export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
             {err}
           </div>
         )}
+        {pickBusy && <div class="dp-wait">系统选择框已弹出（始终置顶）——若未看到，请查看任务栏上的「浏览文件夹」窗口。</div>}
         <div class="dp-foot">
           {nativeAvailable && (
             <button class="dp-native" title="弹出系统目录选择对话框（serve 与浏览器同机时可用）" disabled={pickBusy || busy} onClick={() => void nativePick()}>

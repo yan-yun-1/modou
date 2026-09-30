@@ -380,12 +380,13 @@ export class ModouServer {
     let args: string[];
     if (process.platform === "win32") {
       cmd = "powershell.exe";
-      // 路径按 UTF-8 字节直写 stdout（默认 OEM 码页下中文路径会乱码）
+      // 路径按 UTF-8 字节直写 stdout（默认 OEM 码页下中文路径会乱码）。
+      // 对话框挂置顶隐形属主窗体：无属主时会被浏览器窗口压在后面，用户以为没弹出
       args = [
         "-NoProfile",
         "-STA",
         "-Command",
-        "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '选择项目目录'; $d.ShowNewFolderButton = $true; if ($d.ShowDialog() -eq 'OK') { $b = [Text.Encoding]::UTF8.GetBytes($d.SelectedPath); [Console]::OpenStandardOutput().Write($b, 0, $b.Length) }",
+        "Add-Type -AssemblyName System.Windows.Forms; Add-Type -AssemblyName System.Drawing; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '选择项目目录'; $d.ShowNewFolderButton = $true; $o = New-Object System.Windows.Forms.Form; $o.TopMost = $true; $o.ShowInTaskbar = $false; $o.FormBorderStyle = 'None'; $o.Size = New-Object System.Drawing.Size(1,1); $bnd = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds; $o.StartPosition = 'Manual'; $o.Location = New-Object System.Drawing.Point([int]($bnd.X + $bnd.Width/2), [int]($bnd.Y + $bnd.Height/2)); $o.Show(); $null = $o.Focus(); $null = $d.ShowDialog($o); if ($d.SelectedPath) { $bb = [Text.Encoding]::UTF8.GetBytes($d.SelectedPath); [Console]::OpenStandardOutput().Write($bb, 0, $bb.Length) }; $o.Dispose()",
       ];
     } else if (process.platform === "darwin") {
       cmd = "osascript";

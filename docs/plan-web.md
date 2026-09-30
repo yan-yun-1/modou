@@ -178,3 +178,4 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | F4 cwd 展示 | ✅ SessionView.cwd（创建响应记入，replay 不显示）+ 输入台上方 mono chip；state 测试 12/12 | 2026-09-30 |
 | F5 文档与回归 | ✅ README 控制台节（目录选择 + --fs-allow-root）；全量测试 turbo 8/8 包绿（core 204 / cli 212 / console 12 / lsp 12 等），eval 14/14 达基线（glm-4.5-air） | 2026-09-30 |
 | F6 系统目录对话框 | ✅ POST /fs/pick：serve 弹原生选择框（Win FolderBrowserDialog/macOS choose folder/Linux zenity；单例+10min 兜底回收，UTF-8 字节直写防中文乱码），弹层「系统对话框」按钮仅 localhost 显示；端到端实测选目录→建会话→cwd 显示与取消路径；recents 移至 ~/.modou/（b6f1e31 后续提交） | 2026-09-30 |
+| F6 反馈修复：对话框置顶 | ✅ 原生框挂置顶隐形属主窗体（无属主时被浏览器压住，用户以为没弹出）+ 弹层等待提示条；实测对话框直接抢前台、取消后复位 | 2026-09-30 |
