@@ -172,3 +172,8 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | 布局微调两轮 | ✅ 侧栏新会话钮（钉底→列表尾 acfdd84→**列表顶部** 5a979ae，会话列其下）+ 用量条输入台下方水平居中（acfdd84）；浏览器截图验证 | 2026-09-30 |
 | 回归修复：删除活跃会话 | ✅ 5a979ae：DELETE /sessions/:id 活跃/非活跃语义统一为彻底删历史文件（原活跃分支只关不删，界面删除"复活"），补集成测试（server 6/6） | 2026-09-30 |
 | Phase F 拍板 | ✅ 项目目录选择：两个都做 / 本地默认不限根 / 部署期 --fs-allow-root 白名单；任务 F1-F5 定稿（见四 Phase F） | 2026-09-30 |
+| F1 目录浏览端点 | ✅ 3001587：GET /fs/dirs（仅目录跳 dotfiles，缺省=进程目录）+ fsAllowRoots 白名单（/fs/dirs 与会话 cwd 含缺省回落越界 403，先于存在性 400 防探测）；测试含 .. 上跳/反斜杠编码/盘符大小写归一（server 10/10） | 2026-09-30 |
+| F2 最近目录 | ✅ 建会话落盘 <home>/cwd-recents.json（realpath 归一去重置顶上限 8，落盘失败不阻塞）；GET /fs/recents 回 serveCwd+recents（过滤不存在/白名单外，损坏容错）；server 12/12 | 2026-09-30 |
+| F3 目录选择弹层 | ✅ DirPicker.tsx（最近 chips 单击即建/面包屑两步/手输 Enter；400/403 内联回显，Esc/遮罩关闭）+ client 单例导出；浏览器实测：浏览往返/快选即建即关；顺带修 commander 驼峰键名（fsAllowRoot） | 2026-09-30 |
+| F4 cwd 展示 | ✅ SessionView.cwd（创建响应记入，replay 不显示）+ 输入台上方 mono chip；state 测试 12/12 | 2026-09-30 |
+| F5 文档与回归 | ✅ README 控制台节（目录选择 + --fs-allow-root）；全量测试见验收记录表末行 | 2026-09-30 |
