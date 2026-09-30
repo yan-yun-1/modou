@@ -63,6 +63,9 @@ export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
   const [manual, setManual] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pickBusy, setPickBusy] = useState(false);
+  // 原生对话框弹在 serve 所在机器：仅浏览器与 serve 同机（localhost）时提供入口
+  const [nativeAvailable] = useState(() => ["127.0.0.1", "localhost", "[::1]", "::1"].includes(location.hostname));
 
   const browse = useCallback(async (p?: string) => {
     setErr("");
@@ -107,6 +110,21 @@ export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
     },
     [busy, onPick, onClose],
   );
+
+  /** Phase F6：系统目录选择对话框——serve 弹原生框，选中即建会话；取消静默返回 */
+  const nativePick = useCallback(async () => {
+    if (pickBusy) return;
+    setErr("");
+    setPickBusy(true);
+    const r = await client.pickDirNative();
+    setPickBusy(false);
+    if (r.error) {
+      setErr(r.error);
+      return;
+    }
+    if (r.canceled || !r.path) return;
+    await tryCreate(r.path);
+  }, [pickBusy, tryCreate]);
 
   return (
     <div
@@ -156,6 +174,11 @@ export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
           </div>
         )}
         <div class="dp-foot">
+          {nativeAvailable && (
+            <button class="dp-native" title="弹出系统目录选择对话框（serve 与浏览器同机时可用）" disabled={pickBusy || busy} onClick={() => void nativePick()}>
+              {pickBusy ? "等待对话框…" : "系统对话框"}
+            </button>
+          )}
           <input
             class="dp-input"
             placeholder="或输入绝对路径，Enter 确认"

@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -252,7 +252,7 @@ describe("ModouServer（F18）", () => {
       expect(capped).not.toContain(b);
       expect(capped).toContain(a);
       // 落盘：文件在 home 下，重启可读
-      expect(JSON.parse(await readFile(join(home2, "cwd-recents.json"), "utf8"))).toEqual(capped);
+      expect(JSON.parse(await readFile(join(home2, ".modou", "cwd-recents.json"), "utf8"))).toEqual(capped);
     } finally {
       await s2.close();
     }
@@ -273,11 +273,12 @@ describe("ModouServer（F18）", () => {
     const { port: port3 } = await s3.start();
     const base3 = `http://127.0.0.1:${port3}`;
     try {
-      await writeFile(join(home3, "cwd-recents.json"), "not-json{");
+      await mkdir(join(home3, ".modou"), { recursive: true });
+      await writeFile(join(home3, ".modou", "cwd-recents.json"), "not-json{");
       const corrupted = (await fetch(`${base3}/fs/recents`).then((r) => r.json())) as { recents: string[] };
       expect(corrupted.recents).toEqual([]);
       const outside = await mkdtemp(join(tmpdir(), "fs-out2-"));
-      await writeFile(join(home3, "cwd-recents.json"), JSON.stringify([outside, dir]));
+      await writeFile(join(home3, ".modou", "cwd-recents.json"), JSON.stringify([outside, dir]));
       const filtered = (await fetch(`${base3}/fs/recents`).then((r) => r.json())) as { recents: string[] };
       expect(filtered.recents).toEqual([dir]);
     } finally {

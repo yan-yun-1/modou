@@ -133,6 +133,17 @@ export class ModouClient {
     return { serveCwd: body.serveCwd ?? "", recents: body.recents ?? [] };
   }
 
+  /** Phase F6：请求 serve 弹出系统目录选择对话框（同机场景）。选完返回 path；取消返回 canceled。请求会挂到对话框关闭 */
+  async pickDirNative(): Promise<{ path: string; canceled: boolean; error?: string; status: number }> {
+    const res = await this.#request("/fs/pick", { method: "POST" });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      return { path: "", canceled: false, error: body.error ?? `系统对话框不可用（${res.status}）`, status: res.status };
+    }
+    const body = (await res.json()) as { path?: string; canceled?: boolean; error?: string };
+    return { path: body.path ?? "", canceled: body.canceled === true, error: body.error, status: res.status };
+  }
+
   async history(sessionId: string): Promise<ModouEvent[]> {
     const res = await this.#request(`/sessions/${sessionId}`);
     if (!res.ok) return [];

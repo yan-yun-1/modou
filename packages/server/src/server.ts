@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
+import { spawn } from "node:child_process";
 import { createReadStream, existsSync, realpathSync, statSync } from "node:fs";
-import { readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -211,6 +212,10 @@ export class ModouServer {
       if (url.pathname === "/fs/recents" && req.method === "GET") {
         return await this.#cwdRecents(res);
       }
+      // Phase F6：系统目录选择对话框（浏览器与 serve 同机时；对话框弹在 serve 所在机器）
+      if (url.pathname === "/fs/pick" && req.method === "POST") {
+        return this.#pickDialog(res);
+      }
       if (url.pathname === "/sessions") {
         if (req.method === "POST") {
           return await this.#createSession(req, res);
@@ -315,10 +320,10 @@ export class ModouServer {
     });
   }
 
-  /** Phase F2：最近 cwd 落盘文件（defaults.home 注入时启用；库内嵌无 home 自动禁用） */
+  /** Phase F2：最近 cwd 落盘文件（defaults.home 注入时启用；库内嵌无 home 自动禁用）。与 core 同惯例放 <home>/.modou/ 下 */
   get #recentsFile(): string | undefined {
     const home = this.#options.createSessionDefaults?.home;
-    return home ? join(home, "cwd-recents.json") : undefined;
+    return home ? join(home, ".modou", "cwd-recents.json") : undefined;
   }
 
   async #readRecents(): Promise<string[]> {
@@ -340,13 +345,14 @@ export class ModouServer {
     const prev = await this.#readRecents();
     const next = [abs, ...prev.filter((r) => r !== abs)].slice(0, 8);
     try {
+      await mkdir(dirname(file), { recursive: true });
       await writeFile(file, JSON.stringify(next, null, 2));
     } catch {
       // 写失败静默：recents 是便利功能，不阻断会话创建
     }
   }
 
-  /** Phase F2：GET /fs/recents → { serveCwd, recents }；过滤已不存在目录与白名单外目录 */
+  /** Phase F6：GET /fs/recents → { serveCwd, recents }；过滤已不存在目录与白名单外目录 */
   async #cwdRecents(res: ServerResponse): Promise<void> {
     let recents = await this.#readRecents();
     recents = recents.filter((r) => {
@@ -359,6 +365,64 @@ export class ModouServer {
     const roots = this.#options.fsAllowRoots;
     if (roots?.length) recents = recents.filter((r) => isPathAllowed(r, roots));
     this.#json(res, 200, { serveCwd: process.cwd(), recents });
+  }
+
+  /** Phase F6：系统目录选择对话框（Windows FolderBrowserDialog / macOS choose folder / Linux zenity） */
+  #pickChild: ReturnType<typeof spawn> | null = null;
+
+  #pickDialog(res: ServerResponse): void {
+    // 单例：新请求杀掉上一个未关闭的对话框进程，避免堆积
+    if (this.#pickChild) {
+      this.#pickChild.kill();
+      this.#pickChild = null;
+    }
+    let cmd: string;
+    let args: string[];
+    if (process.platform === "win32") {
+      cmd = "powershell.exe";
+      // 路径按 UTF-8 字节直写 stdout（默认 OEM 码页下中文路径会乱码）
+      args = [
+        "-NoProfile",
+        "-STA",
+        "-Command",
+        "Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '选择项目目录'; $d.ShowNewFolderButton = $true; if ($d.ShowDialog() -eq 'OK') { $b = [Text.Encoding]::UTF8.GetBytes($d.SelectedPath); [Console]::OpenStandardOutput().Write($b, 0, $b.Length) }",
+      ];
+    } else if (process.platform === "darwin") {
+      cmd = "osascript";
+      args = ["-e", 'POSIX path of (choose folder with prompt "选择项目目录")'];
+    } else {
+      cmd = "zenity";
+      args = ["--file-selection", "--directory", "--title=选择项目目录"];
+    }
+    let settled = false;
+    const done = (status: number, payload: Record<string, unknown>) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      this.#json(res, status, payload);
+    };
+    const child = spawn(cmd, args, { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    this.#pickChild = child;
+    // 用户弃置对话框的兜底：10 分钟后回收
+    const timer = setTimeout(() => {
+      child.kill();
+      done(200, { canceled: true });
+    }, 600_000);
+    let out = "";
+    child.stdout?.on("data", (d) => (out += String(d)));
+    child.on("error", (err) => {
+      this.#pickChild = null;
+      done(501, { error: `无法启动系统对话框（${err.message}）` });
+    });
+    child.on("close", (code) => {
+      this.#pickChild = null;
+      const picked = out.trim();
+      if (picked) {
+        done(200, { path: picked });
+      } else {
+        done(200, { canceled: true, ...(code ? { error: `对话框异常退出（${code}）` } : {}) });
+      }
+    });
   }
 
   /** Phase F1：列子目录（仅目录、跳过 dotfiles）；缺省 path = 进程启动目录 */
