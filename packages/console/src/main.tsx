@@ -15,7 +15,8 @@ import {
   type ModouEvent,
   type SessionSummary,
 } from "./state.js";
-import { ModouClient, saveToken } from "./client.js";
+import { client, saveToken } from "./client.js";
+import { DirPicker, shortPath } from "./DirPicker.js";
 import { Icon, MessageList, relTime } from "./MessageLog.js";
 
 /**
@@ -23,8 +24,6 @@ import { Icon, MessageList, relTime } from "./MessageLog.js";
  * 内容列 768px 居中，零横向滚动；视觉分层=一档底色差 + 1px 线，强调色仅一枚靛蓝。
  * 状态变更全走 state.ts 纯函数；主题 data-theme + localStorage + theme-color 同步。
  */
-
-const client = new ModouClient(() => (location.origin === "null" ? "http://127.0.0.1:4711" : location.origin));
 
 // ---------- 主题（dark 默认，localStorage 覆写；theme-color 随主题同步） ----------
 
@@ -104,9 +103,10 @@ function TokenGate({ onSaved }: { onSaved: () => void }): JSX.Element {
 
 function App(): JSX.Element {
   const [state, setState] = useState<ConsoleState>(emptyState());
-  const [cwd, setCwd] = useState("");
   const [input, setInput] = useState("");
   const [sideOpen, setSideOpen] = useState(true);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [serveCwd, setServeCwd] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const subsRef = useRef(new Map<string, { dispose(): void; attempts: number }>());
 
@@ -158,29 +158,39 @@ function App(): JSX.Element {
     [subscribe],
   );
 
-  const newSession = useCallback(
-    async (cwdText: string) => {
+  /** Phase F3：创建会话核心——成功接线订阅/刷新；失败返回错误文案（弹层内联回显用） */
+  const createAt = useCallback(
+    async (cwdText: string): Promise<{ ok: boolean; sessionId?: string; error?: string }> => {
       const result = await client.createSession(cwdText);
       if (result.status === 401) {
         unauthorizedListener?.();
-        return null;
+        return { ok: false };
       }
       if (result.error || !result.sessionId) {
-        setState((s) => setNotice(s, result.error ?? "创建会话失败"));
-        return null;
+        return { ok: false, error: result.error ?? "创建会话失败" };
       }
       const created = result.sessionId;
       setState((s) => setCurrent(s, created));
       if (result.cwdWarning) setState((s) => setNotice(s, result.cwdWarning ?? null));
       await refreshSessions();
       subscribe(created);
-      return created;
+      return { ok: true, sessionId: created };
     },
     [refreshSessions, subscribe],
   );
 
+  const newSession = useCallback(
+    async (cwdText: string) => {
+      const r = await createAt(cwdText);
+      if (!r.ok && r.error) setState((s) => setNotice(s, r.error!));
+      return r.ok;
+    },
+    [createAt],
+  );
+
   useEffect(() => {
     void refreshSessions();
+    void client.getCwdRecents().then(({ serveCwd }) => setServeCwd(serveCwd));
   }, [refreshSessions]);
 
   const send = useCallback(
@@ -189,8 +199,14 @@ function App(): JSX.Element {
       if (!text) return;
       let target = state.currentId;
       if (!target) {
-        target = await newSession(cwd);
-        if (!target) return;
+        // 空态直接发送：在 serve 启动目录零摩擦建会话（选目录走「+ 新会话」弹层）
+        const r = await createAt("");
+        if (!r.ok || !r.sessionId) {
+          const errText = r.error;
+          if (errText) setState((s) => setNotice(s, errText));
+          return;
+        }
+        target = r.sessionId;
       }
       if (raw === undefined) setInput("");
       setState((s) => markBusy(s, target!));
@@ -204,7 +220,7 @@ function App(): JSX.Element {
         }));
       }
     },
-    [input, state.currentId, cwd, newSession, subscribe],
+    [input, state.currentId, createAt, subscribe],
   );
 
   /** 审批应答：乐观写入（幂等，复用 approval_result 分支）+ 回执发送 */
@@ -289,7 +305,7 @@ function App(): JSX.Element {
           <span class="sidetitle">会话{state.sessions.length > 0 ? ` · ${state.sessions.length}` : ""}</span>
         </div>
         <nav class="slist">
-          <button class="snew" onClick={() => void newSession(cwd)}>
+          <button class="snew" onClick={() => setPickerOpen(true)}>
             ＋ 新会话
           </button>
           {state.sessions.length === 0 && <div class="sempty">暂无会话</div>}
@@ -365,10 +381,13 @@ function App(): JSX.Element {
           />
         ) : (
           <div class="flow">
-            <div class="empty">
-              <h2>开始一个新会话</h2>
-              <p>输入第一条指令，或从下面的示例开始</p>
-              <div class="exlist">
+          <div class="empty">
+            <h2>开始一个新会话</h2>
+            <p>输入第一条指令，或从下面的示例开始</p>
+            <button class="escwd" title="更换项目目录" onClick={() => setPickerOpen(true)}>
+              目录：{serveCwd ? shortPath(serveCwd) : "serve 启动目录"}（更改）
+            </button>
+            <div class="exlist">
                 {SAMPLES.map((cmd) => (
                   <button
                     class="excard"
@@ -439,6 +458,7 @@ function App(): JSX.Element {
           </div>
         </div>
       </div>
+      {pickerOpen && <DirPicker onPick={createAt} onClose={() => setPickerOpen(false)} />}
     </div>
   );
 }

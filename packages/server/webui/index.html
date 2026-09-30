@@ -265,6 +265,41 @@ html[data-theme="light"] .icon-moon{display:inline-flex}
 .gatecard input:focus{border-color:var(--accent)}
 .gatecard input::placeholder{color:var(--text-3)}
 .gatecard .abtn{align-self:flex-start}
+
+/* ---- 目录选择弹层（Phase F3）---- */
+.dp-mask{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;animation:dpIn .18s ease}
+@keyframes dpIn{from{opacity:0}to{opacity:1}}
+.dp{width:min(560px,92vw);max-height:72vh;display:flex;flex-direction:column;background:var(--bg-raised);border:1px solid var(--line-1);border-radius:var(--r-lg);box-shadow:var(--shadow-pop);animation:dpPop .18s ease}
+@keyframes dpPop{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+.dp-head{display:flex;align-items:center;justify-content:space-between;padding:var(--s3) var(--s4);border-bottom:1px solid var(--line-1)}
+.dp-title{font-size:13px;font-weight:600;color:var(--text-1)}
+.dp-x{width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text-3);border-radius:var(--r-sm)}
+.dp-x:hover{background:var(--bg-hover);color:var(--text-1)}
+.dp-recents{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2);padding:var(--s3) var(--s4);border-bottom:1px solid var(--line-1)}
+.dp-lab{font-size:12px;color:var(--text-3)}
+.dp-chip{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 12px;border:1px solid var(--line-2);border-radius:999px;font-size:12px;font-family:var(--f-mono);color:var(--text-2);transition:color .15s,border-color .15s,background .15s}
+.dp-chip:hover{color:var(--text-1);border-color:var(--text-3);background:var(--bg-hover)}
+.dp-crumb{display:flex;flex-wrap:wrap;gap:2px;padding:var(--s2) var(--s4);border-bottom:1px solid var(--line-1);font-family:var(--f-mono);font-size:12px}
+.dp-crumbseg{padding:2px 4px;color:var(--text-3);border-radius:4px}
+.dp-crumbseg:hover{color:var(--text-1);background:var(--bg-hover)}
+.dp-crumbseg.tail{color:var(--text-1)}
+.dp-list{flex:1;min-height:120px;overflow-y:auto;padding:var(--s2)}
+.dp-row{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;font-size:13px;color:var(--text-1);border-radius:var(--r-sm)}
+.dp-row:hover{background:var(--bg-hover)}
+.dp-row svg{flex:none;color:var(--text-3)}
+.dp-rowname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dp-empty{padding:var(--s5);text-align:center;font-size:12px;color:var(--text-3)}
+.dp-err{padding:var(--s2) var(--s4);font-size:12px;color:var(--error);background:var(--error-bg)}
+.dp-foot{display:flex;gap:var(--s2);padding:var(--s3) var(--s4);border-top:1px solid var(--line-1)}
+.dp-input{flex:1;min-width:0;background:var(--bg-sunken);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:7px 10px;font-size:13px;font-family:var(--f-mono);color:var(--text-1)}
+.dp-input::placeholder{color:var(--text-3)}
+.dp-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+.dp-go{flex:none;padding:7px 14px;background:var(--accent);color:var(--on-accent);border-radius:var(--r-sm);font-size:13px;font-weight:500}
+.dp-go:hover{background:var(--accent-hover)}
+.dp-go:disabled{opacity:.5;cursor:not-allowed}
+/* 空态目录 chip（Phase F3） */
+.escwd{font-size:12px;font-family:var(--f-mono);color:var(--text-3);padding:4px 12px;border:1px dashed var(--line-2);border-radius:999px}
+.escwd:hover{color:var(--text-1);border-color:var(--text-3)}
 </style>
 </head>
 <body>

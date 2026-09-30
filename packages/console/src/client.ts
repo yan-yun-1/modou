@@ -106,6 +106,33 @@ export class ModouClient {
     return { sessionId: body.sessionId ?? "", cwd: body.cwd, cwdWarning: body.cwdWarning, error: body.error, status: res.status };
   }
 
+  /** Phase F3：列子目录（目录选择弹层）；缺省 path = serve 启动目录。400/403 返回 error 文案 */
+  async listDirs(path?: string): Promise<{
+    path: string;
+    parent: string | null;
+    dirs: { name: string; path: string }[];
+    error?: string;
+    status: number;
+  }> {
+    const qs = path ? `?path=${encodeURIComponent(path)}` : "";
+    const res = await this.#request(`/fs/dirs${qs}`);
+    const body = (await res.json().catch(() => ({}))) as {
+      path?: string;
+      parent?: string | null;
+      dirs?: { name: string; path: string }[];
+      error?: string;
+    };
+    return { path: body.path ?? "", parent: body.parent ?? null, dirs: body.dirs ?? [], error: body.error, status: res.status };
+  }
+
+  /** Phase F3：最近项目目录 + serve 启动目录（旧版 server 无此端点时回退空） */
+  async getCwdRecents(): Promise<{ serveCwd: string; recents: string[] }> {
+    const res = await this.#request("/fs/recents");
+    if (!res.ok) return { serveCwd: "", recents: [] };
+    const body = (await res.json()) as { serveCwd?: string; recents?: string[] };
+    return { serveCwd: body.serveCwd ?? "", recents: body.recents ?? [] };
+  }
+
   async history(sessionId: string): Promise<ModouEvent[]> {
     const res = await this.#request(`/sessions/${sessionId}`);
     if (!res.ok) return [];
@@ -214,3 +241,8 @@ export class ModouClient {
     return { dispose: () => controller.abort() };
   }
 }
+
+/** 应用级单例：file:// 预览时 origin 为 "null"，回退本地 serve 默认端口 */
+export const client = new ModouClient(() =>
+  location.origin === "null" ? "http://127.0.0.1:4711" : location.origin,
+);
