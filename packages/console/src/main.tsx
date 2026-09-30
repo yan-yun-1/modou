@@ -289,6 +289,9 @@ function App(): JSX.Element {
           <span class="sidetitle">会话{state.sessions.length > 0 ? ` · ${state.sessions.length}` : ""}</span>
         </div>
         <nav class="slist">
+          <button class="snew" onClick={() => void newSession(cwd)}>
+            ＋ 新会话
+          </button>
           {state.sessions.length === 0 && <div class="sempty">暂无会话</div>}
           {state.sessions.map((s: SessionSummary) => {
             const preview = s.preview.trim();
@@ -307,9 +310,6 @@ function App(): JSX.Element {
               </div>
             );
           })}
-          <button class="snew" onClick={() => void newSession(cwd)}>
-            ＋ 新会话
-          </button>
         </nav>
       </aside>
 

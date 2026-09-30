@@ -348,6 +348,7 @@ export class ModouServer {
   }
 
   async #closeSession(id: string, res: ServerResponse): Promise<void> {
+    const store = this.#options.store ?? new SessionStore();
     const entry = this.#sessions.get(id);
     if (entry) {
       entry.abort?.abort();
@@ -356,11 +357,8 @@ export class ModouServer {
       }
       await entry.session.close().catch(() => {});
       this.#sessions.delete(id);
-      this.#json(res, 200, { ok: true });
-      return;
     }
-    // plan-web：非活跃会话（server 重启过）→ 直接删历史文件（用户实测要求清理入口）
-    const store = this.#options.store ?? new SessionStore();
+    // 删除语义与 bulk-delete 一致：活跃会话关闭后同样移除历史文件（不可恢复）
     await store.delete(id).catch(() => {});
     this.#json(res, 200, { ok: true, deletedHistory: true });
   }

@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { LanguageModel, ModouEvent } from "@modou-dev/core";
+import { SessionStore } from "@modou-dev/core";
 import { ModouServer } from "@modou-dev/server";
 
 // M4 Phase B（PRD F18）：HTTP + SSE 会话 API。模型注入 stub，不发真实请求。
@@ -67,6 +68,34 @@ describe("ModouServer（F18）", () => {
     expect(res.status).toBe(201);
     const body = (await res.json()) as { sessionId: string };
     expect(body.sessionId).toBeTruthy();
+  });
+
+  it("DELETE /sessions/:id：活跃会话同样移除历史文件（与 bulk-delete 语义一致）", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "srv-store-"));
+    const store = new SessionStore(storeDir);
+    const s2 = new ModouServer({
+      port: 0,
+      store,
+      createSessionDefaults: {
+        home,
+        settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "sk-test", permissionMode: "default" },
+      },
+      createSessionOverrides: () => ({ model: textModel("你好，我是墨斗"), cwd: dir }),
+    });
+    const { port: port2 } = await s2.start();
+    const base2 = `http://127.0.0.1:${port2}`;
+    try {
+      const created = await fetch(`${base2}/sessions`, { method: "POST" });
+      expect(created.status).toBe(201);
+      const { sessionId } = (await created.json()) as { sessionId: string };
+      await expect(fetch(`${base2}/sessions`).then((r) => r.json())).resolves.toMatchObject({ total: 1 });
+      const del = await fetch(`${base2}/sessions/${sessionId}`, { method: "DELETE" });
+      expect(del.status).toBe(200);
+      expect(await del.json()).toMatchObject({ ok: true, deletedHistory: true });
+      await expect(fetch(`${base2}/sessions`).then((r) => r.json())).resolves.toMatchObject({ total: 0 });
+    } finally {
+      await s2.close();
+    }
   });
 
   it("full turn: POST message → SSE receives assistant_message → history replay", async () => {
