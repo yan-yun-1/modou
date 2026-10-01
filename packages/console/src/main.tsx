@@ -146,6 +146,14 @@ function App(): JSX.Element {
   const [projMenu, setProjMenu] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
+  // F10.5：见过的所有工作区（持久清单）——节点只随「移除工作区」消失，删会话不影响
+  const [projKnown, setProjKnown] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("modou.projKnown") ?? "[]") as string[];
+    } catch {
+      return [];
+    }
+  });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const subsRef = useRef(new Map<string, { dispose(): void; attempts: number }>());
 
@@ -157,6 +165,22 @@ function App(): JSX.Element {
     setServeCwd(rec.serveCwd);
     setRecentDirs(rec.recents);
   }, []);
+
+  // F10.5：会话与最近目录里出现过的目录沉淀进工作区清单（持久，删会话不掉节点）
+  useEffect(() => {
+    const cwds = new Set(projKnown);
+    for (const s of state.sessions) if (s.cwd) cwds.add(s.cwd);
+    for (const d of recentDirs) cwds.add(d);
+    if (cwds.size !== projKnown.length) {
+      const next = [...cwds];
+      setProjKnown(next);
+      try {
+        localStorage.setItem("modou.projKnown", JSON.stringify(next));
+      } catch {
+        /* 存储不可用仅内存 */
+      }
+    }
+  }, [state.sessions, recentDirs, projKnown]);
 
   /** F8：展开/收起项目分组（记忆到 localStorage；缺省展开=含当前会话的项目） */
   const toggleProj = useCallback((cwd: string, open: boolean) => {
@@ -446,14 +470,13 @@ function App(): JSX.Element {
   const usage = currentView?.usage ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 };
   const total = usage.inputTokens + usage.outputTokens;
 
-  // F8：项目树 = 会话按目录分组（首现顺序，未标注最后）+ 最近目录里的空项目节点。
-  // F10.5 语义定版：「移除工作区」= 立即从侧栏移除节点及其会话（文件与会话历史不动，可用底部「恢复」找回）；
-  // 头部计数与空态只反映可见部分，避免「会话 · 12 却暂无会话」的割裂
+  // F8：项目树 = 会话按目录分组（首现顺序，未标注最后）+ 已知工作区清单里的空节点。
+  // F10.5 语义定版：工作区节点持久存在（projKnown），删会话不影响；只有「移除工作区」（projHidden）才从侧栏消失
   const groups = groupSessions(state.sessions);
   const knownCwds = new Set(groups.map((g) => g.cwd));
   const allProjects = [
     ...groups,
-    ...recentDirs.filter((d) => !knownCwds.has(d)).map((d) => ({ cwd: d, name: lastSeg(d), sessions: [] as SessionSummary[] })),
+    ...projKnown.filter((d) => !knownCwds.has(d)).map((d) => ({ cwd: d, name: lastSeg(d), sessions: [] as SessionSummary[] })),
   ];
   const projects = allProjects.filter((g) => !projHidden.includes(g.cwd));
   const visibleCount = projects.reduce((n, g) => n + g.sessions.length, 0);
