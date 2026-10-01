@@ -35,7 +35,7 @@ export function buildProgram(): Command {
       (v: string, prev: string[]) => [...prev, v],
       [] as string[],
     )
-    .action(async (options: { port: string; host: string; authToken?: string; auth?: boolean; maxSessions: string; fsAllowRoots: string[] }) => {
+    .action(async (options: { port: string; host: string; authToken?: string; auth?: boolean; maxSessions: string; fsAllowRoot: string[] }) => {
       const { randomBytes } = await import("node:crypto");
       // plan-web A1：--auth > --auth-token > 环境变量 MOUDOU_TOKEN > 关闭
       const authToken =
@@ -48,8 +48,8 @@ export function buildProgram(): Command {
         host: options.host,
         authToken,
         maxSessions: Number(options.maxSessions),
-        // plan-web Phase F1：目录白名单（空数组视为未配置 = 不限根）
-        ...(options.fsAllowRoots.length ? { fsAllowRoots: options.fsAllowRoots } : {}),
+        // plan-web Phase F1：目录白名单（commander 驼峰化 --fs-allow-root → fsAllowRoot；空数组视为未配置 = 不限根）
+        ...(options.fsAllowRoot.length ? { fsAllowRoots: options.fsAllowRoot } : {}),
         // plan-web A6：注入 home——remembered 审批落盘 permissionRules 与 models.json
         // 生效的前提（loop-factory 的 onRemember 接线以 options.home 为条件）
         createSessionDefaults: { home: homedir() },
