@@ -305,6 +305,19 @@ function App(): JSX.Element {
     [refreshSessions, subscribe],
   );
 
+  /** F10.5：恢复显示所有被移除的工作区（清空隐藏名单；其会话仍在磁盘） */
+  const restoreHidden = useCallback(() => {
+    setProjHidden(() => {
+      try {
+        localStorage.removeItem("modou.projHidden");
+      } catch {
+        /* 存储不可用仅内存 */
+      }
+      return [];
+    });
+    void refreshSessions();
+  }, [refreshSessions]);
+
   /** F9：在指定工作区新建会话（项目行气泡+ 按钮；成功后展开该组） */
   const createInWorkspace = useCallback(
     (cwd: string) => {
@@ -434,24 +447,32 @@ function App(): JSX.Element {
   const total = usage.inputTokens + usage.outputTokens;
 
   // F8：项目树 = 会话按目录分组（首现顺序，未标注最后）+ 最近目录里的空项目节点。
-  // F9 修正：移除工作区只隐藏空节点（recents 来的）——有会话的组永远显示，避免隐藏吞掉真实会话
+  // F10.5 语义定版：「移除工作区」= 立即从侧栏移除节点及其会话（文件与会话历史不动，可用底部「恢复」找回）；
+  // 头部计数与空态只反映可见部分，避免「会话 · 12 却暂无会话」的割裂
   const groups = groupSessions(state.sessions);
   const knownCwds = new Set(groups.map((g) => g.cwd));
-  const projects = [
+  const allProjects = [
     ...groups,
     ...recentDirs.filter((d) => !knownCwds.has(d)).map((d) => ({ cwd: d, name: lastSeg(d), sessions: [] as SessionSummary[] })),
-  ].filter((g) => g.sessions.length > 0 || !projHidden.includes(g.cwd));
+  ];
+  const projects = allProjects.filter((g) => !projHidden.includes(g.cwd));
+  const visibleCount = projects.reduce((n, g) => n + g.sessions.length, 0);
   return (
     <div class="board" data-side={sideOpen ? "open" : "closed"}>
       <aside class="side">
         <div class="sidehead">
-          <span class="sidetitle">会话{state.sessions.length > 0 ? ` · ${state.sessions.length}` : ""}</span>
+          <span class="sidetitle">会话{visibleCount > 0 ? ` · ${visibleCount}` : ""}</span>
         </div>
         <button class="snew" onClick={() => setPickerOpen(true)}>
           ＋ 新会话
         </button>
         <nav class="slist">
-          {projects.length === 0 && <div class="sempty">暂无会话</div>}
+          {projects.length === 0 &&
+            (projHidden.length > 0 ? (
+              <div class="sempty">工作区已移除，可在下方恢复</div>
+            ) : (
+              <div class="sempty">暂无会话</div>
+            ))}
           {projects.map((g) => {
             const open = projOpen[g.cwd] ?? true;
             const name = projAlias[g.cwd] ?? g.name;
@@ -552,7 +573,7 @@ function App(): JSX.Element {
                       <button
                         role="menuitem"
                         class="danger"
-                        title="从侧栏移除此工作区（不删除文件；其下已有会话仍会显示）"
+                        title="从侧栏移除此工作区及其会话的显示（不删除文件与会话历史，可在列表底部恢复）"
                         onClick={() => removeWorkspace(g.cwd)}
                       >
                         <Icon size={13}>
@@ -585,6 +606,11 @@ function App(): JSX.Element {
               </div>
             );
           })}
+          {projHidden.length > 0 && (
+            <button class="prestore" title="恢复显示所有被移除的工作区（其会话仍在磁盘上）" onClick={restoreHidden}>
+              已移除 {projHidden.length} 个工作区 · 恢复
+            </button>
+          )}
           {projMenu && <div class="pmenu-mask" onClick={() => setProjMenu(null)} />}
         </nav>
         {currentView?.cwd && (
