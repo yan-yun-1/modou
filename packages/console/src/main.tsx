@@ -720,13 +720,7 @@ function App(): JSX.Element {
           </div>
         </div>
       </div>
-      {pickerOpen && (
-        <DirPicker
-          onPick={createAt}
-          onClose={() => setPickerOpen(false)}
-          onError={(msg) => setState((s) => setNotice(s, msg))}
-        />
-      )}
+      {pickerOpen && <DirPicker onPick={createAt} onClose={() => setPickerOpen(false)} />}
     </div>
   );
 }

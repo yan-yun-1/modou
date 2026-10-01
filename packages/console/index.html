@@ -302,37 +302,28 @@ html[data-theme="light"] .icon-moon{display:inline-flex}
 .dp-lab{font-size:12px;color:var(--text-3)}
 .dp-chip{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 12px;border:1px solid var(--line-2);border-radius:999px;font-size:12px;font-family:var(--f-mono);color:var(--text-2);transition:color .15s,border-color .15s,background .15s}
 .dp-chip:hover{color:var(--text-1);border-color:var(--text-3);background:var(--bg-hover)}
-.dp-nav{display:flex;align-items:center;gap:6px;padding:var(--s2) var(--s4);border-bottom:1px solid var(--line-1)}
-.dp-up{flex:none;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line-2);border-radius:var(--r-sm);color:var(--text-2)}
-.dp-up:hover{color:var(--text-1);border-color:var(--text-3);background:var(--bg-hover)}
-.dp-up:disabled{opacity:.4;cursor:default}
-.dp-crumb{flex:1;min-width:0;display:flex;align-items:center;gap:2px;overflow-x:auto;font-family:var(--f-mono);font-size:12px;white-space:nowrap;scrollbar-width:none}
-.dp-crumbseg{display:flex;align-items:center;gap:2px;flex:none}
-.dp-sep{color:var(--text-3);margin:0 2px}
-.dp-crumbseg button{padding:2px 4px;border-radius:4px;color:var(--text-3)}
-.dp-crumbseg button:hover{color:var(--text-1);background:var(--bg-hover)}
-.dp-crumbseg button.tail{color:var(--text-1)}
+.dp-crumb{display:flex;flex-wrap:wrap;gap:2px;padding:var(--s2) var(--s4);border-bottom:1px solid var(--line-1);font-family:var(--f-mono);font-size:12px}
+.dp-crumbseg{padding:2px 4px;color:var(--text-3);border-radius:4px}
+.dp-crumbseg:hover{color:var(--text-1);background:var(--bg-hover)}
+.dp-crumbseg.tail{color:var(--text-1)}
 .dp-list{flex:1;min-height:120px;overflow-y:auto;padding:var(--s2)}
-.dp-row{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;font-size:13px;color:var(--text-1);border-radius:var(--r-sm);cursor:pointer}
+.dp-row{display:flex;align-items:center;gap:8px;width:100%;padding:7px 10px;font-size:13px;color:var(--text-1);border-radius:var(--r-sm)}
 .dp-row:hover{background:var(--bg-hover)}
-.dp-row.sel{background:var(--bg-active)}
 .dp-row svg{flex:none;color:var(--text-3)}
-.dp-rowname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.dp-pick{flex:none;font-size:12px;color:var(--text-3);padding:3px 12px;border:1px solid var(--line-2);border-radius:999px;opacity:0;transition:opacity .15s}
-.dp-row:hover .dp-pick,.dp-row.sel .dp-pick{opacity:1}
-.dp-pick:hover{color:var(--text-1);border-color:var(--text-3);background:var(--bg-hover)}
+.dp-rowname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dp-empty{padding:var(--s5);text-align:center;font-size:12px;color:var(--text-3)}
 .dp-err{padding:var(--s2) var(--s4);font-size:12px;color:var(--error);background:var(--error-bg)}
+.dp-wait{padding:var(--s2) var(--s4);font-size:12px;color:var(--text-2);background:var(--bg-hover)}
 .dp-foot{display:flex;gap:var(--s2);padding:var(--s3) var(--s4);border-top:1px solid var(--line-1)}
+.dp-native{flex:none;padding:7px 12px;border:1px solid var(--line-2);border-radius:var(--r-sm);font-size:13px;color:var(--text-2);white-space:nowrap}
+.dp-native:hover{color:var(--text-1);border-color:var(--text-3);background:var(--bg-hover)}
+.dp-native:disabled{opacity:.55;cursor:default}
 .dp-input{flex:1;min-width:0;background:var(--bg-sunken);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:7px 10px;font-size:13px;font-family:var(--f-mono);color:var(--text-1)}
 .dp-input::placeholder{color:var(--text-3)}
 .dp-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
 .dp-go{flex:none;padding:7px 14px;background:var(--accent);color:var(--on-accent);border-radius:var(--r-sm);font-size:13px;font-weight:500}
 .dp-go:hover{background:var(--accent-hover)}
 .dp-go:disabled{opacity:.5;cursor:not-allowed}
-.dp-nativelink{display:flex;justify-content:flex-end;padding:0 var(--s4) var(--s3)}
-.dp-nlink{font-size:12px;color:var(--text-3);text-decoration:underline;text-underline-offset:3px}
-.dp-nlink:hover{color:var(--text-1)}
 /* 会话工作目录状态条（Phase F4→反馈改侧栏底部） */
 .sidefoot{flex:none;display:flex;align-items:center;gap:6px;min-width:0;border-top:1px solid var(--line-1);padding:8px var(--s3);font-size:12px;font-family:var(--f-mono);color:var(--text-3)}
 .sidefoot svg{flex:none}
