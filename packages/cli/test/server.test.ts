@@ -338,6 +338,50 @@ describe("ModouServer（F18）", () => {
     }
   });
 
+  // F9：移除工作区（从最近目录摘除，不动磁盘）
+  it("POST /fs/recents/remove：按路径移除单项", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "srv-store4-"));
+    const store = new SessionStore(storeDir);
+    const a = await mkdtemp(join(tmpdir(), "proj-ra-"));
+    const b = await mkdtemp(join(tmpdir(), "proj-rb-"));
+    const s2 = new ModouServer({
+      port: 0,
+      store,
+      maxSessions: 20,
+      createSessionDefaults: {
+        home,
+        settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "sk-test", permissionMode: "default" },
+      },
+      createSessionOverrides: () => ({ model: textModel("你好，我是墨斗"), cwd: dir }),
+    });
+    const { port: port2 } = await s2.start();
+    const base2 = `http://127.0.0.1:${port2}`;
+    const create = async (cwd: string): Promise<void> => {
+      const r = await fetch(`${base2}/sessions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ cwd }),
+      });
+      expect(r.status).toBe(201);
+    };
+    try {
+      await create(a);
+      await create(b);
+      const before = (await fetch(`${base2}/fs/recents`).then((r) => r.json())) as { recents: string[] };
+      expect(before.recents).toEqual([b, a]);
+      const del = await fetch(`${base2}/fs/recents/remove`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path: b }),
+      });
+      expect(del.status).toBe(200);
+      const after = (await fetch(`${base2}/fs/recents`).then((r) => r.json())) as { recents: string[] };
+      expect(after.recents).toEqual([a]);
+    } finally {
+      await s2.close();
+    }
+  });
+
   it("full turn: POST message → SSE receives assistant_message → history replay", async () => {
     const create = await fetch(`${baseUrl}/sessions`, { method: "POST" });
     const { sessionId } = (await create.json()) as { sessionId: string };

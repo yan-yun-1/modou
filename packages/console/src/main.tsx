@@ -128,6 +128,24 @@ function App(): JSX.Element {
       return {};
     }
   });
+  // F9：项目管理——别名（重命名展示）、隐藏（移除工作区）、行内编辑、下拉菜单
+  const [projAlias, setProjAlias] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("modou.projAlias") ?? "{}") as Record<string, string>;
+    } catch {
+      return {};
+    }
+  });
+  const [projHidden, setProjHidden] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("modou.projHidden") ?? "[]") as string[];
+    } catch {
+      return [];
+    }
+  });
+  const [projMenu, setProjMenu] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameVal, setRenameVal] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const subsRef = useRef(new Map<string, { dispose(): void; attempts: number }>());
 
@@ -152,6 +170,75 @@ function App(): JSX.Element {
       return next;
     });
   }, []);
+
+  /** F9：行内重命名提交（别名存 localStorage；与路径末段相同则视为清除别名） */
+  const commitRename = useCallback((cwd: string, val: string) => {
+    setRenaming(null);
+    const name = val.trim();
+    if (!name) return;
+    setProjAlias((m) => {
+      const fallback = cwd
+        ? (cwd.split(/[\\/]+/).filter(Boolean).pop() ?? cwd)
+        : "未标注项目";
+      const next = { ...m };
+      if (name === fallback) delete next[cwd];
+      else next[cwd] = name;
+      try {
+        localStorage.setItem("modou.projAlias", JSON.stringify(next));
+      } catch {
+        /* 存储不可用仅内存 */
+      }
+      return next;
+    });
+  }, []);
+
+  /** F9：复制项目路径到剪贴板（clipboard API 失败时退回 execCommand 兜底） */
+  const copyPath = useCallback(async (cwd: string) => {
+    setProjMenu(null);
+    try {
+      await navigator.clipboard.writeText(cwd);
+      setState((s) => setNotice(s, `已复制路径：${cwd}`));
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = cwd;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        setState((s) => setNotice(s, ok ? `已复制路径：${cwd}` : "复制失败（浏览器未授权剪贴板）"));
+      } catch {
+        setState((s) => setNotice(s, "复制失败（浏览器未授权剪贴板）"));
+      }
+    }
+  }, []);
+
+  /** F9：移除工作区——侧栏隐藏该项目 + server 最近目录摘除；不删磁盘文件与会话历史 */
+  const removeWorkspace = useCallback(
+    (cwd: string) => {
+      setProjMenu(null);
+      setProjHidden((m) => {
+        const next = m.includes(cwd) ? m : [...m, cwd];
+        try {
+          localStorage.setItem("modou.projHidden", JSON.stringify(next));
+        } catch {
+          /* 存储不可用仅内存 */
+        }
+        return next;
+      });
+      if (cwd) {
+        void client
+          .removeRecent(cwd)
+          .catch(() => undefined)
+          .then(() => refreshSessions());
+      }
+    },
+    [refreshSessions],
+  );
+
+  /** F9：在指定工作区新建会话（项目行气泡+ 按钮；成功后展开该组） */
 
   const subscribe = useCallback(
     (sessionId: string) => {
@@ -216,6 +303,16 @@ function App(): JSX.Element {
       return { ok: true, sessionId: created };
     },
     [refreshSessions, subscribe],
+  );
+
+  /** F9：在指定工作区新建会话（项目行气泡+ 按钮；成功后展开该组） */
+  const createInWorkspace = useCallback(
+    (cwd: string) => {
+      void createAt(cwd).then((r) => {
+        if (r.ok) setProjOpen((m) => ({ ...m, [cwd]: true }));
+      });
+    },
+    [createAt],
   );
 
   const newSession = useCallback(
@@ -336,13 +433,13 @@ function App(): JSX.Element {
   const usage = currentView?.usage ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 };
   const total = usage.inputTokens + usage.outputTokens;
 
-  // F8：项目树 = 会话按目录分组（首现顺序，未标注最后）+ 最近目录里的空项目节点
+  // F8：项目树 = 会话按目录分组（首现顺序，未标注最后）+ 最近目录里的空项目节点；F9 移除的工作区隐藏
   const groups = groupSessions(state.sessions);
   const knownCwds = new Set(groups.map((g) => g.cwd));
   const projects = [
     ...groups,
     ...recentDirs.filter((d) => !knownCwds.has(d)).map((d) => ({ cwd: d, name: lastSeg(d), sessions: [] as SessionSummary[] })),
-  ];
+  ].filter((g) => !projHidden.includes(g.cwd));
   return (
     <div class="board" data-side={sideOpen ? "open" : "closed"}>
       <aside class="side">
@@ -356,15 +453,110 @@ function App(): JSX.Element {
           {projects.length === 0 && <div class="sempty">暂无会话</div>}
           {projects.map((g) => {
             const open = projOpen[g.cwd] ?? true;
+            const name = projAlias[g.cwd] ?? g.name;
             return (
               <div key={g.cwd || "(none)"} class="pgroup">
-                <button class="pjrow" title={g.cwd || "未标注项目（旧会话无目录记录）"} onClick={() => toggleProj(g.cwd, open)}>
-                  <Icon size={13}>
-                    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  </Icon>
-                  <span class="pname">{g.name}</span>
-                  <span class="pcount">{g.sessions.length}</span>
-                </button>
+                <div
+                  class="pjrow"
+                  title={g.cwd || "未标注项目（旧会话无目录记录）"}
+                  onClick={() => {
+                    if (renaming !== g.cwd) toggleProj(g.cwd, open);
+                  }}
+                >
+                  {renaming === g.cwd ? (
+                    <input
+                      class="prename"
+                      value={renameVal}
+                      autoFocus
+                      spellcheck={false}
+                      onClick={(e) => e.stopPropagation()}
+                      onInput={(e) => setRenameVal((e.target as HTMLInputElement).value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename(g.cwd, renameVal);
+                        else if (e.key === "Escape") setRenaming(null);
+                      }}
+                      onBlur={() => commitRename(g.cwd, renameVal)}
+                    />
+                  ) : (
+                    <>
+                      <span class="picon">
+                        <Icon size={13}>
+                          <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        </Icon>
+                      </span>
+                      <span class="pname">{name}</span>
+                    </>
+                  )}
+                  <span class={"pcount" + (g.sessions.length === 0 ? " zero" : "")}>{g.sessions.length}</span>
+                  <div class="pact">
+                    <button
+                      class="pactbtn"
+                      title="更多操作"
+                      aria-label="更多操作"
+                      aria-haspopup="menu"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProjMenu(projMenu === g.cwd ? null : g.cwd);
+                      }}
+                    >
+                      <Icon size={13}>
+                        <circle cx="5" cy="12" r="1.4" />
+                        <circle cx="12" cy="12" r="1.4" />
+                        <circle cx="19" cy="12" r="1.4" />
+                      </Icon>
+                    </button>
+                    <button
+                      class="pactbtn"
+                      title="在此工作区新建会话"
+                      aria-label="在此工作区新建会话"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        createInWorkspace(g.cwd);
+                      }}
+                    >
+                      <Icon size={13}>
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        <path d="M12 7v6M9 10h6" />
+                      </Icon>
+                    </button>
+                  </div>
+                  {projMenu === g.cwd && (
+                    <div class="pmenu" role="menu" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          if (g.cwd) void copyPath(g.cwd);
+                          else setProjMenu(null);
+                        }}
+                      >
+                        <Icon size={13}>
+                          <rect x="9" y="9" width="12" height="12" rx="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </Icon>
+                        复制路径
+                      </button>
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          setProjMenu(null);
+                          setRenameVal(name);
+                          setRenaming(g.cwd);
+                        }}
+                      >
+                        <Icon size={13}>
+                          <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />
+                        </Icon>
+                        重命名
+                      </button>
+                      <button role="menuitem" class="danger" onClick={() => removeWorkspace(g.cwd)}>
+                        <Icon size={13}>
+                          <path d="M18 6L6 18M6 6l12 12" />
+                        </Icon>
+                        移除工作区
+                      </button>
+                    </div>
+                  )}
+                </div>
                 {open &&
                   g.sessions.map((s: SessionSummary) => {
                     const preview = s.preview.trim();
@@ -383,10 +575,11 @@ function App(): JSX.Element {
                       </div>
                     );
                   })}
-                {open && g.sessions.length === 0 && <div class="pempty">（暂无会话）</div>}
+                {open && g.sessions.length === 0 && <div class="pempty">暂无会话，点击右侧 + 号开始</div>}
               </div>
             );
           })}
+          {projMenu && <div class="pmenu-mask" onClick={() => setProjMenu(null)} />}
         </nav>
         {currentView?.cwd && (
           <div class="sidefoot" title={currentView.cwd}>

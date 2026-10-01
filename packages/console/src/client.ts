@@ -135,6 +135,15 @@ export class ModouClient {
     return { serveCwd: body.serveCwd ?? "", recents: body.recents ?? [] };
   }
 
+  /** F9：从最近目录移除一项（控制台「移除工作区」；不动磁盘文件） */
+  async removeRecent(path: string): Promise<boolean> {
+    const res = await this.#request("/fs/recents/remove", {
+      method: "POST",
+      body: JSON.stringify({ path }),
+    });
+    return res.ok;
+  }
+
   /** Phase F6：请求 serve 弹出系统目录选择对话框（同机场景）。选完返回 path；取消返回 canceled。请求会挂到对话框关闭 */
   async pickDirNative(): Promise<{ path: string; canceled: boolean; error?: string; status: number }> {
     const res = await this.#request("/fs/pick", { method: "POST" });

@@ -131,12 +131,26 @@ input,textarea,kbd,pre{font:inherit}
 .srow .l2{display:block;font-size:12px;font-family:var(--f-num);color:var(--text-3);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sdel{position:absolute;top:50%;right:10px;transform:translateY(-50%);width:16px;height:16px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);color:var(--text-3);opacity:0;transition:opacity .15s,color .15s}
 .srow:hover .sdel,.sopen:focus-visible + .sdel,.sdel:focus-visible{opacity:1}
-/* F8 树状侧栏：项目分组节点 + 缩进的会话行（类名避开 MessageLog 参数行 .prow） */
-.pjrow{display:flex;align-items:center;gap:7px;width:calc(100% - 16px);margin:2px 8px;padding:7px 10px;border-radius:var(--r-md);color:var(--text-1)}
+/* F8/F9 树状侧栏：项目分组节点（悬浮显操作钮）+ 缩进的会话行（类名避开 MessageLog 参数行 .prow） */
+.pjrow{position:relative;display:flex;align-items:center;gap:7px;width:calc(100% - 16px);margin:2px 8px;padding:7px 10px;border-radius:var(--r-md);color:var(--text-1);cursor:pointer}
 .pjrow:hover{background:var(--bg-hover)}
-.pjrow svg{flex:none;color:var(--text-3)}
+.pjrow .picon{flex:none;display:flex;color:var(--text-3)}
 .pjrow .pname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:500;text-align:left}
-.pjrow .pcount{flex:none;font-size:11px;font-family:var(--f-num);color:var(--text-3)}
+.pjrow .pcount{flex:none;font-size:11px;font-family:var(--f-num);color:var(--text-2)}
+.pjrow .pcount.zero{color:var(--text-3)}
+.pjrow .pact{flex:none;display:flex;gap:2px;opacity:0;transition:opacity .15s}
+.pjrow:hover .pact,.pjrow:focus-within .pact{opacity:1}
+.pactbtn{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:4px;color:var(--text-3)}
+.pactbtn:hover{background:var(--bg-active);color:var(--text-1)}
+.prename{flex:1;min-width:0;background:var(--bg-sunken);border:1px solid var(--accent);border-radius:var(--r-sm);padding:2px 8px;font-size:13px;color:var(--text-1);outline:none}
+.pmenu-mask{position:fixed;inset:0;z-index:55}
+.pmenu{position:absolute;top:calc(100% + 2px);right:6px;z-index:56;min-width:156px;background:var(--bg-raised);border:1px solid var(--line-1);border-radius:var(--r-md);box-shadow:var(--shadow-pop);padding:4px;animation:dpIn .15s ease}
+.pmenu button{display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px;font-size:13px;color:var(--text-1);border-radius:var(--r-sm)}
+.pmenu button:hover{background:var(--bg-hover)}
+.pmenu button svg{flex:none;color:var(--text-3)}
+.pmenu button.danger{color:var(--error)}
+.pmenu button.danger svg{color:var(--error)}
+.pmenu button.danger:hover{background:var(--error-bg)}
 .pgroup .srow{margin:2px 8px 2px 26px}
 .pempty{padding:4px 10px 6px 36px;font-size:12px;color:var(--text-3)}
 .sdel:hover{color:var(--error)}

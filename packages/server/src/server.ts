@@ -212,6 +212,10 @@ export class ModouServer {
       if (url.pathname === "/fs/recents" && req.method === "GET") {
         return await this.#cwdRecents(res);
       }
+      // F9：从最近目录移除一项（控制台「移除工作区」用，不动磁盘文件）
+      if (url.pathname === "/fs/recents/remove" && req.method === "POST") {
+        return await this.#removeRecent(req, res);
+      }
       // Phase F6：系统目录选择对话框（浏览器与 serve 同机时；对话框弹在 serve 所在机器）
       if (url.pathname === "/fs/pick" && req.method === "POST") {
         return this.#pickDialog(res);
@@ -412,6 +416,28 @@ export class ModouServer {
     const roots = this.#options.fsAllowRoots;
     if (roots?.length) recents = recents.filter((r) => isPathAllowed(r, roots));
     this.#json(res, 200, { serveCwd: process.cwd(), recents });
+  }
+
+  /** F9：POST /fs/recents/remove {path}——从最近目录摘除（resolve 归一比对；不动磁盘文件） */
+  async #removeRecent(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const body = (await this.#readJson(req)) ?? {};
+    const raw = typeof body.path === "string" ? body.path : "";
+    if (!raw) {
+      return this.#json(res, 400, { error: "path required" });
+    }
+    const file = this.#recentsFile;
+    if (!file) {
+      return this.#json(res, 200, { ok: true, removed: 0 });
+    }
+    const prev = await this.#readRecents();
+    const next = prev.filter((r) => resolve(r) !== resolve(raw));
+    try {
+      await mkdir(dirname(file), { recursive: true });
+      await writeFile(file, JSON.stringify(next, null, 2));
+    } catch {
+      // 写失败仍按已移除响应（下次建会话覆盖写入自然收敛）
+    }
+    this.#json(res, 200, { ok: true, removed: prev.length - next.length });
   }
 
   /** Phase F6：系统目录选择对话框（Windows FolderBrowserDialog / macOS choose folder / Linux zenity） */
