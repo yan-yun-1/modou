@@ -4,10 +4,12 @@ import {
   emptyState,
   emptyView,
   markBusy,
+  groupSessions,
   replayEvents,
   setCurrent,
   setViewCwd,
   type ModouEvent,
+  type SessionSummary,
 } from "./state.js";
 
 // plan-web B2：事件→状态纯函数层测试（不依赖 DOM）
@@ -125,5 +127,23 @@ describe("工作目录展示（Phase F4）", () => {
     expect(state.views["s1"]?.cwd).toBe("E:\repo");
     const untouched = setViewCwd(state, "ghost", "E:\nowhere");
     expect(untouched).toBe(state);
+  });
+});
+
+describe("项目分组（F8 树状侧栏）", () => {
+  const sum = (id: string, cwd?: string): SessionSummary => ({ sessionId: id, active: false, preview: "", ...(cwd ? { cwd } : {}) });
+
+  it("按 cwd 聚合、保持首现顺序、未标注排最后", () => {
+    const groups = groupSessions([sum("a", "E:\\Agent"), sum("b", "E:\\Agent Code"), sum("c", "E:\\Agent"), sum("d")]);
+    expect(groups.map((g) => [g.name, g.sessions.length])).toEqual([
+      ["Agent", 2],
+      ["Agent Code", 1],
+      ["未标注项目", 1],
+    ]);
+    expect(groups[0]?.sessions.map((s) => s.sessionId)).toEqual(["a", "c"]);
+  });
+
+  it("空列表 → 空分组", () => {
+    expect(groupSessions([])).toEqual([]);
   });
 });

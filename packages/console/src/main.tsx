@@ -10,6 +10,7 @@ import {
   setCurrent,
   setNeedsToken,
   setNotice,
+  groupSessions,
   setSessions,
   setViewCwd,
   type ConsoleState,
@@ -119,12 +120,37 @@ function App(): JSX.Element {
   const [sideOpen, setSideOpen] = useState(true);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [serveCwd, setServeCwd] = useState("");
+  const [recentDirs, setRecentDirs] = useState<string[]>([]);
+  const [projOpen, setProjOpen] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("modou.projOpen") ?? "{}") as Record<string, boolean>;
+    } catch {
+      return {};
+    }
+  });
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const subsRef = useRef(new Map<string, { dispose(): void; attempts: number }>());
 
   const refreshSessions = useCallback(async () => {
     const { sessions, total } = await client.listSessions();
     setState((s) => setSessions(s, sessions, total));
+    // F8：最近目录（项目树空节点）与 serve 目录一并刷新
+    const rec = await client.getCwdRecents();
+    setServeCwd(rec.serveCwd);
+    setRecentDirs(rec.recents);
+  }, []);
+
+  /** F8：展开/收起项目分组（记忆到 localStorage；缺省展开=含当前会话的项目） */
+  const toggleProj = useCallback((cwd: string, open: boolean) => {
+    setProjOpen((m) => {
+      const next = { ...m, [cwd]: !open };
+      try {
+        localStorage.setItem("modou.projOpen", JSON.stringify(next));
+      } catch {
+        /* 存储不可用仅内存 */
+      }
+      return next;
+    });
   }, []);
 
   const subscribe = useCallback(
@@ -203,7 +229,6 @@ function App(): JSX.Element {
 
   useEffect(() => {
     void refreshSessions();
-    void client.getCwdRecents().then(({ serveCwd }) => setServeCwd(serveCwd));
   }, [refreshSessions]);
 
   const send = useCallback(
@@ -310,6 +335,14 @@ function App(): JSX.Element {
 
   const usage = currentView?.usage ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 };
   const total = usage.inputTokens + usage.outputTokens;
+
+  // F8：项目树 = 会话按目录分组（首现顺序，未标注最后）+ 最近目录里的空项目节点
+  const groups = groupSessions(state.sessions);
+  const knownCwds = new Set(groups.map((g) => g.cwd));
+  const projects = [
+    ...groups,
+    ...recentDirs.filter((d) => !knownCwds.has(d)).map((d) => ({ cwd: d, name: lastSeg(d), sessions: [] as SessionSummary[] })),
+  ];
   return (
     <div class="board" data-side={sideOpen ? "open" : "closed"}>
       <aside class="side">
@@ -320,32 +353,37 @@ function App(): JSX.Element {
           ＋ 新会话
         </button>
         <nav class="slist">
-          {state.sessions.length === 0 && <div class="sempty">暂无会话</div>}
-          {state.sessions.map((s: SessionSummary) => {
-            const preview = s.preview.trim();
-            const time = s.updatedAt ? relTime(s.updatedAt) : "—";
-            const proj = s.cwd ? lastSeg(s.cwd) : null;
+          {projects.length === 0 && <div class="sempty">暂无会话</div>}
+          {projects.map((g) => {
+            const open = projOpen[g.cwd] ?? true;
             return (
-              <div key={s.sessionId} class={"srow" + (s.sessionId === state.currentId ? " active" : "")}>
-                <button class="sopen" onClick={() => void openSession(s.sessionId)}>
-                  <span class="l1">{preview || `空会话 ${s.sessionId.slice(0, 8)}`}</span>
-                  <span class="l2">
-                    {proj ? (
-                      <>
-                        <b>{proj}</b> · {time}
-                      </>
-                    ) : preview ? (
-                      `${time} · ${s.sessionId.slice(0, 8)}`
-                    ) : (
-                      time
-                    )}
-                  </span>
-                </button>
-                <button class="sdel" title="删除此会话（不可恢复）" aria-label="删除此会话" onClick={() => deleteSession(s.sessionId)}>
-                  <Icon size={12}>
-                    <path d="M18 6L6 18M6 6l12 12" />
+              <div key={g.cwd || "(none)"} class="pgroup">
+                <button class="pjrow" title={g.cwd || "未标注项目（旧会话无目录记录）"} onClick={() => toggleProj(g.cwd, open)}>
+                  <Icon size={13}>
+                    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                   </Icon>
+                  <span class="pname">{g.name}</span>
+                  <span class="pcount">{g.sessions.length}</span>
                 </button>
+                {open &&
+                  g.sessions.map((s: SessionSummary) => {
+                    const preview = s.preview.trim();
+                    const time = s.updatedAt ? relTime(s.updatedAt) : "—";
+                    return (
+                      <div key={s.sessionId} class={"srow" + (s.sessionId === state.currentId ? " active" : "")}>
+                        <button class="sopen" onClick={() => void openSession(s.sessionId)}>
+                          <span class="l1">{preview || `空会话 ${s.sessionId.slice(0, 8)}`}</span>
+                          <span class="l2">{preview ? `${time} · ${s.sessionId.slice(0, 8)}` : time}</span>
+                        </button>
+                        <button class="sdel" title="删除此会话（不可恢复）" aria-label="删除此会话" onClick={() => deleteSession(s.sessionId)}>
+                          <Icon size={12}>
+                            <path d="M18 6L6 18M6 6l12 12" />
+                          </Icon>
+                        </button>
+                      </div>
+                    );
+                  })}
+                {open && g.sessions.length === 0 && <div class="pempty">（暂无会话）</div>}
               </div>
             );
           })}

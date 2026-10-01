@@ -180,3 +180,4 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | F6 系统目录对话框 | ✅ POST /fs/pick：serve 弹原生选择框（Win FolderBrowserDialog/macOS choose folder/Linux zenity；单例+10min 兜底回收，UTF-8 字节直写防中文乱码），弹层「系统对话框」按钮仅 localhost 显示；端到端实测选目录→建会话→cwd 显示与取消路径；recents 移至 ~/.modou/（b6f1e31 后续提交） | 2026-09-30 |
 | F6 反馈修复：对话框置顶 | ✅ 原生框挂置顶隐形属主窗体（无属主时被浏览器压住，用户以为没弹出）+ 弹层等待提示条；实测对话框直接抢前台、取消后复位 | 2026-09-30 |
 | F7 反馈：多项目混排可辨 | ✅ server 维护 cwd-index.json（store 同目录，创建落索引/删除同步清），/sessions 每行带 cwd；控制台会话行显示所属项目名（末段，与时间并列），底部状态条继续显示当前会话目录；集成测试覆盖索引落盘与删除清除（server 13/13） | 2026-09-30 |
+| F8 反馈：树状侧栏 | ✅ 会话列表重构为项目分组树：一级节点=项目目录（icon+名称+会话计数，点击展开/收起，偏好记 localStorage），会话缩进其下，空项目（来自 recents）也可存在；无 cwd 旧会话归「未标注项目」组排最后；底部状态条保留显示当前会话完整目录；groupSessions 纯函数 + vitest（console 14/14）；类名 .pjrow 避让 MessageLog 参数行 .prow（撞名踩坑记录） | 2026-09-30 |

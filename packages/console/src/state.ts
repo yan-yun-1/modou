@@ -213,6 +213,31 @@ export function setCurrent(state: ConsoleState, sessionId: string | null): Conso
   return { ...state, views, currentId: sessionId };
 }
 
+/** F8：项目分组（树状侧栏）。按 cwd 聚合保持首现顺序；无 cwd 的旧会话归入「未标注项目」并排在最后 */
+export interface ProjectGroup {
+  /** 空字符串表示未标注项目（旧会话无 cwd 索引） */
+  cwd: string;
+  name: string;
+  sessions: SessionSummary[];
+}
+
+export function groupSessions(sessions: SessionSummary[]): ProjectGroup[] {
+  const groups = new Map<string, ProjectGroup>();
+  for (const s of sessions) {
+    const cwd = s.cwd ?? "";
+    let g = groups.get(cwd);
+    if (!g) {
+      const segs = cwd ? cwd.split(/[\\/]+/).filter(Boolean) : [];
+      g = { cwd, name: cwd ? (segs[segs.length - 1] ?? cwd) : "未标注项目", sessions: [] };
+      groups.set(cwd, g);
+    }
+    g.sessions.push(s);
+  }
+  const list = [...groups.values()];
+  const none = list.filter((g) => g.cwd === "");
+  return [...list.filter((g) => g.cwd !== ""), ...none];
+}
+
 /** Phase F4：记录会话工作目录（创建响应回传的解析 cwd） */
 export function setViewCwd(state: ConsoleState, sessionId: string, cwd: string): ConsoleState {
   const view = state.views[sessionId];
