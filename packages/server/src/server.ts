@@ -827,7 +827,8 @@ export class ModouServer {
       return;
     }
     const type = CONTENT_TYPES[extname(target)] ?? "application/octet-stream";
-    res.writeHead(200, { "content-type": type });
+    // 控制台产物随版本变化：禁启发式缓存（本地开发常态更新，避免浏览器拿旧 bundle）
+    res.writeHead(200, { "content-type": type, "cache-control": "no-cache" });
     createReadStream(target).pipe(res);
   }
 
