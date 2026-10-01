@@ -433,13 +433,14 @@ function App(): JSX.Element {
   const usage = currentView?.usage ?? { inputTokens: 0, outputTokens: 0, costUsd: 0 };
   const total = usage.inputTokens + usage.outputTokens;
 
-  // F8：项目树 = 会话按目录分组（首现顺序，未标注最后）+ 最近目录里的空项目节点；F9 移除的工作区隐藏
+  // F8：项目树 = 会话按目录分组（首现顺序，未标注最后）+ 最近目录里的空项目节点。
+  // F9 修正：移除工作区只隐藏空节点（recents 来的）——有会话的组永远显示，避免隐藏吞掉真实会话
   const groups = groupSessions(state.sessions);
   const knownCwds = new Set(groups.map((g) => g.cwd));
   const projects = [
     ...groups,
     ...recentDirs.filter((d) => !knownCwds.has(d)).map((d) => ({ cwd: d, name: lastSeg(d), sessions: [] as SessionSummary[] })),
-  ].filter((g) => !projHidden.includes(g.cwd));
+  ].filter((g) => g.sessions.length > 0 || !projHidden.includes(g.cwd));
   return (
     <div class="board" data-side={sideOpen ? "open" : "closed"}>
       <aside class="side">
@@ -548,7 +549,12 @@ function App(): JSX.Element {
                         </Icon>
                         重命名
                       </button>
-                      <button role="menuitem" class="danger" onClick={() => removeWorkspace(g.cwd)}>
+                      <button
+                        role="menuitem"
+                        class="danger"
+                        title="从侧栏移除此工作区（不删除文件；其下已有会话仍会显示）"
+                        onClick={() => removeWorkspace(g.cwd)}
+                      >
                         <Icon size={13}>
                           <path d="M18 6L6 18M6 6l12 12" />
                         </Icon>
