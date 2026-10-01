@@ -320,7 +320,20 @@ function App(): JSX.Element {
       }
       const created = result.sessionId;
       setState((s) => setCurrent(s, created));
-      if (result.cwd) setState((s) => setViewCwd(s, created, result.cwd!));
+      if (result.cwd) {
+        setState((s) => setViewCwd(s, created, result.cwd!));
+        // F10.6：在被移除的工作区新建会话 = 重新启用该工作区（自动解除移除）
+        setProjHidden((m) => {
+          if (!m.includes(result.cwd!)) return m;
+          const next = m.filter((c) => c !== result.cwd!);
+          try {
+            localStorage.setItem("modou.projHidden", JSON.stringify(next));
+          } catch {
+            /* 存储不可用仅内存 */
+          }
+          return next;
+        });
+      }
       if (result.cwdWarning) setState((s) => setNotice(s, result.cwdWarning ?? null));
       await refreshSessions();
       subscribe(created);
@@ -328,19 +341,6 @@ function App(): JSX.Element {
     },
     [refreshSessions, subscribe],
   );
-
-  /** F10.5：恢复显示所有被移除的工作区（清空隐藏名单；其会话仍在磁盘） */
-  const restoreHidden = useCallback(() => {
-    setProjHidden(() => {
-      try {
-        localStorage.removeItem("modou.projHidden");
-      } catch {
-        /* 存储不可用仅内存 */
-      }
-      return [];
-    });
-    void refreshSessions();
-  }, [refreshSessions]);
 
   /** F9：在指定工作区新建会话（项目行气泡+ 按钮；成功后展开该组） */
   const createInWorkspace = useCallback(
@@ -490,12 +490,7 @@ function App(): JSX.Element {
           ＋ 新会话
         </button>
         <nav class="slist">
-          {projects.length === 0 &&
-            (projHidden.length > 0 ? (
-              <div class="sempty">工作区已移除，可在下方恢复</div>
-            ) : (
-              <div class="sempty">暂无会话</div>
-            ))}
+          {projects.length === 0 && <div class="sempty">暂无会话</div>}
           {projects.map((g) => {
             const open = projOpen[g.cwd] ?? true;
             const name = projAlias[g.cwd] ?? g.name;
@@ -596,7 +591,7 @@ function App(): JSX.Element {
                       <button
                         role="menuitem"
                         class="danger"
-                        title="从侧栏移除此工作区及其会话的显示（不删除文件与会话历史，可在列表底部恢复）"
+                        title="从侧栏移除此工作区及其会话的显示（不删除文件与会话历史）"
                         onClick={() => removeWorkspace(g.cwd)}
                       >
                         <Icon size={13}>
@@ -629,11 +624,6 @@ function App(): JSX.Element {
               </div>
             );
           })}
-          {projHidden.length > 0 && (
-            <button class="prestore" title="恢复显示所有被移除的工作区（其会话仍在磁盘上）" onClick={restoreHidden}>
-              已移除 {projHidden.length} 个工作区 · 恢复
-            </button>
-          )}
           {projMenu && <div class="pmenu-mask" onClick={() => setProjMenu(null)} />}
         </nav>
         {currentView?.cwd && (
