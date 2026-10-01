@@ -2,8 +2,11 @@ import { useCallback, useEffect, useState } from "preact/hooks";
 import type { JSX } from "preact";
 import { client } from "./client.js";
 
-// Phase F3（plan-web）：目录选择弹层——最近目录单击即建（快路径）/
-// 面包屑浏览器两步确认 / 手动路径 Enter 即建；400/403 内联回显；Esc/遮罩关闭。
+// 目录选择弹层。F10 重构（plan-web 反馈）：
+// - 面包屑导航（> 分隔，逐段可点）+ 左侧 ⬆ 返回上一级
+// - 子目录行：单击高亮选中 / 双击进入下一级 / 行内「选择」钮直接选定
+// - 底部：输入或粘贴绝对路径（自适应撑满）+「选择此文件夹」主按钮（取输入值 > 选中行 > 当前目录）
+// - 原生选择器降级为底部文字链接：先关闭本弹层再调用系统对话框，避免双弹窗叠加
 
 export interface DirPickResult {
   ok: boolean;
@@ -11,9 +14,11 @@ export interface DirPickResult {
 }
 
 export interface DirPickerProps {
-  /** 创建会话（App 注入 createAt）；成功返回 {ok:true}（App 关闭弹层），失败返回错误文案内联显示 */
+  /** 创建会话（App 注入 createAt）；成功返回 {ok:true}（弹层关闭），失败返回错误文案内联显示 */
   onPick: (cwd: string) => Promise<DirPickResult>;
   onClose: () => void;
+  /** F10：原生选择器在弹层已关闭后创建失败时，经此上报到全局通知 */
+  onError?: (msg: string) => void;
 }
 
 interface DirEntry {
@@ -56,25 +61,28 @@ function FolderIcon(): JSX.Element {
   );
 }
 
-export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
+export function DirPicker({ onPick, onClose, onError }: DirPickerProps): JSX.Element {
   const [cur, setCur] = useState<string | null>(null);
+  const [parent, setParent] = useState<string | null>(null);
   const [dirs, setDirs] = useState<DirEntry[]>([]);
   const [recents, setRecents] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
   const [manual, setManual] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const [pickBusy, setPickBusy] = useState(false);
   // 原生对话框弹在 serve 所在机器：仅浏览器与 serve 同机（localhost）时提供入口
   const [nativeAvailable] = useState(() => ["127.0.0.1", "localhost", "[::1]", "::1"].includes(location.hostname));
 
   const browse = useCallback(async (p?: string) => {
     setErr("");
+    setSelected(null);
     const r = await client.listDirs(p);
     if (r.status !== 200) {
       setErr(r.error ?? `浏览失败（${r.status}）`);
       return;
     }
     setCur(r.path);
+    setParent(r.parent);
     setDirs(r.dirs);
   }, []);
 
@@ -101,7 +109,7 @@ export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
       setBusy(true);
       const result = await onPick(p.trim());
       setBusy(false);
-      // 成功 → App 已切到新会话，关闭弹层；失败 → 错误文案留在弹层内联
+      // 成功 → 关闭弹层；失败 → 错误文案留在弹层内联
       if (result.ok) {
         onClose();
         return;
@@ -111,20 +119,24 @@ export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
     [busy, onPick, onClose],
   );
 
-  /** Phase F6：系统目录选择对话框——serve 弹原生框，选中即建会话；取消静默返回 */
+  /** F10：主按钮/输入框 Enter——输入值 > 选中行 > 当前浏览目录 */
+  const confirm = useCallback(() => {
+    const target = manual.trim() || selected || cur;
+    if (target) void tryCreate(target);
+  }, [manual, selected, cur, tryCreate]);
+
+  /** F10：原生选择器——先关闭本弹层再调用（消除双弹窗）；选完直接建会话，取消静默 */
   const nativePick = useCallback(async () => {
-    if (pickBusy) return;
-    setErr("");
-    setPickBusy(true);
+    onClose();
     const r = await client.pickDirNative();
-    setPickBusy(false);
     if (r.error) {
-      setErr(r.error);
+      onError?.(r.error);
       return;
     }
     if (r.canceled || !r.path) return;
-    await tryCreate(r.path);
-  }, [pickBusy, tryCreate]);
+    const result = await onPick(r.path);
+    if (!result.ok && result.error) onError?.(result.error);
+  }, [onClose, onPick, onError]);
 
   return (
     <div
@@ -152,20 +164,47 @@ export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
             ))}
           </div>
         )}
-        <div class="dp-crumb">
-          {crumbs(cur).map((c, i) => (
-            <button key={c.path} class={"dp-crumbseg" + (i === crumbs(cur).length - 1 ? " tail" : "")} onClick={() => void browse(c.path)}>
-              {c.label}
-            </button>
-          ))}
+        <div class="dp-nav">
+          <button class="dp-up" title="返回上一级" aria-label="返回上一级" disabled={!parent} onClick={() => parent && void browse(parent)}>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </button>
+          <div class="dp-crumb">
+            {crumbs(cur).map((c, i) => (
+              <span key={c.path} class="dp-crumbseg">
+                {i > 0 && <span class="dp-sep">&gt;</span>}
+                <button class={i === crumbs(cur).length - 1 ? "tail" : ""} onClick={() => void browse(c.path)}>
+                  {c.label}
+                </button>
+              </span>
+            ))}
+          </div>
         </div>
         <div class="dp-list">
           {dirs.length === 0 && <div class="dp-empty">（无子目录）</div>}
           {dirs.map((d) => (
-            <button key={d.path} class="dp-row" onClick={() => void browse(d.path)}>
+            <div
+              key={d.path}
+              class={"dp-row" + (selected === d.path ? " sel" : "")}
+              title={d.path}
+              onClick={() => setSelected(d.path)}
+              onDblClick={() => void browse(d.path)}
+            >
               <FolderIcon />
               <span class="dp-rowname">{d.name}</span>
-            </button>
+              <button
+                class="dp-pick"
+                title={`选择 ${d.name} 作为项目目录`}
+                disabled={busy}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void tryCreate(d.path);
+                }}
+              >
+                选择
+              </button>
+            </div>
           ))}
         </div>
         {err && (
@@ -173,27 +212,28 @@ export function DirPicker({ onPick, onClose }: DirPickerProps): JSX.Element {
             {err}
           </div>
         )}
-        {pickBusy && <div class="dp-wait">系统选择框已弹出（始终置顶）——若未看到，请查看任务栏上的「浏览文件夹」窗口。</div>}
         <div class="dp-foot">
-          {nativeAvailable && (
-            <button class="dp-native" title="弹出系统目录选择对话框（serve 与浏览器同机时可用）" disabled={pickBusy || busy} onClick={() => void nativePick()}>
-              {pickBusy ? "等待对话框…" : "系统对话框"}
-            </button>
-          )}
           <input
             class="dp-input"
-            placeholder="或输入绝对路径，Enter 确认"
+            placeholder="输入或粘贴绝对路径"
             spellcheck={false}
             value={manual}
             onInput={(e) => setManual((e.target as HTMLInputElement).value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && manual.trim()) void tryCreate(manual.trim());
+              if (e.key === "Enter") confirm();
             }}
           />
-          <button class="dp-go" disabled={busy || !cur} onClick={() => cur && void tryCreate(cur)}>
-            在此新建
+          <button class="dp-go" title="选择此文件夹作为项目目录" disabled={busy} onClick={confirm}>
+            选择此文件夹
           </button>
         </div>
+        {nativeAvailable && (
+          <div class="dp-nativelink">
+            <button class="dp-nlink" onClick={() => void nativePick()}>
+              浏览本地文件夹（系统原生）
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
