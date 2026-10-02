@@ -3,6 +3,7 @@ import type {
   LanguageModel,
   ModouEvent,
   ModelCapabilities,
+  PermissionMode,
   SessionStore,
 } from "@modou-dev/core";
 import { ApprovalBridge } from "./approval-bridge.js";
@@ -46,6 +47,10 @@ export interface ModouSession {
   approvals: ApprovalBridge;
   /** 一次任务的事件流；同一会话请勿并发 run */
   run(input: string, options?: { signal?: AbortSignal }): AsyncGenerator<ModouEvent>;
+  /** plan-web F11：运行时切换权限模式（plan/default/yolo）——下一工具调用即生效，保留已记住的白名单 */
+  setPermissionMode(mode: PermissionMode): void;
+  /** plan-web F11：当前权限模式 */
+  get permissionMode(): PermissionMode;
   /** 进程退出前调用：关闭 MCP 连接，防止子进程挂起 */
   close(): Promise<void>;
 }
@@ -78,6 +83,10 @@ export async function createSession(
     store: bundle.store,
     approvals,
     run: (input, runOptions) => bundle.loop.run(input, bundle.sessionId, runOptions),
+    setPermissionMode: (mode) => bundle.loop.setPermissionMode(mode),
+    get permissionMode() {
+      return bundle.loop.permissionMode;
+    },
     close: () => bundle.closeMcp(),
   };
 }

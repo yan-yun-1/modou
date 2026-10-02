@@ -249,6 +249,10 @@ export class ModouServer {
         if (parts[2] === "cancel" && req.method === "POST") {
           return this.#cancelTurn(id, res);
         }
+        // F11：运行时切换权限模式（plan/default/yolo；忙时可切，下一工具调用生效）
+        if (parts[2] === "permission" && req.method === "POST") {
+          return await this.#setPermissionMode(id, req, res);
+        }
         if (parts[2] === "messages" && req.method === "POST") {
           const body = await this.#readJson(req);
           return await this.#postMessage(id, String(body?.input ?? ""), res);
@@ -312,6 +316,11 @@ export class ModouServer {
       ...(chosenAbs && defaults.settings ? { settings: { ...defaults.settings, cwd: chosenAbs } } : {}),
       ...(this.#options.createSessionOverrides?.(body) ?? {}),
     });
+    // F11：按请求覆盖权限模式（plan/default/yolo），与会话一一对应
+    const requestedMode = typeof body.permissionMode === "string" ? body.permissionMode : undefined;
+    if (requestedMode === "plan" || requestedMode === "default" || requestedMode === "yolo") {
+      session.setPermissionMode(requestedMode);
+    }
     const entry: SessionEntry = { session, busy: false, sseClients: new Set() };
     this.#sessions.set(session.sessionId, entry);
     const effectiveCwd = normalizeDir(chosenAbs ?? process.cwd());
@@ -324,6 +333,7 @@ export class ModouServer {
       mcpStatus: session.mcpStatus,
       cwd: chosenAbs,
       cwdWarning,
+      permissionMode: session.permissionMode,
     });
   }
 
@@ -629,6 +639,21 @@ export class ModouServer {
     await store.delete(id).catch(() => {});
     await this.#forgetSessionCwd(id);
     this.#json(res, 200, { ok: true, deletedHistory: true });
+  }
+
+  /** F11：POST /sessions/:id/permission {mode}——运行时切换权限模式（活跃会话） */
+  async #setPermissionMode(id: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const entry = this.#sessions.get(id);
+    if (!entry) {
+      return this.#json(res, 404, { error: "session not found（重启后的历史会话不支持切换，请新建会话时选择）" });
+    }
+    const body = (await this.#readJson(req)) ?? {};
+    const mode = body.mode;
+    if (mode !== "plan" && mode !== "default" && mode !== "yolo") {
+      return this.#json(res, 400, { error: "mode 须为 plan | default | yolo" });
+    }
+    entry.session.setPermissionMode(mode);
+    this.#json(res, 200, { ok: true, permissionMode: entry.session.permissionMode });
   }
 
   async #sse(id: string, res: ServerResponse): Promise<void> {

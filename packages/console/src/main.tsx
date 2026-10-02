@@ -13,6 +13,7 @@ import {
   groupSessions,
   setSessions,
   setViewCwd,
+  setViewPermissionMode,
   type ConsoleState,
   type ModouEvent,
   type SessionSummary,
@@ -154,6 +155,15 @@ function App(): JSX.Element {
       return [];
     }
   });
+  // F11：权限模式（新建会话默认值；localStorage 持久）
+  const [permMode, setPermMode] = useState<string>(() => {
+    try {
+      return localStorage.getItem("modou.permMode") ?? "default";
+    } catch {
+      return "default";
+    }
+  });
+  const permModeRef = useRef(permMode);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const subsRef = useRef(new Map<string, { dispose(): void; attempts: number }>());
 
@@ -307,10 +317,35 @@ function App(): JSX.Element {
     [subscribe],
   );
 
+  /** F11：切换权限模式——活跃会话即时生效；回放会话与未开会话仅更新新建默认值 */
+  const changePermMode = useCallback(
+    (mode: string) => {
+      permModeRef.current = mode;
+      setPermMode(mode);
+      try {
+        localStorage.setItem("modou.permMode", mode);
+      } catch {
+        /* 存储不可用仅内存 */
+      }
+      const id = state.currentId;
+      const view = id ? state.views[id] : null;
+      if (!id || !view) return;
+      if (view.replay) {
+        setState((s) => setNotice(s, "历史回放会话不支持切换权限模式；新会话将以该模式创建"));
+        return;
+      }
+      void client.setPermissionMode(id, mode).then((r) => {
+        if (r.ok && r.permissionMode) setState((s) => setViewPermissionMode(s, id, r.permissionMode!));
+        else if (r.error) setState((s) => setNotice(s, r.error!));
+      });
+    },
+    [state.currentId, state.views],
+  );
+
   /** Phase F3：创建会话核心——成功接线订阅/刷新；失败返回错误文案（弹层内联回显用） */
   const createAt = useCallback(
     async (cwdText: string): Promise<{ ok: boolean; sessionId?: string; error?: string }> => {
-      const result = await client.createSession(cwdText);
+      const result = await client.createSession(cwdText, permModeRef.current);
       if (result.status === 401) {
         unauthorizedListener?.();
         return { ok: false };
@@ -334,6 +369,8 @@ function App(): JSX.Element {
           return next;
         });
       }
+      // F11：会话的权限模式入视图状态
+      if (result.permissionMode) setState((s) => setViewPermissionMode(s, created, result.permissionMode!));
       if (result.cwdWarning) setState((s) => setNotice(s, result.cwdWarning ?? null));
       await refreshSessions();
       subscribe(created);
@@ -734,6 +771,16 @@ function App(): JSX.Element {
                 }}
               />
               <div class="dockfoot">
+                <select
+                  class="permsel"
+                  title="权限模式：plan=只读调研，default=默认审批，yolo=全自动"
+                  value={currentView?.permissionMode ?? permMode}
+                  onChange={(e) => changePermMode((e.target as HTMLSelectElement).value)}
+                >
+                  <option value="plan">计划模式</option>
+                  <option value="default">默认审批</option>
+                  <option value="yolo">全自动</option>
+                </select>
                 <span class="dockhint">
                   {pendingId ? "1 拒绝 · 2 允许 · 3 总是允许" : "Enter 发送 · Shift+Enter 换行"}
                 </span>

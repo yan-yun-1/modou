@@ -286,6 +286,37 @@ describe("ModouServer（F18）", () => {
     }
   });
 
+  // F11（plan-web）：权限模式——创建时指定 + 运行时切换
+  it("permissionMode：创建覆盖 + POST permission 运行时切换 + 非法值 400", async () => {
+    const created = await fetch(`${baseUrl}/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ permissionMode: "yolo" }),
+    });
+    expect(created.status).toBe(201);
+    const body = (await created.json()) as { sessionId: string; permissionMode: string };
+    expect(body.permissionMode).toBe("yolo");
+    const sw = await fetch(`${baseUrl}/sessions/${body.sessionId}/permission`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "plan" }),
+    });
+    expect(sw.status).toBe(200);
+    expect(await sw.json()).toMatchObject({ ok: true, permissionMode: "plan" });
+    const bad = await fetch(`${baseUrl}/sessions/${body.sessionId}/permission`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "chaos" }),
+    });
+    expect(bad.status).toBe(400);
+    const missing = await fetch(`${baseUrl}/sessions/session-nonexistent/permission`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mode: "plan" }),
+    });
+    expect(missing.status).toBe(404);
+  });
+
   // F7（plan-web 反馈）：会话→项目目录索引，多项目混排时每行可辨所属项目
   it("GET /sessions 附每会话 cwd；删除后索引同步清除", async () => {
     const { readFile } = await import("node:fs/promises");

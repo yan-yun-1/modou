@@ -12,7 +12,7 @@ import { compactMessages, needsCompaction } from "./context/compaction.js";
 import type { ModouEvent } from "./events.js";
 import type { ModelCapabilities } from "./models/catalog.js";
 import { streamTurn } from "./models/stream.js";
-import type { PermissionEngine, PermissionRule } from "./permissions.js";
+import type { PermissionEngine, PermissionMode, PermissionRule } from "./permissions.js";
 import { pathOfArgs, type LspIntegration } from "./lsp.js";
 import { rebuildState } from "./session.js";
 import type { SessionStore } from "./session-store.js";
@@ -112,6 +112,15 @@ export class AgentLoop {
 
   constructor(deps: AgentLoopDeps) {
     this.#deps = deps;
+  }
+
+  /** plan-web F11：运行时切换权限模式——原引擎实例上翻 mode（保留已记住的白名单规则） */
+  setPermissionMode(mode: PermissionMode): void {
+    this.#deps.permissions.mode = mode;
+  }
+
+  get permissionMode(): PermissionMode {
+    return this.#deps.permissions.mode;
   }
 
   async *run(

@@ -98,14 +98,24 @@ export class ModouClient {
     return body.deleted ?? 0;
   }
 
-  /** 创建会话；400/401 返回错误文案（cwd 不存在等） */
-  async createSession(cwd: string): Promise<{ sessionId: string; cwd?: string; cwdWarning?: string; error?: string; status: number }> {
+  /** 创建会话；400/401 返回错误文案（cwd 不存在等）。F11：可带 permissionMode（plan/default/yolo） */
+  async createSession(cwd: string, permissionMode?: string): Promise<{ sessionId: string; cwd?: string; cwdWarning?: string; permissionMode?: string; error?: string; status: number }> {
     const res = await this.#request("/sessions", {
       method: "POST",
-      body: JSON.stringify({ cwd }),
+      body: JSON.stringify({ cwd, ...(permissionMode ? { permissionMode } : {}) }),
     });
-    const body = (await res.json()) as { sessionId?: string; cwd?: string; cwdWarning?: string; error?: string };
-    return { sessionId: body.sessionId ?? "", cwd: body.cwd, cwdWarning: body.cwdWarning, error: body.error, status: res.status };
+    const body = (await res.json()) as { sessionId?: string; cwd?: string; cwdWarning?: string; permissionMode?: string; error?: string };
+    return { sessionId: body.sessionId ?? "", cwd: body.cwd, cwdWarning: body.cwdWarning, permissionMode: body.permissionMode, error: body.error, status: res.status };
+  }
+
+  /** F11：运行时切换活跃会话的权限模式（历史回放会话不支持，返回 404） */
+  async setPermissionMode(sessionId: string, mode: string): Promise<{ ok: boolean; permissionMode?: string; error?: string; status: number }> {
+    const res = await this.#request(`/sessions/${sessionId}/permission`, {
+      method: "POST",
+      body: JSON.stringify({ mode }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { ok?: boolean; permissionMode?: string; error?: string };
+    return { ok: res.ok, permissionMode: body.permissionMode, error: body.error, status: res.status };
   }
 
   /** Phase F3：列子目录（目录选择弹层）；缺省 path = serve 启动目录。400/403 返回 error 文案 */

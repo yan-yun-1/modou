@@ -60,6 +60,8 @@ export interface SessionView {
   replay: boolean;
   /** Phase F4：工作目录（创建响应回传的解析 cwd；replay 旧会话无此数据则不显示） */
   cwd?: string;
+  /** F11：权限模式（plan/default/yolo；创建响应或运行时切换写入） */
+  permissionMode?: string;
 }
 
 export interface ConsoleState {
@@ -236,6 +238,13 @@ export function groupSessions(sessions: SessionSummary[]): ProjectGroup[] {
   const list = [...groups.values()];
   const none = list.filter((g) => g.cwd === "");
   return [...list.filter((g) => g.cwd !== ""), ...none];
+}
+
+/** F11：记录/更新会话权限模式 */
+export function setViewPermissionMode(state: ConsoleState, sessionId: string, mode: string): ConsoleState {
+  const view = state.views[sessionId];
+  if (!view) return state;
+  return { ...state, views: { ...state.views, [sessionId]: { ...view, permissionMode: mode } } };
 }
 
 /** Phase F4：记录会话工作目录（创建响应回传的解析 cwd） */
