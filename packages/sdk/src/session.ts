@@ -35,6 +35,8 @@ export interface CreateSessionOptions {
   sessionId?: string;
   /** 测试/高级用法：绕过真实 provider */
   model?: LanguageModel;
+  /** F12：覆盖模型 id（按当前 provider 解析；缺省用 settings.modelId） */
+  modelId?: string;
 }
 
 export interface ModouSession {
@@ -51,6 +53,12 @@ export interface ModouSession {
   setPermissionMode(mode: PermissionMode): void;
   /** plan-web F11：当前权限模式 */
   get permissionMode(): PermissionMode;
+  /** F12：热切换思考强度（off/low/medium/high），下一请求生效 */
+  setThinking(level: "off" | "low" | "medium" | "high"): void;
+  /** F12：当前模型 id（随 setModelId 更新） */
+  get modelId(): string;
+  /** F12：运行时切换模型（当前 provider 内；下一请求生效） */
+  setModelId(modelId: string): void;
   /** 进程退出前调用：关闭 MCP 连接，防止子进程挂起 */
   close(): Promise<void>;
 }
@@ -68,6 +76,7 @@ export async function createSession(
   const bundle = await createLoopFromSettings({
     settings,
     cwd: options.cwd ?? process.cwd(),
+    modelId: options.modelId,
     home: options.home,
     modelOverrides: options.modelOverrides,
     checkpointer: options.checkpointer,
@@ -84,6 +93,14 @@ export async function createSession(
     approvals,
     run: (input, runOptions) => bundle.loop.run(input, bundle.sessionId, runOptions),
     setPermissionMode: (mode) => bundle.loop.setPermissionMode(mode),
+    setThinking: (level) => bundle.setThinking(level),
+    get modelId() {
+      return bundle.modelId;
+    },
+    setModelId: (modelId) => {
+      bundle.loop.setModel(bundle.buildModel(modelId));
+      bundle.modelId = modelId;
+    },
     get permissionMode() {
       return bundle.loop.permissionMode;
     },

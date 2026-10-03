@@ -62,6 +62,10 @@ export interface SessionView {
   cwd?: string;
   /** F11：权限模式（plan/default/yolo；创建响应或运行时切换写入） */
   permissionMode?: string;
+  /** F12：模型 id（创建响应或运行时切换写入） */
+  modelId?: string;
+  /** F12：思考强度（off/low/medium/high） */
+  thinking?: string;
 }
 
 export interface ConsoleState {
@@ -238,6 +242,17 @@ export function groupSessions(sessions: SessionSummary[]): ProjectGroup[] {
   const list = [...groups.values()];
   const none = list.filter((g) => g.cwd === "");
   return [...list.filter((g) => g.cwd !== ""), ...none];
+}
+
+/** F12：更新会话的模型/思考强度（运行时切换回写） */
+export function setViewRuntimeState(
+  state: ConsoleState,
+  sessionId: string,
+  patch: { modelId?: string; thinking?: string },
+): ConsoleState {
+  const view = state.views[sessionId];
+  if (!view) return state;
+  return { ...state, views: { ...state.views, [sessionId]: { ...view, ...patch } } };
 }
 
 /** F11：记录/更新会话权限模式 */

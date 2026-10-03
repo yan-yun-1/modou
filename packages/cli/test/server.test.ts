@@ -317,6 +317,55 @@ describe("ModouServer（F18）", () => {
     expect(missing.status).toBe(404);
   });
 
+  // F12（plan-web）：模型列表 + 运行时切换模型/思考强度
+  it("GET /models：按 provider 列出模型；创建指定 model；切换与思考强度生效", async () => {
+    const list = (await fetch(`${baseUrl}/models`).then((r) => r.json())) as {
+      provider: string;
+      models: { id: string; displayName: string; supportsReasoning: boolean }[];
+    };
+    expect(list.provider).toBe("anthropic");
+    expect(list.models.length).toBeGreaterThan(0);
+    expect(list.models.every((m) => typeof m.id === "string" && typeof m.displayName === "string")).toBe(true);
+
+    const target = list.models.find((m) => m.id !== "claude-sonnet-4-5") ?? list.models[0];
+    const created = await fetch(`${baseUrl}/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: target.id }),
+    });
+    expect(created.status).toBe(201);
+    const body = (await created.json()) as { sessionId: string; modelId: string };
+    expect(body.modelId).toBe(target.id);
+
+    const switched = await fetch(`${baseUrl}/sessions/${body.sessionId}/model`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-5" }),
+    });
+    expect(switched.status).toBe(200);
+    expect(await switched.json()).toMatchObject({ ok: true, modelId: "claude-sonnet-4-5" });
+
+    const badModel = await fetch(`${baseUrl}/sessions/${body.sessionId}/model`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ model: "不存在的模型" }),
+    });
+    expect(badModel.status).toBe(400);
+
+    const think = await fetch(`${baseUrl}/sessions/${body.sessionId}/thinking`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ level: "high" }),
+    });
+    expect(think.status).toBe(200);
+    const badLevel = await fetch(`${baseUrl}/sessions/${body.sessionId}/thinking`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ level: "max" }),
+    });
+    expect(badLevel.status).toBe(400);
+  });
+
   // F7（plan-web 反馈）：会话→项目目录索引，多项目混排时每行可辨所属项目
   it("GET /sessions 附每会话 cwd；删除后索引同步清除", async () => {
     const { readFile } = await import("node:fs/promises");

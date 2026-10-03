@@ -270,12 +270,25 @@ html[data-theme="light"] .icon-moon{display:inline-flex}
 .dock:focus-within{border-color:var(--accent)}
 .dock textarea{display:block;width:100%;resize:none;border:0;outline:0;background:transparent;font-family:var(--f-zh);font-size:14px;line-height:1.6;color:var(--text-1);max-height:200px}
 .dock textarea::placeholder{color:var(--text-3);opacity:1}
-.dockfoot{display:flex;align-items:center;gap:var(--s2);margin-top:var(--s2)}
+.dockfoot{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-top:var(--s2)}
+.dockleft{display:flex;align-items:center;gap:var(--s2);min-width:0}
+.dockright{display:flex;align-items:center;gap:var(--s2);flex:none}
 .permsel{flex:none;max-width:110px;background:transparent;border:1px solid transparent;border-radius:var(--r-sm);padding:2px 4px;font-size:11px;font-family:var(--f-num);color:var(--text-3);cursor:pointer}
 .permsel:hover{border-color:var(--line-2);color:var(--text-2)}
 .permsel:focus{outline:none;border-color:var(--accent)}
-.dockhint{font-family:var(--f-mono);font-size:12px;color:var(--text-3)}
-.send{margin-left:auto;flex:none;display:inline-flex;align-items:center;justify-content:center;height:32px;min-width:32px;border-radius:50%;background:var(--accent);color:var(--on-accent);transition:background .15s,color .15s}
+.dockhint{font-family:var(--f-mono);font-size:11px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* F12 胶囊选择器：模型 / 思考强度（菜单向上弹出） */
+.pillwrap{position:relative}
+.pill{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:1px solid var(--line-2);border-radius:999px;font-size:12px;color:var(--text-2);background:transparent;transition:background .15s,color .15s,border-color .15s}
+.pill:hover,.pill.on{background:var(--bg-hover);color:var(--text-1)}
+.pillcaret{font-size:9px;color:var(--text-3)}
+.pillbrain{font-size:11px;line-height:1}
+.pillmenu{position:absolute;bottom:calc(100% + 6px);right:0;z-index:56;min-width:170px;background:var(--bg-raised);border:1px solid var(--line-1);border-radius:var(--r-md);box-shadow:var(--shadow-pop);padding:4px;animation:dpIn .15s ease}
+.pillitem{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:7px 10px;font-size:13px;color:var(--text-1);border-radius:var(--r-sm)}
+.pillitem:hover{background:var(--bg-hover)}
+.pillitem.on{color:var(--text-1);background:var(--bg-active)}
+.pilltag{flex:none;font-size:10px;color:var(--text-3);border:1px solid var(--line-2);border-radius:4px;padding:0 4px}
+.send{flex:none;display:inline-flex;align-items:center;justify-content:center;height:32px;min-width:32px;border-radius:50%;background:var(--accent);color:var(--on-accent);transition:background .15s,color .15s}
 .send:hover:not(:disabled){background:var(--accent-hover)}
 .send:active:not(:disabled){transform:translateY(1px)}
 .send:disabled{opacity:.4;cursor:default}

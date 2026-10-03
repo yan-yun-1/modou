@@ -98,14 +98,78 @@ export class ModouClient {
     return body.deleted ?? 0;
   }
 
-  /** 创建会话；400/401 返回错误文案（cwd 不存在等）。F11：可带 permissionMode（plan/default/yolo） */
-  async createSession(cwd: string, permissionMode?: string): Promise<{ sessionId: string; cwd?: string; cwdWarning?: string; permissionMode?: string; error?: string; status: number }> {
+  /** 创建会话；400/401 返回错误文案（cwd 不存在等）。F11/F12：可带权限模式、模型、思考强度 */
+  async createSession(
+    cwd: string,
+    permissionMode?: string,
+    model?: string,
+    thinking?: string,
+  ): Promise<{
+    sessionId: string;
+    cwd?: string;
+    cwdWarning?: string;
+    permissionMode?: string;
+    modelId?: string;
+    error?: string;
+    status: number;
+  }> {
     const res = await this.#request("/sessions", {
       method: "POST",
-      body: JSON.stringify({ cwd, ...(permissionMode ? { permissionMode } : {}) }),
+      body: JSON.stringify({
+        cwd,
+        ...(permissionMode ? { permissionMode } : {}),
+        ...(model ? { model } : {}),
+        ...(thinking ? { thinking } : {}),
+      }),
     });
-    const body = (await res.json()) as { sessionId?: string; cwd?: string; cwdWarning?: string; permissionMode?: string; error?: string };
-    return { sessionId: body.sessionId ?? "", cwd: body.cwd, cwdWarning: body.cwdWarning, permissionMode: body.permissionMode, error: body.error, status: res.status };
+    const body = (await res.json()) as {
+      sessionId?: string;
+      cwd?: string;
+      cwdWarning?: string;
+      permissionMode?: string;
+      modelId?: string;
+      error?: string;
+    };
+    return {
+      sessionId: body.sessionId ?? "",
+      cwd: body.cwd,
+      cwdWarning: body.cwdWarning,
+      permissionMode: body.permissionMode,
+      modelId: body.modelId,
+      error: body.error,
+      status: res.status,
+    };
+  }
+
+  /** F12：可用模型列表（当前 provider；控制台模型选择器用） */
+  async listModels(): Promise<{ provider: string; models: { id: string; displayName: string; supportsReasoning: boolean }[] }> {
+    const res = await this.#request("/models");
+    if (!res.ok) return { provider: "", models: [] };
+    const body = (await res.json()) as {
+      provider?: string;
+      models?: { id: string; displayName: string; supportsReasoning: boolean }[];
+    };
+    return { provider: body.provider ?? "", models: body.models ?? [] };
+  }
+
+  /** F12：运行时切换会话模型 */
+  async setSessionModel(sessionId: string, model: string): Promise<{ ok: boolean; modelId?: string; error?: string; status: number }> {
+    const res = await this.#request(`/sessions/${sessionId}/model`, {
+      method: "POST",
+      body: JSON.stringify({ model }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { ok?: boolean; modelId?: string; error?: string };
+    return { ok: res.ok, modelId: body.modelId, error: body.error, status: res.status };
+  }
+
+  /** F12：运行时切换思考强度 */
+  async setSessionThinking(sessionId: string, level: string): Promise<{ ok: boolean; error?: string; status: number }> {
+    const res = await this.#request(`/sessions/${sessionId}/thinking`, {
+      method: "POST",
+      body: JSON.stringify({ level }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    return { ok: res.ok, error: body.error, status: res.status };
   }
 
   /** F11：运行时切换活跃会话的权限模式（历史回放会话不支持，返回 404） */

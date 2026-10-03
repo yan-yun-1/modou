@@ -123,6 +123,11 @@ export class AgentLoop {
     return this.#deps.permissions.mode;
   }
 
+  /** plan-web F12：运行时切换模型（下一工具调用/请求生效） */
+  setModel(model: LanguageModel): void {
+    this.#deps.model = model;
+  }
+
   async *run(
     input: string,
     sessionId: string,

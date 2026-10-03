@@ -5,11 +5,12 @@ import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ModouEvent } from "@modou-dev/core";
-import { VERSION } from "@modou-dev/core";
+import type { ModouEvent, ModelCapabilities } from "@modou-dev/core";
+import { MODEL_CATALOG, VERSION } from "@modou-dev/core";
 import {
   createSession,
   loadModelOverrides,
+  loadSettings,
   SessionStore,
   type CreateSessionOptions,
   type ModouSession,
@@ -220,6 +221,10 @@ export class ModouServer {
       if (url.pathname === "/fs/pick" && req.method === "POST") {
         return this.#pickDialog(res);
       }
+      // F12：可用模型列表（当前 provider 内；控制台模型选择器用）
+      if (url.pathname === "/models" && req.method === "GET") {
+        return await this.#listModels(res);
+      }
       if (url.pathname === "/sessions") {
         if (req.method === "POST") {
           return await this.#createSession(req, res);
@@ -252,6 +257,13 @@ export class ModouServer {
         // F11：运行时切换权限模式（plan/default/yolo；忙时可切，下一工具调用生效）
         if (parts[2] === "permission" && req.method === "POST") {
           return await this.#setPermissionMode(id, req, res);
+        }
+        // F12：运行时切换模型 / 思考强度
+        if (parts[2] === "model" && req.method === "POST") {
+          return await this.#setSessionModel(id, req, res);
+        }
+        if (parts[2] === "thinking" && req.method === "POST") {
+          return await this.#setSessionThinking(id, req, res);
         }
         if (parts[2] === "messages" && req.method === "POST") {
           const body = await this.#readJson(req);
@@ -314,12 +326,24 @@ export class ModouServer {
       cwd: chosenAbs,
       // A5：settings.cwd 同步覆盖，杜绝 SDK 层 settings 优先把请求 cwd 钉死
       ...(chosenAbs && defaults.settings ? { settings: { ...defaults.settings, cwd: chosenAbs } } : {}),
+      // F12：创建时指定模型 id（当前 provider 内）
+      ...(typeof body.model === "string" && body.model !== "" ? { modelId: body.model } : {}),
       ...(this.#options.createSessionOverrides?.(body) ?? {}),
     });
     // F11：按请求覆盖权限模式（plan/default/yolo），与会话一一对应
     const requestedMode = typeof body.permissionMode === "string" ? body.permissionMode : undefined;
     if (requestedMode === "plan" || requestedMode === "default" || requestedMode === "yolo") {
       session.setPermissionMode(requestedMode);
+    }
+    // F12：创建时指定思考强度
+    const requestedThinking = body.thinking;
+    if (
+      requestedThinking === "off" ||
+      requestedThinking === "low" ||
+      requestedThinking === "medium" ||
+      requestedThinking === "high"
+    ) {
+      session.setThinking(requestedThinking);
     }
     const entry: SessionEntry = { session, busy: false, sseClients: new Set() };
     this.#sessions.set(session.sessionId, entry);
@@ -334,6 +358,7 @@ export class ModouServer {
       cwd: chosenAbs,
       cwdWarning,
       permissionMode: session.permissionMode,
+      modelId: session.modelId,
     });
   }
 
@@ -654,6 +679,52 @@ export class ModouServer {
     }
     entry.session.setPermissionMode(mode);
     this.#json(res, 200, { ok: true, permissionMode: entry.session.permissionMode });
+  }
+
+  /** F12：GET /models——当前 provider 的可用模型（目录 + models.json 覆盖） */
+  async #listModels(res: ServerResponse): Promise<void> {
+    const home = this.#options.createSessionDefaults?.home;
+    const settings = this.#options.createSessionDefaults?.settings ?? (home ? await loadSettings(home) : null);
+    const provider = settings?.provider ?? "anthropic";
+    const overrides = await loadModelOverrides(home);
+    const models = [...MODEL_CATALOG, ...overrides]
+      .filter((m) => m.provider === provider)
+      .map((m) => ({ id: m.id, displayName: m.displayName, provider: m.provider, supportsReasoning: m.supportsReasoning }));
+    this.#json(res, 200, { provider, models });
+  }
+
+  /** F12：POST /sessions/:id/model {model}——运行时切换模型（未知 id 400） */
+  async #setSessionModel(id: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const entry = this.#sessions.get(id);
+    if (!entry) {
+      return this.#json(res, 404, { error: "session not found" });
+    }
+    const body = (await this.#readJson(req)) ?? {};
+    const modelId = typeof body.model === "string" ? body.model : "";
+    if (!modelId) {
+      return this.#json(res, 400, { error: "model required" });
+    }
+    try {
+      entry.session.setModelId(modelId);
+    } catch (error) {
+      return this.#json(res, 400, { error: (error as Error).message });
+    }
+    this.#json(res, 200, { ok: true, modelId: entry.session.modelId });
+  }
+
+  /** F12：POST /sessions/:id/thinking {level}——运行时切换思考强度 */
+  async #setSessionThinking(id: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+    const entry = this.#sessions.get(id);
+    if (!entry) {
+      return this.#json(res, 404, { error: "session not found" });
+    }
+    const body = (await this.#readJson(req)) ?? {};
+    const level = body.level;
+    if (level !== "off" && level !== "low" && level !== "medium" && level !== "high") {
+      return this.#json(res, 400, { error: "level 须为 off | low | medium | high" });
+    }
+    entry.session.setThinking(level);
+    this.#json(res, 200, { ok: true, thinking: level });
   }
 
   async #sse(id: string, res: ServerResponse): Promise<void> {

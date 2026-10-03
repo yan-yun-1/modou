@@ -14,6 +14,7 @@ import {
   setSessions,
   setViewCwd,
   setViewPermissionMode,
+  setViewRuntimeState,
   type ConsoleState,
   type ModouEvent,
   type SessionSummary,
@@ -74,6 +75,14 @@ function lastSeg(p: string): string {
   const segs = p.split(/[\\/]+/).filter(Boolean);
   return segs[segs.length - 1] ?? p;
 }
+
+/** F12：思考强度档位（off=自动：按模型默认） */
+const THINKING_LEVELS = [
+  { value: "off", label: "自动" },
+  { value: "low", label: "低" },
+  { value: "medium", label: "中" },
+  { value: "high", label: "高" },
+] as const;
 
 const SAMPLES = [
   "梳理 packages/console 的会话存储结构",
@@ -155,6 +164,23 @@ function App(): JSX.Element {
       return [];
     }
   });
+  // F12：模型/思考强度（胶囊选择器状态）
+  const [models, setModels] = useState<{ id: string; displayName: string; supportsReasoning: boolean }[]>([]);
+  const [modelId, setModelId] = useState<string>(() => {
+    try {
+      return localStorage.getItem("modou.model") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const [thinking, setThinking] = useState<string>(() => {
+    try {
+      return localStorage.getItem("modou.thinking") ?? "off";
+    } catch {
+      return "off";
+    }
+  });
+  const [dockMenu, setDockMenu] = useState<null | "model" | "think">(null);
   // F11：权限模式（新建会话默认值；localStorage 持久）
   const [permMode, setPermMode] = useState<string>(() => {
     try {
@@ -174,6 +200,9 @@ function App(): JSX.Element {
     const rec = await client.getCwdRecents();
     setServeCwd(rec.serveCwd);
     setRecentDirs(rec.recents);
+    const ml = await client.listModels();
+    setModels(ml.models);
+    setModelId((prev) => prev || ml.models[0]?.id || "");
   }, []);
 
   // F10.5：会话与最近目录里出现过的目录沉淀进工作区清单（持久，删会话不掉节点）
@@ -317,6 +346,40 @@ function App(): JSX.Element {
     [subscribe],
   );
 
+  /** F12：切换模型/思考强度——活跃会话即时生效；未开/回放会话仅更新默认值 */
+  const applyRuntime = useCallback(
+    (patch: { model?: string; thinking?: string }) => {
+      const id = state.currentId;
+      const view = id ? state.views[id] : null;
+      const live = id && view && !view.replay;
+      if (patch.model) {
+        setModelId(patch.model);
+        try {
+          localStorage.setItem("modou.model", patch.model);
+        } catch {
+          /* 存储不可用仅内存 */
+        }
+      }
+      if (patch.thinking) {
+        setThinking(patch.thinking);
+        try {
+          localStorage.setItem("modou.thinking", patch.thinking);
+        } catch {
+          /* 存储不可用仅内存 */
+        }
+      }
+      if (live && id) {
+        const apply = (r: { ok: boolean; error?: string }) => {
+          if (!r.ok && r.error) setState((s) => setNotice(s, r.error!));
+        };
+        if (patch.model) void client.setSessionModel(id, patch.model).then(apply);
+        if (patch.thinking) void client.setSessionThinking(id, patch.thinking).then(apply);
+        setState((s) => setViewRuntimeState(s, id, patch));
+      }
+    },
+    [state.currentId, state.views],
+  );
+
   /** F11：切换权限模式——活跃会话即时生效；回放会话与未开会话仅更新新建默认值 */
   const changePermMode = useCallback(
     (mode: string) => {
@@ -345,7 +408,7 @@ function App(): JSX.Element {
   /** Phase F3：创建会话核心——成功接线订阅/刷新；失败返回错误文案（弹层内联回显用） */
   const createAt = useCallback(
     async (cwdText: string): Promise<{ ok: boolean; sessionId?: string; error?: string }> => {
-      const result = await client.createSession(cwdText, permModeRef.current);
+      const result = await client.createSession(cwdText, permModeRef.current, modelId || undefined, thinking);
       if (result.status === 401) {
         unauthorizedListener?.();
         return { ok: false };
@@ -369,8 +432,9 @@ function App(): JSX.Element {
           return next;
         });
       }
-      // F11：会话的权限模式入视图状态
+      // F11/F12：权限模式与模型入视图状态
       if (result.permissionMode) setState((s) => setViewPermissionMode(s, created, result.permissionMode!));
+      if (result.modelId) setState((s) => setViewRuntimeState(s, created, { modelId: result.modelId }));
       if (result.cwdWarning) setState((s) => setNotice(s, result.cwdWarning ?? null));
       await refreshSessions();
       subscribe(created);
@@ -517,6 +581,12 @@ function App(): JSX.Element {
   ];
   const projects = allProjects.filter((g) => !projHidden.includes(g.cwd));
   const visibleCount = projects.reduce((n, g) => n + g.sessions.length, 0);
+  // F12：模型/思考胶囊的派生值（依赖 currentView，置于其声明之后）
+  const activeModelId = currentView?.modelId ?? modelId;
+  const currentModel = models.find((m) => m.id === activeModelId);
+  const thinkingAvailable = currentModel?.supportsReasoning ?? false;
+  const modelDisplayName = currentModel?.displayName ?? activeModelId;
+  const thinkLabel = THINKING_LEVELS.find((l) => l.value === (currentView?.thinking ?? thinking))?.label ?? "自动";
   return (
     <div class="board" data-side={sideOpen ? "open" : "closed"}>
       <aside class="side">
@@ -771,32 +841,101 @@ function App(): JSX.Element {
                 }}
               />
               <div class="dockfoot">
-                <select
-                  class="permsel"
-                  title="权限模式：plan=只读调研，default=默认审批，yolo=全自动"
-                  value={currentView?.permissionMode ?? permMode}
-                  onChange={(e) => changePermMode((e.target as HTMLSelectElement).value)}
-                >
-                  <option value="plan">计划模式</option>
-                  <option value="default">默认审批</option>
-                  <option value="yolo">全自动</option>
-                </select>
-                <span class="dockhint">
-                  {pendingId ? "1 拒绝 · 2 允许 · 3 总是允许" : "Enter 发送 · Shift+Enter 换行"}
-                </span>
-                {busy ? (
-                  <button class="send cancel" title="取消本轮" onClick={cancelTurn}>
-                    取消
-                  </button>
-                ) : (
-                  <button class="send" title="发送" disabled={!input.trim()} onClick={() => void send()}>
-                    <Icon>
-                      <path d="M12 19V5M5 12l7-7 7 7" />
-                    </Icon>
-                  </button>
-                )}
+                <div class="dockleft">
+                  <select
+                    class="permsel"
+                    title="权限模式：plan=只读调研，default=默认审批，yolo=全自动"
+                    value={currentView?.permissionMode ?? permMode}
+                    onChange={(e) => changePermMode((e.target as HTMLSelectElement).value)}
+                  >
+                    <option value="plan">计划模式</option>
+                    <option value="default">默认审批</option>
+                    <option value="yolo">全自动</option>
+                  </select>
+                  <span class="dockhint">
+                    {pendingId ? "1 拒绝 · 2 允许 · 3 总是允许" : "Enter 发送 · Shift+Enter 换行"}
+                  </span>
+                </div>
+                <div class="dockright">
+                  {models.length > 0 && (
+                    <div class="pillwrap">
+                      <button
+                        class={"pill" + (dockMenu === "model" ? " on" : "")}
+                        title="选择模型"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDockMenu(dockMenu === "model" ? null : "model");
+                        }}
+                      >
+                        {modelDisplayName}
+                        <span class="pillcaret">▾</span>
+                      </button>
+                      {dockMenu === "model" && (
+                        <div class="pillmenu" onClick={(e) => e.stopPropagation()}>
+                          {models.map((m) => (
+                            <button
+                              key={m.id}
+                              class={"pillitem" + (m.id === activeModelId ? " on" : "")}
+                              onClick={() => {
+                                setDockMenu(null);
+                                applyRuntime({ model: m.id });
+                              }}
+                            >
+                              {m.displayName}
+                              {m.supportsReasoning && <span class="pilltag">思考</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {thinkingAvailable && (
+                    <div class="pillwrap">
+                      <button
+                        class={"pill" + (dockMenu === "think" ? " on" : "")}
+                        title="思考强度"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDockMenu(dockMenu === "think" ? null : "think");
+                        }}
+                      >
+                        <span class="pillbrain">🧠</span>
+                        {thinkLabel}
+                        <span class="pillcaret">▾</span>
+                      </button>
+                      {dockMenu === "think" && (
+                        <div class="pillmenu" onClick={(e) => e.stopPropagation()}>
+                          {THINKING_LEVELS.map((lv) => (
+                            <button
+                              key={lv.value}
+                              class={"pillitem" + (thinking === lv.value ? " on" : "")}
+                              onClick={() => {
+                                setDockMenu(null);
+                                applyRuntime({ thinking: lv.value });
+                              }}
+                            >
+                              {lv.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {busy ? (
+                    <button class="send cancel" title="取消本轮" onClick={cancelTurn}>
+                      取消
+                    </button>
+                  ) : (
+                    <button class="send" title="发送" disabled={!input.trim()} onClick={() => void send()}>
+                      <Icon>
+                        <path d="M12 19V5M5 12l7-7 7 7" />
+                      </Icon>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+            {dockMenu && <div class="pmenu-mask" onClick={() => setDockMenu(null)} />}
             {total > 0 && (
               <div class="usage">
                 <span class="ubar" aria-hidden="true">

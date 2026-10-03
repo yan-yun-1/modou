@@ -44,6 +44,8 @@ export interface CreateLoopOptions {
   sessionId?: string;
   /** 测试注入口：绕过真实 provider */
   model?: LanguageModel;
+  /** F12：覆盖模型 id（按当前 provider 解析；缺省用 settings.modelId） */
+  modelId?: string;
   /** 测试注入口：自定义工具集 */
   tools?: ToolRegistry;
   /** 会话累计成本回调（App 的 onUsageChange / 无头模式的事件消费都会调用） */
@@ -72,6 +74,12 @@ export interface LoopBundle {
   isOverBudget: () => boolean;
   /** 热切换思考强度（改请求体引用，下一条消息立即生效）；/thinking 用 */
   setThinking: (level: "off" | "low" | "medium" | "high") => void;
+  /** F12：当前模型 id（随 setModelId 更新） */
+  modelId: string;
+  /** F12：按当前 provider/key 构建模型实例（运行时切换模型用） */
+  buildModel: (modelId: string) => LanguageModel;
+  /** F12：当前 provider（模型列表过滤用） */
+  provider: string;
 }
 
 export interface McpStatus {
@@ -155,7 +163,9 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     process.stderr.write(`[modou] ${resolved.warning}
 `);
   }
-  const capabilities = resolveCapabilities(settings.provider, settings.modelId, modelOverrides);
+  // F12：模型 id 覆盖（创建参数 body.model）；能力/上下文按生效 id 解析
+  const activeModelId = options.modelId ?? settings.modelId;
+  const capabilities = resolveCapabilities(settings.provider, activeModelId, modelOverrides);
   // M5 B2（PRD 6.5）：settings.sandbox → 平台可用时启用 OS 沙箱（当前仅 macOS Seatbelt）
   const sandbox = createSandboxAdapter(settings.sandbox ?? "off");
   const sandboxAutoAllow = sandbox !== undefined && settings.sandboxAutoAllow === true;
@@ -168,11 +178,22 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
   const setThinking = (level: "off" | "low" | "medium" | "high") => {
     thinkingRef.current = thinkingToExtraBody(settings.provider, level);
   };
+  // F12：按 id 构建模型（当前 provider/key/baseURL + 同一思考强度引用，热切换不丢配置）
+  const buildModel = (modelId: string): LanguageModel => {
+    const caps = resolveCapabilities(settings.provider, modelId, modelOverrides);
+    return createLanguageModel({
+      provider: caps.provider,
+      modelId: caps.id,
+      apiKey: resolveApiKey(settings),
+      baseURL: settings.baseURL,
+      extraBodyRef: thinkingRef,
+    });
+  };
   const model =
     options.model ??
     createLanguageModel({
       provider: settings.provider,
-      modelId: settings.modelId,
+      modelId: activeModelId,
       apiKey: resolveApiKey(settings),
       baseURL: settings.baseURL,
       // 思考强度（X）：映射为厂商私有请求体参数（glm/qwen/openrouter；其余忽略）。
@@ -308,5 +329,8 @@ export async function createLoopFromSettings(options: CreateLoopOptions): Promis
     },
     isOverBudget: () => settings.budgetUsd !== undefined && spent > settings.budgetUsd,
     setThinking,
+    modelId: activeModelId,
+    buildModel,
+    provider: settings.provider,
   };
 }
