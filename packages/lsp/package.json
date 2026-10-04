@@ -1,6 +1,6 @@
 {
   "name": "@modou-dev/lsp",
-  "version": "0.6.0-alpha.2",
+  "version": "0.6.0-alpha.3",
   "description": "墨斗 Modou LSP 客户端（PRD F16）——language server 诊断与定义跳转注入 agent 上下文",
   "type": "module",
   "main": "./dist/index.js",
