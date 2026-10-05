@@ -102,7 +102,7 @@ input,textarea,kbd,pre{font:inherit}
 
 /* ---------- 骨架：双栏 flex，零横向滚动 ---------- */
 .board{display:flex;height:100dvh;overflow:hidden}
-.side{flex:0 0 260px;display:flex;flex-direction:column;min-height:0;background:var(--bg-side);border-right:1px solid var(--line-1)}
+.side{flex:0 0 260px;min-width:0;overflow:hidden;display:flex;flex-direction:column;min-height:0;background:var(--bg-side);border-right:1px solid var(--line-1)}
 .board[data-side="closed"] .side{display:none}
 .main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg-app)}
 .col{width:100%;max-width:768px;margin:0 auto;padding:0 var(--s5)}
