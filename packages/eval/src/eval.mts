@@ -8,7 +8,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { runPrintMode } from "@modou-dev/sdk";
+import { runPrintMode, SessionStore } from "@modou-dev/sdk";
 import {
   loadModelOverrides,
   loadSettings,
@@ -322,6 +322,8 @@ for (let i = 0; i < cases.length; i++) {
       settings: evalSettings,
       modelOverrides,
       cwd: sandbox,
+      // F12 后续：eval 会话走独立存储，不进用户侧栏（~/.modou/sessions）
+      store: new SessionStore(join(homedir(), ".modou", "eval-sessions")),
       prompt: testCase.prompt,
       onEvent: (event) => {
         if (event.type === "tool_call") {
