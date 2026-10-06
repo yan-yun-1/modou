@@ -366,6 +366,48 @@ describe("ModouServer（F18）", () => {
     expect(badLevel.status).toBe(400);
   });
 
+  // F12.6 回归：非活跃会话批量删除必须真删文件（旧代码 #reattach 重建 loop 占句柄，Windows 下删失败产生孤儿）
+  it("bulk-delete 非活跃会话：文件真删、列表消失、不再复活", async () => {
+    const storeDir = await mkdtemp(join(tmpdir(), "srv-store5-"));
+    const sharedStore = new SessionStore(storeDir);
+    const maker = (port = 0) =>
+      new ModouServer({
+        port,
+        store: sharedStore,
+        maxSessions: 20,
+        createSessionDefaults: {
+          home,
+          settings: { provider: "anthropic", modelId: "claude-sonnet-4-5", apiKey: "sk-test", permissionMode: "default" },
+        },
+        createSessionOverrides: () => ({ model: textModel("你好，我是墨斗"), cwd: dir }),
+      });
+    const sa = maker();
+    const { port: pa } = await sa.start();
+    const ids: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      const r = await fetch(`http://127.0.0.1:${pa}/sessions`, { method: "POST" });
+      ids.push(((await r.json()) as { sessionId: string }).sessionId);
+    }
+    await sa.close();
+    // server A 已停 → 会话全部非活跃；用共享同一 store 的 server B 批量删除
+    const sb = maker();
+    const { port: pb } = await sb.start();
+    try {
+      const del = await fetch(`http://127.0.0.1:${pb}/sessions/bulk-delete`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      expect(del.status).toBe(200);
+      const listed = (await fetch(`http://127.0.0.1:${pb}/sessions`).then((r) => r.json())) as { sessions: { sessionId: string }[] };
+      for (const id of ids) {
+        expect(listed.sessions.some((s) => s.sessionId === id)).toBe(false);
+      }
+    } finally {
+      await sb.close();
+    }
+  });
+
   // F7（plan-web 反馈）：会话→项目目录索引，多项目混排时每行可辨所属项目
   it("GET /sessions 附每会话 cwd；删除后索引同步清除", async () => {
     const { readFile } = await import("node:fs/promises");

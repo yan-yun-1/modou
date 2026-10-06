@@ -632,7 +632,10 @@ export class ModouServer {
     const store = this.#options.store ?? new SessionStore();
     let deleted = 0;
     for (const id of ids) {
-      const entry = await this.#reattach(id);
+      // F12.6：仅活跃会话走优雅关闭——非活跃（本进程无句柄）直接删文件，
+      // 不再 #reattach 重建 loop（会重写空文件并占用句柄，Windows 下紧随的
+      // store.delete 撞 EBUSY 被静默吞掉，产生无 cwd 孤儿会话）
+      const entry = this.#sessions.get(id);
       if (entry) {
         entry.abort?.abort();
         for (const client of entry.sseClients) {
