@@ -154,6 +154,8 @@ function App(): JSX.Element {
     }
   });
   const [projMenu, setProjMenu] = useState<string | null>(null);
+  // F12.5：分组「清空该项目会话」的两步确认（首次点击武装，再次点击执行）
+  const [clearArmed, setClearArmed] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
   // F10.5：见过的所有工作区（持久清单）——节点只随「移除工作区」消失，删会话不影响
@@ -278,6 +280,25 @@ function App(): JSX.Element {
     }
   }, []);
 
+  /** F12.5：清空该项目的全部会话（工作区节点保留；活跃会话由服务端完整关闭） */
+  const clearProjectSessions = useCallback(
+    (cwd: string, ids: string[]) => {
+      setClearArmed(null);
+      if (ids.length === 0) return;
+      void client.bulkDelete(ids).then((n) => {
+        if (n < 0) {
+          setState((s) => setNotice(s, "批量删除失败（server 版本过旧？）"));
+          return;
+        }
+        if (state.currentId && ids.includes(state.currentId)) {
+          setState((s) => setCurrent(s, null));
+        }
+        void refreshSessions();
+      });
+    },
+    [state.currentId, refreshSessions],
+  );
+
   /** F9：移除工作区——侧栏隐藏该项目 + server 最近目录摘除；不删磁盘文件与会话历史 */
   const removeWorkspace = useCallback(
     (cwd: string) => {
@@ -379,6 +400,11 @@ function App(): JSX.Element {
     },
     [state.currentId, state.views],
   );
+
+  // F12.5：菜单关闭即解除「清空」两步确认的武装状态
+  useEffect(() => {
+    if (!projMenu) setClearArmed(null);
+  }, [projMenu]);
 
   /** F11：切换权限模式——活跃会话即时生效；回放会话与未开会话仅更新新建默认值 */
   const changePermMode = useCallback(
@@ -694,6 +720,23 @@ function App(): JSX.Element {
                           <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />
                         </Icon>
                         重命名
+                      </button>
+                      <button
+                        role="menuitem"
+                        class="danger"
+                        title="删除该项目下的全部会话（不可恢复；工作区保留）"
+                        onClick={() => {
+                          if (clearArmed === g.cwd) {
+                            clearProjectSessions(g.cwd, g.sessions.map((s) => s.sessionId));
+                          } else {
+                            setClearArmed(g.cwd);
+                          }
+                        }}
+                      >
+                        <Icon size={13}>
+                          <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        </Icon>
+                        {clearArmed === g.cwd ? `确认清空 ${g.sessions.length} 个会话？` : "清空该项目会话"}
                       </button>
                       <button
                         role="menuitem"
