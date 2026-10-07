@@ -287,7 +287,14 @@ html[data-theme="light"] .icon-moon{display:inline-flex}
 .pillitem{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:7px 10px;font-size:13px;color:var(--text-1);border-radius:var(--r-sm)}
 .pillitem:hover{background:var(--bg-hover)}
 .pillitem.on{color:var(--text-1);background:var(--bg-active)}
-.pilltag{flex:none;font-size:10px;color:var(--text-3);border:1px solid var(--line-2);border-radius:4px;padding:0 4px}
+ .pilltag{flex:none;font-size:10px;color:var(--text-3);border:1px solid var(--line-2);border-radius:4px;padding:0 4px}
+/* F13 供应商菜单：内联 API Key 行 */
+.pkeyrow{display:flex;gap:4px;padding:2px 8px 6px 10px}
+.pkey{flex:1;min-width:0;background:var(--bg-sunken);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:4px 8px;font-size:12px;font-family:var(--f-mono);color:var(--text-1)}
+.pkey::placeholder{color:var(--text-3)}
+.pkey:focus{outline:none;border-color:var(--accent)}
+.pkeysave{flex:none;padding:4px 10px;background:var(--accent);color:var(--on-accent);border-radius:var(--r-sm);font-size:11px}
+.pkeysave:hover{background:var(--accent-hover)}
 .send{flex:none;display:inline-flex;align-items:center;justify-content:center;height:32px;min-width:32px;border-radius:50%;background:var(--accent);color:var(--on-accent);transition:background .15s,color .15s}
 .send:hover:not(:disabled){background:var(--accent-hover)}
 .send:active:not(:disabled){transform:translateY(1px)}

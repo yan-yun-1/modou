@@ -104,12 +104,15 @@ export class ModouClient {
     permissionMode?: string,
     model?: string,
     thinking?: string,
+    provider?: string,
+    apiKey?: string,
   ): Promise<{
     sessionId: string;
     cwd?: string;
     cwdWarning?: string;
     permissionMode?: string;
     modelId?: string;
+    provider?: string;
     error?: string;
     status: number;
   }> {
@@ -120,6 +123,8 @@ export class ModouClient {
         ...(permissionMode ? { permissionMode } : {}),
         ...(model ? { model } : {}),
         ...(thinking ? { thinking } : {}),
+        ...(provider ? { provider } : {}),
+        ...(apiKey ? { apiKey } : {}),
       }),
     });
     const body = (await res.json()) as {
@@ -128,6 +133,7 @@ export class ModouClient {
       cwdWarning?: string;
       permissionMode?: string;
       modelId?: string;
+      provider?: string;
       error?: string;
     };
     return {
@@ -136,20 +142,33 @@ export class ModouClient {
       cwdWarning: body.cwdWarning,
       permissionMode: body.permissionMode,
       modelId: body.modelId,
+      provider: body.provider,
       error: body.error,
       status: res.status,
     };
   }
 
-  /** F12：可用模型列表（当前 provider；控制台模型选择器用） */
-  async listModels(): Promise<{ provider: string; models: { id: string; displayName: string; supportsReasoning: boolean }[] }> {
-    const res = await this.#request("/models");
-    if (!res.ok) return { provider: "", models: [] };
+  /** F12/F13：可用模型列表（?provider= 指定供应商；缺省为 settings 当前供应商） */
+  async listModels(provider?: string): Promise<{ provider: string; models: { id: string; displayName: string; supportsReasoning: boolean }[] }> {
+    const qs = provider ? `?provider=${encodeURIComponent(provider)}` : "";
+    const res = await this.#request(`/models${qs}`);
+    if (!res.ok) return { provider: provider ?? "", models: [] };
     const body = (await res.json()) as {
       provider?: string;
       models?: { id: string; displayName: string; supportsReasoning: boolean }[];
     };
-    return { provider: body.provider ?? "", models: body.models ?? [] };
+    return { provider: body.provider ?? provider ?? "", models: body.models ?? [] };
+  }
+
+  /** F13：供应商名单（八家 + 各家目录模型数 + settings 当前默认） */
+  async listProviders(): Promise<{ current: string; providers: { name: string; modelCount: number; current: boolean }[] }> {
+    const res = await this.#request("/providers");
+    if (!res.ok) return { current: "", providers: [] };
+    const body = (await res.json()) as {
+      current?: string;
+      providers?: { name: string; modelCount: number; current: boolean }[];
+    };
+    return { current: body.current ?? "", providers: body.providers ?? [] };
   }
 
   /** F12：运行时切换会话模型 */

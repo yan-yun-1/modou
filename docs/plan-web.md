@@ -196,3 +196,4 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | F12 反馈：底栏工具栏重构 | ✅ 参考 ChatGPT/Claude：底栏分左状态区（权限下拉 + 弱化快捷键提示）/右操作区（模型胶囊「GLM-4.6 ▾」+ 思考胶囊「🧠 自动 ▾」+ 圆形发送，垂直对齐）；菜单向上弹出；不支持思考的模型自动隐藏思考胶囊；模型/思考运行时切换（core setModel + sdk buildModel 复用思考引用）+ 创建传参 + localStorage 持久恢复；GET /models 按 provider 列出（目录+models.json）；server 16/16 | 2026-09-30 |
 | F12.5 分组级清空 | ✅ 树菜单新增「清空该项目会话」（垃圾桶图标，两步确认防误删）——批量删该项目全部会话，工作区节点保留显示 0；client 的 bulkDelete/bulkDeleteAllHistory 首次接线 | 2026-10-01 |
 | F12.6 批量删除孤儿修复 | ✅ #bulkDelete 对非活跃会话误走 #reattach（重建 loop 重写空文件+占句柄，Windows 下紧随的删文件 EBUSY 被吞）产生无 cwd 孤儿会话挪入未标注组；改为仅活跃会话优雅关闭、非活跃直接删文件；跨进程回归测试（server 17/17）；18 个孤儿空文件已清 | 2026-10-01 |
+| F13 反馈：供应商切换进控制台 | ✅ server：GET /providers（八家名单+模型数+settings 默认）、GET /models?provider=、POST /sessions 增 provider/apiKey 覆盖（跨家缺 key 400、目录首模型自动选、归属校验 400、非法名单忽略）；console：供应商胶囊菜单（各家目录模型数、settings 默认高亮），跨家选择时内联 API Key 输入（存浏览器本地，不落盘），模型列表联动 + 记忆各家选择；浏览器端到端实测（deepseek+key → 201 deepseek-chat）；server 18/18 | 2026-10-01 |

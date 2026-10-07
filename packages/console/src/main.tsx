@@ -175,6 +175,25 @@ function App(): JSX.Element {
       return "";
     }
   });
+  // F13：供应商切换（名单 / 当前选择 / 各家 API Key / 菜单内联 key 输入）
+  const [providersList, setProvidersList] = useState<{ name: string; modelCount: number; current: boolean }[]>([]);
+  const [serverCurrentProvider, setServerCurrentProvider] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<string>(() => {
+    try {
+      return localStorage.getItem("modou.provider") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const [providerKeys, setProviderKeys] = useState<Record<string, string>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("modou.providerKeys") ?? "{}") as Record<string, string>;
+    } catch {
+      return {};
+    }
+  });
+  const [provKeyInput, setProvKeyInput] = useState("");
+  const provRef = useRef(selectedProvider);
   const [thinking, setThinking] = useState<string>(() => {
     try {
       return localStorage.getItem("modou.thinking") ?? "off";
@@ -182,7 +201,7 @@ function App(): JSX.Element {
       return "off";
     }
   });
-  const [dockMenu, setDockMenu] = useState<null | "model" | "think">(null);
+  const [dockMenu, setDockMenu] = useState<null | "prov" | "model" | "think">(null);
   // F11：权限模式（新建会话默认值；localStorage 持久）
   const [permMode, setPermMode] = useState<string>(() => {
     try {
@@ -202,9 +221,59 @@ function App(): JSX.Element {
     const rec = await client.getCwdRecents();
     setServeCwd(rec.serveCwd);
     setRecentDirs(rec.recents);
-    const ml = await client.listModels();
+    const pl = await client.listProviders();
+    setProvidersList(pl.providers);
+    setServerCurrentProvider(pl.current);
+    const ml = await client.listModels(provRef.current || undefined);
     setModels(ml.models);
     setModelId((prev) => prev || ml.models[0]?.id || "");
+  }, []);
+
+  /** F13：切换供应商——拉取该供应商模型列表并自动选第一个（记忆各家上次选择）；
+   *  跨供应商需要 API Key 时菜单内联输入（存浏览器本地，随创建请求发送） */
+  const selectProvider = useCallback(
+    async (name: string) => {
+      provRef.current = name;
+      setSelectedProvider(name);
+      try {
+        localStorage.setItem("modou.provider", name);
+      } catch {
+        /* 存储不可用仅内存 */
+      }
+      const ml = await client.listModels(name);
+      setModels(ml.models);
+      const remembered = (() => {
+        try {
+          return localStorage.getItem(`modou.model.${name}`);
+        } catch {
+          return null;
+        }
+      })();
+      const next = remembered || ml.models[0]?.id || "";
+      setModelId(next);
+      try {
+        localStorage.setItem("modou.model", next);
+      } catch {
+        /* 存储不可用仅内存 */
+      }
+    },
+    [],
+  );
+
+  /** F13：保存供应商 API Key（浏览器本地持久；随创建请求发送，服务端不落盘） */
+  const saveProvKey = useCallback((name: string, key: string) => {
+    const trimmed = key.trim();
+    setProvKeyInput("");
+    if (!trimmed) return;
+    setProviderKeys((m) => {
+      const next = { ...m, [name]: trimmed };
+      try {
+        localStorage.setItem("modou.providerKeys", JSON.stringify(next));
+      } catch {
+        /* 存储不可用仅内存 */
+      }
+      return next;
+    });
   }, []);
 
   // F10.5：会话与最近目录里出现过的目录沉淀进工作区清单（持久，删会话不掉节点）
@@ -434,7 +503,9 @@ function App(): JSX.Element {
   /** Phase F3：创建会话核心——成功接线订阅/刷新；失败返回错误文案（弹层内联回显用） */
   const createAt = useCallback(
     async (cwdText: string): Promise<{ ok: boolean; sessionId?: string; error?: string }> => {
-      const result = await client.createSession(cwdText, permModeRef.current, modelId || undefined, thinking);
+      const activeProvider = provRef.current || undefined;
+      const activeKey = activeProvider ? providerKeys[activeProvider] || undefined : undefined;
+      const result = await client.createSession(cwdText, permModeRef.current, modelId || undefined, thinking, activeProvider, activeKey);
       if (result.status === 401) {
         unauthorizedListener?.();
         return { ok: false };
@@ -466,7 +537,7 @@ function App(): JSX.Element {
       subscribe(created);
       return { ok: true, sessionId: created };
     },
-    [refreshSessions, subscribe],
+    [refreshSessions, subscribe, providerKeys],
   );
 
   /** F9：在指定工作区新建会话（项目行气泡+ 按钮；成功后展开该组） */
@@ -607,6 +678,10 @@ function App(): JSX.Element {
   ];
   const projects = allProjects.filter((g) => !projHidden.includes(g.cwd));
   const visibleCount = projects.reduce((n, g) => n + g.sessions.length, 0);
+  // F13：供应商胶囊派生值
+  const providerDisplayName = selectedProvider || serverCurrentProvider || "";
+  const keyNeededFor = (name: string) =>
+    name !== "ollama" && !providerKeys[name] && name !== serverCurrentProvider;
   // F12：模型/思考胶囊的派生值（依赖 currentView，置于其声明之后）
   const activeModelId = currentView?.modelId ?? modelId;
   const currentModel = models.find((m) => m.id === activeModelId);
@@ -900,6 +975,63 @@ function App(): JSX.Element {
                   </span>
                 </div>
                 <div class="dockright">
+                  {providersList.length > 0 && (
+                    <div class="pillwrap">
+                      <button
+                        class={"pill" + (dockMenu === "prov" ? " on" : "")}
+                        title="模型供应商（新会话生效）"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDockMenu(dockMenu === "prov" ? null : "prov");
+                        }}
+                      >
+                        {providerDisplayName}
+                        <span class="pillcaret">▾</span>
+                      </button>
+                      {dockMenu === "prov" && (
+                        <div class="pillmenu" onClick={(e) => e.stopPropagation()}>
+                          {providersList.map((p) => (
+                            <div key={p.name}>
+                              <button
+                                class={"pillitem" + (p.name === providerDisplayName ? " on" : "")}
+                                title={p.current ? "settings.json 当前默认供应商" : `切换到 ${p.name}（${p.modelCount} 个模型）`}
+                                onClick={() => {
+                                  if (keyNeededFor(p.name)) {
+                                    setSelectedProvider(p.name);
+                                    provRef.current = p.name;
+                                    setProvKeyInput("");
+                                  } else {
+                                    void selectProvider(p.name);
+                                    setDockMenu(null);
+                                  }
+                                }}
+                              >
+                                <span>{p.name}{p.current ? " ·默认" : ""}</span>
+                                <span class="pilltag">{p.modelCount}</span>
+                              </button>
+                              {keyNeededFor(p.name) && selectedProvider === p.name && (
+                                <div class="pkeyrow">
+                                  <input
+                                    class="pkey"
+                                    placeholder="粘贴该供应商的 API Key"
+                                    spellcheck={false}
+                                    value={provKeyInput}
+                                    onInput={(e) => setProvKeyInput((e.target as HTMLInputElement).value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") saveProvKey(p.name, provKeyInput);
+                                    }}
+                                  />
+                                  <button class="pkeysave" onClick={() => saveProvKey(p.name, provKeyInput)}>
+                                    保存
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {models.length > 0 && (
                     <div class="pillwrap">
                       <button

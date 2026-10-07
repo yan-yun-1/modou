@@ -5,12 +5,13 @@ import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ModouEvent, ModelCapabilities } from "@modou-dev/core";
-import { MODEL_CATALOG, VERSION } from "@modou-dev/core";
+import type { ModouEvent } from "@modou-dev/core";
+import { MODEL_CATALOG, resolveCapabilities, VERSION } from "@modou-dev/core";
 import {
   createSession,
   loadModelOverrides,
   loadSettings,
+  providerNames,
   SessionStore,
   type CreateSessionOptions,
   type ModouSession,
@@ -223,7 +224,11 @@ export class ModouServer {
       }
       // F12：可用模型列表（当前 provider 内；控制台模型选择器用）
       if (url.pathname === "/models" && req.method === "GET") {
-        return await this.#listModels(res);
+        return await this.#listModels(url, res);
+      }
+      // F13：供应商名单（控制台供应商切换器用）
+      if (url.pathname === "/providers" && req.method === "GET") {
+        return await this.#listProviders(res);
       }
       if (url.pathname === "/sessions") {
         if (req.method === "POST") {
@@ -317,6 +322,43 @@ export class ModouServer {
         return this.#json(res, 403, { error: `未指定 cwd 时回落进程目录 ${fallback} 不在 fs-allow-root 白名单内` });
       }
     }
+    // F13：创建时覆盖供应商（body.provider + body.apiKey）——跨供应商需该家 key（ollama 免）；
+    // 供应商/模型归属校验基于目录与 models.json 覆盖
+    const requestedProvider =
+      typeof body.provider === "string" && (providerNames as readonly string[]).includes(body.provider)
+        ? (body.provider as (typeof providerNames)[number])
+        : undefined;
+    const requestedApiKey = typeof body.apiKey === "string" && body.apiKey !== "" ? body.apiKey : undefined;
+    let effectiveSettings = defaults.settings;
+    let createModelId = typeof body.model === "string" && body.model !== "" ? body.model : undefined;
+    if (requestedProvider && requestedProvider !== (defaults.settings?.provider ?? effectiveSettings?.provider)) {
+      const base = defaults.settings ?? (defaults.home ? await loadSettings(defaults.home) : null);
+      const overrides = await loadModelOverrides(defaults.home);
+      if (!base) {
+        return this.#json(res, 400, { error: "server 未配置模型供应商（缺少 settings），无法切换供应商" });
+      }
+      if (!requestedApiKey && requestedProvider !== "ollama") {
+        return this.#json(res, 400, { error: `切换到 ${requestedProvider} 需要该供应商的 API Key（在供应商菜单中填入）` });
+      }
+      if (!createModelId) {
+        const first = [...MODEL_CATALOG, ...overrides].find((m) => m.provider === requestedProvider);
+        if (!first) {
+          return this.#json(res, 400, { error: `供应商 ${requestedProvider} 目录中没有可用模型` });
+        }
+        createModelId = first.id;
+      }
+      const caps = resolveCapabilities(requestedProvider, createModelId, overrides);
+      if (caps.provider !== requestedProvider) {
+        return this.#json(res, 400, { error: `模型 ${createModelId} 不属于供应商 ${requestedProvider}` });
+      }
+      effectiveSettings = {
+        ...base,
+        ...(chosenAbs ? { cwd: chosenAbs } : {}),
+        provider: requestedProvider,
+        modelId: createModelId,
+        ...(requestedApiKey ? { apiKey: requestedApiKey } : {}),
+      };
+    }
     const session = await createSession({
       ...defaults,
       // plan-web A4：server 级 store 覆盖（测试隔离 + 回放/列表同源）
@@ -325,11 +367,13 @@ export class ModouServer {
       modelOverrides: await loadModelOverrides(defaults.home),
       cwd: chosenAbs,
       // A5：settings.cwd 同步覆盖，杜绝 SDK 层 settings 优先把请求 cwd 钉死
-      ...(chosenAbs && defaults.settings ? { settings: { ...defaults.settings, cwd: chosenAbs } } : {}),
+      ...(effectiveSettings ? { settings: { ...effectiveSettings, ...(chosenAbs ? { cwd: chosenAbs } : {}) } } : {}),
       // F12：创建时指定模型 id（当前 provider 内）
-      ...(typeof body.model === "string" && body.model !== "" ? { modelId: body.model } : {}),
+      ...(createModelId ? { modelId: createModelId } : {}),
       ...(this.#options.createSessionOverrides?.(body) ?? {}),
     });
+    // F13：供应商覆盖后回写会话视图所需字段
+    const respondedProvider = requestedProvider ?? effectiveSettings?.provider;
     // F11：按请求覆盖权限模式（plan/default/yolo），与会话一一对应
     const requestedMode = typeof body.permissionMode === "string" ? body.permissionMode : undefined;
     if (requestedMode === "plan" || requestedMode === "default" || requestedMode === "yolo") {
@@ -359,6 +403,7 @@ export class ModouServer {
       cwdWarning,
       permissionMode: session.permissionMode,
       modelId: session.modelId,
+      ...(respondedProvider ? { provider: respondedProvider } : {}),
     });
   }
 
@@ -685,15 +730,33 @@ export class ModouServer {
   }
 
   /** F12：GET /models——当前 provider 的可用模型（目录 + models.json 覆盖） */
-  async #listModels(res: ServerResponse): Promise<void> {
+  async #listModels(url: URL, res: ServerResponse): Promise<void> {
     const home = this.#options.createSessionDefaults?.home;
     const settings = this.#options.createSessionDefaults?.settings ?? (home ? await loadSettings(home) : null);
-    const provider = settings?.provider ?? "anthropic";
+    const requested = url.searchParams.get("provider");
+    const provider =
+      requested && (providerNames as readonly string[]).includes(requested)
+        ? requested
+        : (settings?.provider ?? "anthropic");
     const overrides = await loadModelOverrides(home);
     const models = [...MODEL_CATALOG, ...overrides]
       .filter((m) => m.provider === provider)
       .map((m) => ({ id: m.id, displayName: m.displayName, provider: m.provider, supportsReasoning: m.supportsReasoning }));
     this.#json(res, 200, { provider, models });
+  }
+
+  /** F13：GET /providers——八家供应商名单 + 各家目录内模型数 + 当前生效供应商 */
+  async #listProviders(res: ServerResponse): Promise<void> {
+    const home = this.#options.createSessionDefaults?.home;
+    const settings = this.#options.createSessionDefaults?.settings ?? (home ? await loadSettings(home) : null);
+    const current = settings?.provider ?? "anthropic";
+    const overrides = await loadModelOverrides(home);
+    const providers = providerNames.map((name) => ({
+      name,
+      modelCount: [...MODEL_CATALOG, ...overrides].filter((m) => m.provider === name).length,
+      current: name === current,
+    }));
+    this.#json(res, 200, { current, providers });
   }
 
   /** F12：POST /sessions/:id/model {model}——运行时切换模型（未知 id 400） */

@@ -408,6 +408,52 @@ describe("ModouServer（F18）", () => {
     }
   });
 
+  // F13（plan-web）：供应商切换——名单 / 创建覆盖 / key 校验 / 归属校验
+  it("GET /providers 名单；创建覆盖 provider：跨家缺 key 400、带 key 201、模型归属 400、非法 provider 忽略", async () => {
+    const list = (await fetch(`${baseUrl}/providers`).then((r) => r.json())) as {
+      current: string;
+      providers: { name: string; modelCount: number; current: boolean }[];
+    };
+    expect(list.current).toBe("anthropic"); // defaults.settings 指定 anthropic
+    const glm = list.providers.find((p) => p.name === "glm");
+    expect(glm?.modelCount).toBeGreaterThan(0);
+
+    // 跨供应商（anthropic → glm）缺 key → 400
+    const noKey = await fetch(`${baseUrl}/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "glm" }),
+    });
+    expect(noKey.status).toBe(400);
+
+    // 带 key → 201，供应商/模型按覆盖生效
+    const withKey = await fetch(`${baseUrl}/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "glm", apiKey: "sk-glm-test" }),
+    });
+    expect(withKey.status).toBe(201);
+    const okBody = (await withKey.json()) as { provider: string; modelId: string };
+    expect(okBody.provider).toBe("glm");
+    expect(okBody.modelId).toBe("glm-4.6"); // glm 目录第一个
+
+    // 模型归属校验：provider=glm + anthropic 的模型 id → 400
+    const mismatch = await fetch(`${baseUrl}/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "glm", apiKey: "sk-glm-test", model: "claude-sonnet-4-5" }),
+    });
+    expect(mismatch.status).toBe(400);
+
+    // 非法 provider 名单外 → 忽略覆盖，按默认创建
+    const invalid = await fetch(`${baseUrl}/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "not-a-vendor" }),
+    });
+    expect(invalid.status).toBe(201);
+  });
+
   // F7（plan-web 反馈）：会话→项目目录索引，多项目混排时每行可辨所属项目
   it("GET /sessions 附每会话 cwd；删除后索引同步清除", async () => {
     const { readFile } = await import("node:fs/promises");
