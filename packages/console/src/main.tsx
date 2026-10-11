@@ -475,6 +475,19 @@ function App(): JSX.Element {
     if (!projMenu) setClearArmed(null);
   }, [projMenu]);
 
+  // F12.7：Esc 关闭侧栏/底栏弹出菜单（pmenu 不在可聚焦路径上，需全局监听）
+  useEffect(() => {
+    if (!projMenu && !dockMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setProjMenu(null);
+      setDockMenu(null);
+      setClearArmed(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [projMenu, dockMenu]);
+
   /** F11：切换权限模式——活跃会话即时生效；回放会话与未开会话仅更新新建默认值 */
   const changePermMode = useCallback(
     (mode: string) => {
@@ -690,7 +703,13 @@ function App(): JSX.Element {
   const thinkLabel = THINKING_LEVELS.find((l) => l.value === (currentView?.thinking ?? thinking))?.label ?? "自动";
   return (
     <div class="board" data-side={sideOpen ? "open" : "closed"}>
-      <aside class="side">
+      <aside
+        class="side"
+        onClick={() => {
+          if (projMenu) setProjMenu(null);
+          if (dockMenu) setDockMenu(null);
+        }}
+      >
         <div class="sidehead">
           <span class="sidetitle">会话{visibleCount > 0 ? ` · ${visibleCount}` : ""}</span>
         </div>
@@ -849,7 +868,6 @@ function App(): JSX.Element {
               </div>
             );
           })}
-          {projMenu && <div class="pmenu-mask" onClick={() => setProjMenu(null)} />}
         </nav>
         {currentView?.cwd && (
           <div class="sidefoot" title={currentView.cwd}>
