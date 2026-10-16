@@ -102,7 +102,7 @@ input,textarea,kbd,pre{font:inherit}
 
 /* ---------- 骨架：双栏 flex，零横向滚动 ---------- */
 .board{display:flex;height:100dvh;overflow:hidden}
-.side{flex:0 0 260px;min-width:0;overflow:hidden;display:flex;flex-direction:column;min-height:0;background:var(--bg-side);border-right:1px solid var(--line-1)}
+.side{flex:0 0 260px;min-width:0;overflow:hidden;position:relative;display:flex;flex-direction:column;min-height:0;background:var(--bg-side);border-right:1px solid var(--line-1)}
 .board[data-side="closed"] .side{display:none}
 .main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg-app)}
 .col{width:100%;max-width:768px;margin:0 auto;padding:0 var(--s5)}
@@ -348,9 +348,21 @@ html[data-theme="light"] .icon-moon{display:inline-flex}
 .dp-go:hover{background:var(--accent-hover)}
 .dp-go:disabled{opacity:.5;cursor:not-allowed}
 /* 会话工作目录状态条（Phase F4→反馈改侧栏底部） */
-.sidefoot{flex:none;display:flex;align-items:center;gap:6px;min-width:0;border-top:1px solid var(--line-1);padding:8px var(--s3);font-size:12px;font-family:var(--f-mono);color:var(--text-3)}
-.sidefoot svg{flex:none}
-.sidefoot span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sidefoot{position:relative;flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--s2);min-width:0;border-top:1px solid var(--line-1);padding:6px var(--s2)}
+.sidefootset{flex:none;display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:var(--r-sm);font-size:12px;color:var(--text-3)}
+.sidefootset:hover{background:var(--bg-hover);color:var(--text-1)}
+.sidefootset span{white-space:nowrap}
+.sidefootcwd{flex:1;min-width:0;display:flex;align-items:center;gap:6px;font-size:12px;font-family:var(--f-mono);color:var(--text-3);justify-content:flex-end}
+.sidefootcwd svg{flex:none}
+.sidefootcwd span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* F14 设置面板：侧栏底部向上弹 */
+.setpanel{position:absolute;bottom:calc(100% + 4px);left:var(--s2);right:var(--s2);z-index:56;background:var(--bg-raised);border:1px solid var(--line-1);border-radius:var(--r-md);box-shadow:var(--shadow-pop);padding:var(--s2);max-height:60vh;overflow-y:auto;animation:dpIn .15s ease}
+.settitle{font-size:13px;font-weight:600;color:var(--text-1);padding:0 var(--s2)}
+.setsub{font-size:11px;color:var(--text-3);padding:2px var(--s2) var(--s2);line-height:1.6}
+.setprov+.setprov{margin-top:2px}
+.setprovbtn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:7px 10px;font-size:13px;color:var(--text-1);border-radius:var(--r-sm)}
+.setprovbtn:hover{background:var(--bg-hover)}
+.setprovbtn.on{background:var(--bg-active)}
 /* 空态目录 chip（Phase F3） */
 .escwd{font-size:12px;font-family:var(--f-mono);color:var(--text-3);padding:4px 12px;border:1px dashed var(--line-2);border-radius:999px}
 .escwd:hover{color:var(--text-1);border-color:var(--text-3)}

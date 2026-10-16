@@ -261,20 +261,25 @@ function App(): JSX.Element {
   );
 
   /** F13：保存供应商 API Key（浏览器本地持久；随创建请求发送，服务端不落盘） */
-  const saveProvKey = useCallback((name: string, key: string) => {
-    const trimmed = key.trim();
-    setProvKeyInput("");
-    if (!trimmed) return;
-    setProviderKeys((m) => {
-      const next = { ...m, [name]: trimmed };
-      try {
-        localStorage.setItem("modou.providerKeys", JSON.stringify(next));
-      } catch {
-        /* 存储不可用仅内存 */
-      }
-      return next;
-    });
-  }, []);
+  const saveProvKey = useCallback(
+    (name: string, key: string) => {
+      const trimmed = key.trim();
+      setProvKeyInput("");
+      if (!trimmed) return;
+      setProviderKeys((m) => {
+        const next = { ...m, [name]: trimmed };
+        try {
+          localStorage.setItem("modou.providerKeys", JSON.stringify(next));
+        } catch {
+          /* 存储不可用仅内存 */
+        }
+        return next;
+      });
+      // F14：key 就绪即应用该供应商（联动模型列表）并收起面板
+      void selectProvider(name).then(() => setDockMenu(null));
+    },
+    [selectProvider],
+  );
 
   // F10.5：会话与最近目录里出现过的目录沉淀进工作区清单（持久，删会话不掉节点）
   useEffect(() => {
@@ -869,15 +874,68 @@ function App(): JSX.Element {
             );
           })}
         </nav>
-        {currentView?.cwd && (
-          <div class="sidefoot" title={currentView.cwd}>
-            <Icon size={12}>
-              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        <div class="sidefoot">
+          <button class="sidefootset" title="设置（模型供应商 / API Key）" onClick={(e) => { e.stopPropagation(); setDockMenu(dockMenu === "prov" ? null : "prov"); }}>
+            <Icon size={13}>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.08a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.08a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </Icon>
-            <span>{cwdLabel(currentView.cwd)}</span>
-          </div>
-        )}
-      </aside>
+            <span>设置</span>
+          </button>
+          {currentView?.cwd && (
+            <div class="sidefootcwd" title={currentView.cwd}>
+              <Icon size={12}>
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </Icon>
+              <span>{cwdLabel(currentView.cwd)}</span>
+            </div>
+          )}
+        </div>
+        {dockMenu === "prov" && (
+            <div class="setpanel" onClick={(e) => e.stopPropagation()}>
+              <div class="settitle">模型供应商</div>
+              <div class="setsub">选择新会话使用的供应商；跨供应商需粘贴该家的 API Key（仅存浏览器本地）</div>
+              {providersList.map((p) => (
+                <div key={p.name} class="setprov">
+                  <button
+                    class={"setprovbtn" + (p.name === providerDisplayName ? " on" : "")}
+                    title={p.current ? "settings.json 当前默认供应商" : `${p.modelCount} 个目录模型`}
+                    onClick={() => {
+                      if (keyNeededFor(p.name)) {
+                        setSelectedProvider(p.name);
+                        provRef.current = p.name;
+                        setProvKeyInput("");
+                      } else {
+                        void selectProvider(p.name);
+                        setDockMenu(null);
+                      }
+                    }}
+                  >
+                    <span>{p.name}{p.current ? " ·默认" : ""}</span>
+                    <span class="pilltag">{p.modelCount}</span>
+                  </button>
+                  {keyNeededFor(p.name) && selectedProvider === p.name && (
+                    <div class="pkeyrow">
+                      <input
+                        class="pkey"
+                        placeholder="粘贴该供应商的 API Key"
+                        spellcheck={false}
+                        value={provKeyInput}
+                        onInput={(e) => setProvKeyInput((e.target as HTMLInputElement).value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveProvKey(p.name, provKeyInput);
+                        }}
+                      />
+                      <button class="pkeysave" onClick={() => saveProvKey(p.name, provKeyInput)}>
+                        保存
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </aside>
 
       <div class="main">
         <header class="top">
@@ -993,63 +1051,6 @@ function App(): JSX.Element {
                   </span>
                 </div>
                 <div class="dockright">
-                  {providersList.length > 0 && (
-                    <div class="pillwrap">
-                      <button
-                        class={"pill" + (dockMenu === "prov" ? " on" : "")}
-                        title="模型供应商（新会话生效）"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDockMenu(dockMenu === "prov" ? null : "prov");
-                        }}
-                      >
-                        {providerDisplayName}
-                        <span class="pillcaret">▾</span>
-                      </button>
-                      {dockMenu === "prov" && (
-                        <div class="pillmenu" onClick={(e) => e.stopPropagation()}>
-                          {providersList.map((p) => (
-                            <div key={p.name}>
-                              <button
-                                class={"pillitem" + (p.name === providerDisplayName ? " on" : "")}
-                                title={p.current ? "settings.json 当前默认供应商" : `切换到 ${p.name}（${p.modelCount} 个模型）`}
-                                onClick={() => {
-                                  if (keyNeededFor(p.name)) {
-                                    setSelectedProvider(p.name);
-                                    provRef.current = p.name;
-                                    setProvKeyInput("");
-                                  } else {
-                                    void selectProvider(p.name);
-                                    setDockMenu(null);
-                                  }
-                                }}
-                              >
-                                <span>{p.name}{p.current ? " ·默认" : ""}</span>
-                                <span class="pilltag">{p.modelCount}</span>
-                              </button>
-                              {keyNeededFor(p.name) && selectedProvider === p.name && (
-                                <div class="pkeyrow">
-                                  <input
-                                    class="pkey"
-                                    placeholder="粘贴该供应商的 API Key"
-                                    spellcheck={false}
-                                    value={provKeyInput}
-                                    onInput={(e) => setProvKeyInput((e.target as HTMLInputElement).value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") saveProvKey(p.name, provKeyInput);
-                                    }}
-                                  />
-                                  <button class="pkeysave" onClick={() => saveProvKey(p.name, provKeyInput)}>
-                                    保存
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
                   {models.length > 0 && (
                     <div class="pillwrap">
                       <button
@@ -1128,7 +1129,8 @@ function App(): JSX.Element {
                 </div>
               </div>
             </div>
-            {dockMenu && <div class="pmenu-mask" onClick={() => setDockMenu(null)} />}
+            {/* F14：prov 设置面板在侧栏内自管点外（aside onClick），主区仅 model/think 需遮罩 */}
+            {dockMenu && dockMenu !== "prov" && <div class="pmenu-mask" onClick={() => setDockMenu(null)} />}
             {total > 0 && (
               <div class="usage">
                 <span class="ubar" aria-hidden="true">

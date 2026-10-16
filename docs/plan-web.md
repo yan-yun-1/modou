@@ -198,4 +198,5 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | F12.6 批量删除孤儿修复 | ✅ #bulkDelete 对非活跃会话误走 #reattach（重建 loop 重写空文件+占句柄，Windows 下紧随的删文件 EBUSY 被吞）产生无 cwd 孤儿会话挪入未标注组；改为仅活跃会话优雅关闭、非活跃直接删文件；跨进程回归测试（server 17/17）；18 个孤儿空文件已清 | 2026-10-01 |
 | F12.7 菜单关闭修复 | ✅ 用户反馈 … 菜单点外不消失——根因：pmenu-mask 遮罩在 .pjrow 内且 PJ 行自身 onClick 吃事件；改 .side onClick 接管点外关闭（移除侧栏遮罩），补全局 Esc 关闭（pmenu/dockMenu/clearArmed 一并复位）；三路径实测（点外/Esc/执行动作后） | 2026-10-01 |
 | F13 反馈：供应商切换进控制台 | ✅ server：GET /providers（八家名单+模型数+settings 默认）、GET /models?provider=、POST /sessions 增 provider/apiKey 覆盖（跨家缺 key 400、目录首模型自动选、归属校验 400、非法名单忽略）；console：供应商胶囊菜单（各家目录模型数、settings 默认高亮），跨家选择时内联 API Key 输入（存浏览器本地，不落盘），模型列表联动 + 记忆各家选择；浏览器端到端实测（deepseek+key → 201 deepseek-chat）；server 18/18 | 2026-10-01 |
+| F14 反馈：供应商切换迁入设置面板 | ✅ 左栏底部新增「⚙ 设置」按钮（与 cwd 状态条并排），供应商名单+API Key 内联输入迁入向上弹出的设置面板；底栏只留模型/思考两胶囊；保存 key 即应用该供应商并收面板（联动模型列表）；修复 .setpanel 定位锚点（side 加 position:relative，原锚 BODY 致面板滚出视口）；端到端实测（deepseek+key → 201 DeepSeek V3.2） | 2026-10-01 |
 | 0.6.0-alpha.4 发布 | ✅ 五包发布（含 F13 供应商切换）；用户全局 npm i -g modou@0.6.0-alpha.4 验证 --version；用户侧 serve（15297，全局 CLI）重启即得供应商胶囊 | 2026-10-01 |
