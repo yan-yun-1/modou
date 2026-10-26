@@ -200,3 +200,4 @@ server 新增静态托管：GET / 与 /assets/* 服务控制台产物。web-root
 | F13 反馈：供应商切换进控制台 | ✅ server：GET /providers（八家名单+模型数+settings 默认）、GET /models?provider=、POST /sessions 增 provider/apiKey 覆盖（跨家缺 key 400、目录首模型自动选、归属校验 400、非法名单忽略）；console：供应商胶囊菜单（各家目录模型数、settings 默认高亮），跨家选择时内联 API Key 输入（存浏览器本地，不落盘），模型列表联动 + 记忆各家选择；浏览器端到端实测（deepseek+key → 201 deepseek-chat）；server 18/18 | 2026-10-01 |
 | F14 反馈：供应商切换迁入设置面板 | ✅ 左栏底部新增「⚙ 设置」按钮（与 cwd 状态条并排），供应商名单+API Key 内联输入迁入向上弹出的设置面板；底栏只留模型/思考两胶囊；保存 key 即应用该供应商并收面板（联动模型列表）；修复 .setpanel 定位锚点（side 加 position:relative，原锚 BODY 致面板滚出视口）；端到端实测（deepseek+key → 201 DeepSeek V3.2） | 2026-10-01 |
 | 0.6.0-alpha.4 发布 | ✅ 五包发布（含 F13 供应商切换）；用户全局 npm i -g modou@0.6.0-alpha.4 验证 --version；用户侧 serve（15297，全局 CLI）重启即得供应商胶囊 | 2026-10-01 |
+| 0.6.0-alpha.5 发布 | ✅ 五包发布（含 F14 设置面板：供应商/Key 迁入侧栏、底栏精简）；发布时 modou 包呈 staged 状态数分钟（npm 处理队列），轮询后升级全局 CLI 验证 --version=0.6.0-alpha.5；用户重启自己的 serve（15297/59006 等端口）即得新控制台 | 2026-10-01 |
